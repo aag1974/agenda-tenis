@@ -1,5 +1,8 @@
 import { syncAthlete } from './scraper.js';
-import { getProfile, getProfileCredentials, getSyncedData, saveSyncedData, updateProfile } from './storage.js';
+import {
+  listProfiles, getProfile, getProfileCredentials, getSyncedData, saveSyncedData,
+  updateProfile, getNotes, updateTournamentNotes,
+} from './storage.js';
 
 const inFlight = new Map(); // profileId -> Promise
 const status = new Map();   // profileId -> { state, startedAt, finishedAt, error }
@@ -8,7 +11,6 @@ export function getSyncStatus(profileId) {
   return status.get(profileId) || { state: 'idle' };
 }
 
-// Sync only happens via explicit user action. No auto-trigger.
 export async function syncProfile(profileId) {
   if (inFlight.has(profileId)) return inFlight.get(profileId);
 
@@ -25,6 +27,7 @@ export async function syncProfile(profileId) {
       if (p && (!p.athleteName || p.athleteName === 'Atleta') && result.athlete?.name) {
         updateProfile(profileId, { athleteName: result.athlete.name });
       }
+      autoStarInscribed(profileId, result.tournaments || []);
       status.set(profileId, {
         state: 'success',
         startedAt: status.get(profileId).startedAt,
@@ -46,4 +49,61 @@ export async function syncProfile(profileId) {
 
   inFlight.set(profileId, promise);
   return promise;
+}
+
+// Auto-star inscribed tournaments unless the user has explicitly set selected.
+// We only set selected=true for tournaments that have no note yet,
+// so a manual unstar by the user is preserved across syncs.
+function autoStarInscribed(profileId, tournaments) {
+  const notes = getNotes(profileId);
+  for (const t of tournaments) {
+    if (!t.isAnnaInscribed) continue;
+    const existing = notes[t.id];
+    if (existing && 'selected' in existing) continue; // user already decided
+    updateTournamentNotes(profileId, t.id, { selected: true, autoStarred: true });
+  }
+}
+
+// ===== Auto-sync scheduler =====
+// Runs every 6 hours for every profile that has any starred tournament
+// in the upcoming 90 days (or any starred at all if no startDate).
+const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const RELEVANT_DAYS_AHEAD = 90;
+
+function profileNeedsAutoSync(profileId) {
+  const synced = getSyncedData(profileId);
+  if (!synced?.tournaments?.length) return true; // never synced — try at least once
+  const notes = getNotes(profileId);
+  const now = Date.now();
+  const horizon = now + RELEVANT_DAYS_AHEAD * 24 * 60 * 60 * 1000;
+  for (const t of synced.tournaments) {
+    if (!notes[t.id]?.selected) continue;
+    if (!t.startDate) return true;
+    const [d, m, y] = t.startDate.split('/').map(Number);
+    const ts = new Date(y, m - 1, d).getTime();
+    if (ts >= now - 86400000 && ts <= horizon) return true;
+  }
+  return false;
+}
+
+async function runAutoSyncTick() {
+  const profiles = listProfiles();
+  for (const p of profiles) {
+    if (!profileNeedsAutoSync(p.id)) continue;
+    try {
+      await syncProfile(p.id);
+      console.log(`[auto-sync] ok: ${p.athleteName || p.id}`);
+    } catch (err) {
+      console.error(`[auto-sync] erro ${p.athleteName || p.id}: ${err.message}`);
+    }
+  }
+}
+
+export function startAutoSync() {
+  // Defer the first tick by 5 minutes after boot so server has time to settle.
+  setTimeout(() => {
+    runAutoSyncTick();
+    setInterval(runAutoSyncTick, SYNC_INTERVAL_MS);
+  }, 5 * 60 * 1000);
+  console.log(`[auto-sync] agendado a cada ${SYNC_INTERVAL_MS / 3600000}h (primeiro tick em 5 min)`);
 }

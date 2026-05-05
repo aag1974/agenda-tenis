@@ -8,7 +8,7 @@ import {
   getSyncedData, getNotes, updateTournamentNotes,
   ensureCalendarToken, findProfileByCalendarToken, claimOrphanProfiles,
 } from './storage.js';
-import { syncProfile, getSyncStatus } from './sync-manager.js';
+import { syncProfile, getSyncStatus, startAutoSync } from './sync-manager.js';
 import { deriveStatus, fetchTournamentDetails } from './scraper.js';
 import {
   createUser, authenticate, signCookie, authMiddleware, requireAuth,
@@ -355,6 +355,11 @@ function buildIcsFeed(tournaments, profile) {
       `DESCRIPTION:${escape(desc)}`,
       `LOCATION:${escape([t.city, t.state].filter(Boolean).join(' / '))}`,
       `URL:${t.url || ''}`,
+      'BEGIN:VALARM',
+      'TRIGGER:-P7D',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:Torneio em 1 semana',
+      'END:VALARM',
       'END:VEVENT',
     );
   }
@@ -388,9 +393,9 @@ function buildIcsFeed(tournaments, profile) {
       `DESCRIPTION:${escape(desc)}`,
       pp.boletoUrl && `URL:${pp.boletoUrl}`,
       'BEGIN:VALARM',
-      'TRIGGER:-PT30M',
+      'TRIGGER:-P1D',
       'ACTION:DISPLAY',
-      'DESCRIPTION:Pagar inscrição',
+      'DESCRIPTION:Pagar inscrição amanhã',
       'END:VALARM',
       'END:VEVENT',
     );
@@ -426,4 +431,5 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`     • http://${ip}:${PORT}        ← celular/iPad na mesma WiFi`);
   }
   console.log('');
+  startAutoSync();
 });
