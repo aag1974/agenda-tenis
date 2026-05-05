@@ -956,6 +956,55 @@ async function revertManualInscription(t) {
   }
 }
 
+function receiptsNoteName(t) {
+  const slugCity = (t.city || '')
+    .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]/g, '').slice(0, 12) || 'cidade';
+  // MM-AA do início
+  let monthYear = '';
+  if (t.startDate) {
+    const parts = t.startDate.split('/');
+    if (parts.length === 3) monthYear = `${parts[1]}-${parts[2].slice(2)}`;
+  }
+  return `Tenis-Anna-${monthYear}-${slugCity}`.replace(/-+/g, '-').replace(/-$/, '');
+}
+
+function receiptsBlock(t) {
+  const noteName = receiptsNoteName(t);
+  return el('section', null,
+    el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '📂 Comprovantes do torneio'),
+    el('div', { class: 'rounded border border-slate-200 bg-slate-50 p-3 space-y-2' },
+      el('p', { class: 'text-xs text-slate-600' },
+        'Crie uma nota no app Notas e use o scanner (segundo botão da barra inferior).',
+      ),
+      el('div', { class: 'flex items-center gap-2' },
+        el('code', { class: 'flex-1 text-sm font-mono bg-white border border-slate-300 rounded px-2 py-1.5 break-all' }, noteName),
+        el('button', {
+          class: 'text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-1.5 rounded',
+          onClick: async (e) => {
+            e.stopPropagation();
+            try { await navigator.clipboard.writeText(noteName); e.target.textContent = '✓'; setTimeout(() => e.target.textContent = '📋', 1200); }
+            catch { alert('Falha ao copiar — selecione e copie manualmente'); }
+          },
+        }, '📋'),
+      ),
+      el('div', { class: 'flex flex-wrap gap-2 pt-1' },
+        el('a', {
+          href: 'mobilenotes://',
+          class: 'text-xs bg-yellow-200 hover:bg-yellow-300 text-yellow-900 px-3 py-1.5 rounded border border-yellow-400',
+        }, '📓 Abrir Notas'),
+        el('a', {
+          href: 'shareddocuments://',
+          class: 'text-xs bg-blue-100 hover:bg-blue-200 text-blue-900 px-3 py-1.5 rounded border border-blue-300',
+        }, '📁 Abrir Arquivos'),
+      ),
+      el('p', { class: 'text-xs text-slate-500 italic' },
+        'Dica: use cores ou prefixos no nome de cada scan (ex.: "Aliment-…", "Transp-…") pra agrupar por tipo. Pra prestação, exporta a nota inteira como PDF.',
+      ),
+    ),
+  );
+}
+
 function tournamentTiers(t) {
   const list = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
   const order = new Map(TIER_ORDER.map((x, i) => [x, i]));
@@ -1143,6 +1192,8 @@ async function openTournament(tid) {
           )),
         ),
       ),
+
+      receiptsBlock(t),
 
       observationsBlock,
 
