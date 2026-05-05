@@ -100,13 +100,90 @@ async function getAthleteInfo(client) {
   // Inicio tab text — for parsing pending payments
   const $inicio = $('#profile-tabs-inicio').first();
   const inicioText = $inicio.length ? elementInnerText($inicio) : elementInnerText($('body'));
+  const bodyText = elementInnerText($('body'));
+
+  // WTN: "WTN - World Tennis Number 37,40 Simples 37,96 Duplas"
+  let wtn = null;
+  const mWtn = bodyText.match(/WTN[^0-9]*?(\d+[.,]\d+)\s+Simples\s+(\d+[.,]\d+)\s+Duplas/);
+  if (mWtn) wtn = { single: mWtn[1], double: mWtn[2] };
+
+  // Profile city/origin: "Sobre Brasil/DF mora em Pindamonhangaba - SP"
+  let about = null;
+  const mAbout = bodyText.match(/Sobre\s+(Brasil\/[A-Z]{2})/);
+  if (mAbout) about = mAbout[1];
+
+  // Hand: "Joga com a mão direita." / "esquerda."
+  let hand = null;
+  const mHand = bodyText.match(/Joga com a mão (direita|esquerda)/i);
+  if (mHand) hand = mHand[1].toLowerCase();
+
+  // Rankings shown in profile: "Ranking Nacional Juvenil 2026 - 12F 01/01/2026 Criado por CBT 141.75 - 52º Colocado"
+  const rankings = [];
+  const rxRanking = /Ranking\s+Nacional\s+Juvenil\s+(\d{4})\s*-\s*(\d{1,2}[FM])[^0-9]*?(\d+[.,]?\d*)\s*-\s*(\d+)º\s*Colocado/g;
+  for (const m of bodyText.matchAll(rxRanking)) {
+    rankings.push({
+      year: parseInt(m[1]),
+      category: m[2],   // e.g. "12F"
+      points: m[3],
+      position: parseInt(m[4]),
+    });
+  }
 
   return {
     name: name || 'Atleta',
     tournamentIds: [...tournamentIds],
     inicioText,
     boletoUrls: [...new Set(boletoUrls)],
+    wtn,
+    about,
+    hand,
+    rankings,
   };
+}
+
+// CBT national juvenil ranking IDs (one per year). 1326 = 2026.
+const RANKING_PAGE_ID_CURRENT_YEAR = 1326;
+const CATEGORY_IDS = { '12F': 9, '14F': 10, '16F': 11, '18F': 12 }; // simples categories
+const UF_DF_ID = 7;
+
+// Compute Anna's position among DF athletes for a given category
+async function getDFPosition(client, athleteTiId, categoryCode = '12F') {
+  const catId = CATEGORY_IDS[categoryCode];
+  if (!catId) return null;
+  try {
+    // First GET to capture the latest id_corte option
+    const initial = await client.getText(`/ranking_painel_classif/index/${RANKING_PAGE_ID_CURRENT_YEAR}`);
+    const $ = cheerio.load(initial);
+    let latestCorte = null;
+    $('select#id_corte option').each((i, opt) => {
+      const v = ($(opt).attr('value') || '').trim();
+      if (/^\d+$/.test(v) && (!latestCorte || parseInt(v) > parseInt(latestCorte))) latestCorte = v;
+    });
+
+    const body = new URLSearchParams({
+      busca: '',
+      id_corte: latestCorte || '',
+      id_categoria: String(catId),
+      id_uf: String(UF_DF_ID),
+    }).toString();
+    const res = await client.request(`/ranking_painel_classif/index/${RANKING_PAGE_ID_CURRENT_YEAR}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const html = await res.text();
+    const text = elementInnerText(cheerio.load(html)('body'));
+    // Match each entry: "POSº - Name ID. NUMBER, UF: XX"
+    const entries = [];
+    for (const m of text.matchAll(/(\d+)º\s*-\s*[^I]+ID\.\s*(\d+)/g)) {
+      entries.push({ nationalPos: parseInt(m[1]), id: m[2] });
+    }
+    const idx = entries.findIndex(e => e.id === athleteTiId);
+    if (idx < 0) return null;
+    return { dfPosition: idx + 1, totalDF: entries.length };
+  } catch (err) {
+    return null;
+  }
 }
 
 async function getProgramaIds(client) {
@@ -264,12 +341,18 @@ function parseDetailsHtml(html, id, url) {
     observations = text.slice(obsIdx + 'Informações/Observações'.length, endIdx).trim().slice(0, 3000);
   }
 
+  // All tiers mentioned in the panel (extracted from category lines like "12 Anos Feminino Simples (G1+)")
+  const tiers = [...new Set(
+    [...text.matchAll(/(GA\+|GA|G1\+|G1|G2|G3)(?!\w)/g)].map(m => m[1])
+  )];
+
   return {
     id, url,
     name: name || $('title').text().trim(),
     city, state, cityState: localText,
     startDate, endDate,
     cancelDeadline, prices, hotels, venues, observations,
+    tiers,
   };
 }
 
@@ -357,11 +440,33 @@ export async function syncAthlete({ email, password }) {
   for (const det of missingDetails) {
     if (!det) continue;
     const pp = pendingByName.get(normalizeName(det.name)) || null;
-    tournaments.push({ ...det, tier: extractTier(det.name), isAnnaInscribed: true, pendingPayment: pp });
+    const detTiers = (det.tiers && det.tiers.length) ? det.tiers : (extractTier(det.name) ? [extractTier(det.name)] : []);
+    tournaments.push({
+      ...det,
+      tier: detTiers[0] || null,
+      tiers: detTiers,
+      isAnnaInscribed: true,
+      pendingPayment: pp,
+    });
   }
 
+  // Optional: DF ranking (ignored on failure)
+  const currentYear = new Date().getFullYear();
+  const nationalRanking12F = (athlete.rankings || []).find(r => r.year === currentYear && r.category === '12F') || null;
+  const dfRanking = await getDFPosition(client, client.athleteId, '12F').catch(() => null);
+
   return {
-    athlete: { id: client.athleteId, name: athlete.name, profileUrl: `${BASE}/perfil2/inicio/${client.athleteId}` },
+    athlete: {
+      id: client.athleteId,
+      name: athlete.name,
+      profileUrl: `${BASE}/perfil2/inicio/${client.athleteId}`,
+      wtn: athlete.wtn || null,
+      about: athlete.about || null,
+      hand: athlete.hand || null,
+      rankingNational: nationalRanking12F,           // { year, category, points, position }
+      rankingDF: dfRanking,                          // { dfPosition, totalDF } | null
+      rankingsAll: athlete.rankings || [],           // all rankings on profile
+    },
     tournaments,
     syncedAt: new Date().toISOString(),
   };
