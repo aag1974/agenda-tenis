@@ -1,5 +1,5 @@
 // Service worker — cache simples do shell estático para funcionar offline
-const CACHE = 'agenda-tenis-v8';
+const CACHE = 'agenda-tenis-v9';
 const SHELL = ['/', '/app.js', '/manifest.webmanifest', '/icon-192.svg', '/icon-512.svg'];
 
 self.addEventListener('install', (e) => {

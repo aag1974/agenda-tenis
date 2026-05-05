@@ -114,7 +114,14 @@ const state = {
   data: null,
   syncStatus: null,
   openSections: new Set(JSON.parse(localStorage.getItem('openSections') || 'null') || DEFAULT_OPEN_SECTIONS),
-  filterUF: localStorage.getItem('filterUF') || 'all',
+  filterUFs: (() => {
+    const raw = localStorage.getItem('filterUFs');
+    try { const v = JSON.parse(raw); if (Array.isArray(v)) return v; } catch {}
+    // migrate old single-value localStorage 'filterUF'
+    const old = localStorage.getItem('filterUF');
+    if (old && old !== 'all') return [old];
+    return [];
+  })(),
   filterTier: localStorage.getItem('filterTier') || 'all',
 };
 
@@ -367,7 +374,7 @@ function relativeDateLabel(t) {
 function applyHeaderFilters(tournaments) {
   const f = state;
   return tournaments.filter(t => {
-    if (f.filterUF !== 'all' && t.state !== f.filterUF) return false;
+    if (f.filterUFs.length && !f.filterUFs.includes(t.state)) return false;
     if (f.filterTier !== 'all') {
       const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
       if (!tiers.includes(f.filterTier)) return false;
@@ -522,27 +529,42 @@ function toggleGearMenu() {
     state.user && { label: '🚪 Sair', onClick: () => logout() },
   ].filter(Boolean);
 
-  const filterRow = (label, key, options) => {
-    const select = el('select', {
-      class: 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm bg-white',
-      onChange: (e) => {
-        state[key] = e.target.value;
-        localStorage.setItem(key, e.target.value);
-        rerenderBody();
-      },
-    },
-      el('option', { value: 'all', selected: state[key] === 'all' ? 'selected' : false }, 'Todos'),
-      ...options.map(v => el('option', { value: v, selected: state[key] === v ? 'selected' : false }, v)),
-    );
-    return el('label', { class: 'block px-3 py-1.5 text-xs text-slate-600' },
-      el('div', { class: 'mb-1' }, label),
-      select,
+  const pillRow = (label, options, isSelected, onTogglePill, onClearAll) => {
+    const allActive = !options.some(isSelected);
+    const pill = (text, active, onClick) => el('button', {
+      class: `text-xs px-2.5 py-1 rounded-full border ${active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'}`,
+      onClick: (e) => { e.preventDefault(); onClick(); },
+    }, text);
+    return el('div', { class: 'px-3 py-2' },
+      el('div', { class: 'text-xs text-slate-600 mb-1.5' }, label),
+      el('div', { class: 'flex flex-wrap gap-1.5' },
+        pill('Todos', allActive, onClearAll),
+        ...options.map(v => pill(v, isSelected(v), () => onTogglePill(v))),
+      ),
     );
   };
 
+  const tierSelectRow = el('label', { class: 'block px-3 py-2 text-xs text-slate-600' },
+    el('div', { class: 'mb-1.5' }, 'Chave'),
+    (() => {
+      const select = el('select', {
+        class: 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm bg-white',
+        onChange: (e) => {
+          state.filterTier = e.target.value;
+          localStorage.setItem('filterTier', e.target.value);
+          rerenderBody();
+        },
+      },
+        el('option', { value: 'all', selected: state.filterTier === 'all' ? 'selected' : false }, 'Todos'),
+        ...tierOptions.map(v => el('option', { value: v, selected: state.filterTier === v ? 'selected' : false }, v)),
+      );
+      return select;
+    })(),
+  );
+
   const menu = el('div', {
     id: 'gear-menu',
-    class: 'absolute right-0 top-14 z-30 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[220px]',
+    class: 'absolute right-0 top-14 z-30 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[260px] max-w-[90vw]',
     onClick: (e) => e.stopPropagation(),
   },
     ...actions.map(it => el('button', {
@@ -550,10 +572,29 @@ function toggleGearMenu() {
       onClick: () => { menu.remove(); it.onClick(); },
     }, it.label)),
     profile && el('div', { class: 'border-t border-slate-200 my-1' }),
-    profile && el('div', { class: 'px-1 pt-1 pb-2 space-y-2' },
-      filterRow('UF', 'filterUF', ufs),
-      filterRow('Chave', 'filterTier', tierOptions),
+    profile && pillRow(
+      'UF',
+      ufs,
+      (uf) => state.filterUFs.includes(uf),
+      (uf) => {
+        const idx = state.filterUFs.indexOf(uf);
+        if (idx >= 0) state.filterUFs.splice(idx, 1);
+        else state.filterUFs.push(uf);
+        localStorage.setItem('filterUFs', JSON.stringify(state.filterUFs));
+        rerenderBody();
+        // re-render the menu to update the pill colors
+        const oldMenu = $('gear-menu');
+        if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
+      },
+      () => {
+        state.filterUFs = [];
+        localStorage.setItem('filterUFs', '[]');
+        rerenderBody();
+        const oldMenu = $('gear-menu');
+        if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
+      },
     ),
+    profile && tierSelectRow,
   );
 
   $('header-bar').appendChild(menu);
