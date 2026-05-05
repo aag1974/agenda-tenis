@@ -461,18 +461,21 @@ function showSyncStatus() {
     const d = new Date(iso);
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
-  let msg;
   if (ss?.state === 'running') {
-    msg = `🟡 Sincronizando agora…`;
-  } else if (ss?.state === 'error') {
-    msg = `🔴 Última sincronização falhou\n\nErro: ${ss.error || 'desconhecido'}` +
-          (lastSync ? `\n\nÚltima OK: ${fmtBR(lastSync)}` : '');
-  } else if (lastSync) {
-    msg = `🟢 Sincronizado em\n${fmtBR(lastSync)}`;
-  } else {
-    msg = `⚫ Ainda não sincronizou.\n\nUse ⚙︎ → Sincronizar agora.`;
+    alert('🟡 Sincronizando agora…');
+    return;
   }
-  alert(msg);
+  let msg;
+  if (ss?.state === 'error') {
+    msg = `🔴 Última sincronização falhou\n\nErro: ${ss.error || 'desconhecido'}` +
+          (lastSync ? `\n\nÚltima OK: ${fmtBR(lastSync)}` : '') +
+          `\n\nSincronizar de novo agora?`;
+  } else if (lastSync) {
+    msg = `🟢 Sincronizado em\n${fmtBR(lastSync)}\n\nSincronizar de novo agora?`;
+  } else {
+    msg = `⚫ Ainda não sincronizou.\n\nSincronizar agora?`;
+  }
+  if (confirm(msg)) syncNow();
 }
 
 function toggleGearMenu() {
