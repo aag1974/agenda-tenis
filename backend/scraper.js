@@ -186,7 +186,11 @@ async function fetchCatalog(client, { category = JUVENIL_CATEGORY, year = new Da
 
   return raw.map(r => {
     const [startDate, endDate] = parseDateRange(r.datesText);
-    const tierFromRanking = (r.rankingText.match(/(GA|G1\+|G1|G2|G3)\b/) || [])[1];
+    const tiersFromRanking = [...new Set(
+      [...r.rankingText.matchAll(/(GA\+|GA|G1\+|G1|G2|G3)\b/g)].map(m => m[1])
+    )];
+    const fallback = extractTier(r.name);
+    const tiers = tiersFromRanking.length ? tiersFromRanking : (fallback ? [fallback] : []);
     return {
       id: r.id,
       name: r.name.slice(0, 200),
@@ -194,7 +198,8 @@ async function fetchCatalog(client, { category = JUVENIL_CATEGORY, year = new Da
       cityState: r.city && r.state ? `${r.city}-${r.state}` : null,
       startDate, endDate,
       registrationStatus: r.statusText || null,
-      tier: tierFromRanking || extractTier(r.name),
+      tier: tiers[0] || null, // back-compat (existing code reads `tier`)
+      tiers,                   // new: array of all tiers in the tournament
       url: `${BASE}/torneio_painel_info/index/${r.id}`,
     };
   });

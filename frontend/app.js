@@ -105,6 +105,7 @@ const STATUS_BADGE = {
 };
 
 const DEFAULT_OPEN_SECTIONS = ['urgent', 'thisWeek', 'thisMonth'];
+const TIER_ORDER = ['GA+', 'GA', 'G1+', 'G1', 'G2', 'G3'];
 const state = {
   user: null,
   hasUsers: false,
@@ -113,6 +114,8 @@ const state = {
   data: null,
   syncStatus: null,
   openSections: new Set(JSON.parse(localStorage.getItem('openSections') || 'null') || DEFAULT_OPEN_SECTIONS),
+  filterUF: localStorage.getItem('filterUF') || 'all',
+  filterTier: localStorage.getItem('filterTier') || 'all',
 };
 
 const api = {
@@ -361,7 +364,20 @@ function relativeDateLabel(t) {
   return `daqui ${Math.round(dStart / 30)} ${Math.round(dStart / 30) === 1 ? 'mês' : 'meses'}`;
 }
 
-function renderTimeline(tournaments) {
+function applyHeaderFilters(tournaments) {
+  const f = state;
+  return tournaments.filter(t => {
+    if (f.filterUF !== 'all' && t.state !== f.filterUF) return false;
+    if (f.filterTier !== 'all') {
+      const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
+      if (!tiers.includes(f.filterTier)) return false;
+    }
+    return true;
+  });
+}
+
+function renderTimeline(allTournaments) {
+  const tournaments = applyHeaderFilters(allTournaments);
   const buckets = { urgent: [], thisWeek: [], thisMonth: [], upcoming: [], past: [] };
   for (const t of tournaments) buckets[categorizeForTimeline(t)].push(t);
 
@@ -380,7 +396,7 @@ function renderTimeline(tournaments) {
     { key: 'past', title: 'Já passaram', tournaments: buckets.past },
   ];
 
-  return el('div', { class: 'mt-4 space-y-4' },
+  return el('div', { id: 'timeline-container', class: 'mt-4 space-y-4' },
     ...sections
       .filter(s => !(s.hideIfEmpty && s.tournaments.length === 0))
       .map(renderSection),
@@ -427,12 +443,16 @@ function renderHeaderEl() {
     el('option', { value: '__new__' }, '+ Adicionar atleta…'),
   );
 
+  const isRunning = ss?.state === 'running';
+  const icon = isRunning
+    ? el('span', { class: 'inline-block animate-spin text-3xl leading-none' }, '↻')
+    : el('span', { class: 'inline-block text-3xl leading-none' }, '⚙︎');
   const menuButton = el('button', {
     id: 'gear-button',
-    class: 'w-10 h-10 flex items-center justify-center rounded hover:bg-slate-100 text-xl leading-none',
+    class: 'w-12 h-12 flex items-center justify-center rounded hover:bg-slate-100',
     title: 'Mais opções',
     onClick: (e) => { e.stopPropagation(); toggleGearMenu(); },
-  }, ss?.state === 'running' ? '↻' : '⚙︎');
+  }, icon);
 
   return el('header', { id: 'header-bar', class: 'flex items-center justify-between gap-2 pb-3 border-b border-slate-200 relative' },
     el('div', { class: 'flex items-center gap-2 min-w-0' },
@@ -487,18 +507,53 @@ function toggleGearMenu() {
   const existing = $('gear-menu');
   if (existing) { existing.remove(); return; }
   const profile = state.profiles.find(p => p.id === state.activeProfileId);
-  const items = [
+  const tournaments = state.data?.tournaments || [];
+  const ufs = [...new Set(tournaments.map(t => t.state).filter(Boolean))].sort();
+  const tiersInData = new Set();
+  for (const t of tournaments) {
+    for (const tier of (t.tiers && t.tiers.length ? t.tiers : (t.tier ? [t.tier] : []))) tiersInData.add(tier);
+  }
+  const tierOptions = TIER_ORDER.filter(x => tiersInData.has(x));
+
+  const actions = [
     profile && { label: '↻ Sincronizar agora', onClick: () => syncNow() },
     profile && { label: '📅 Conectar com calendário', onClick: () => openCalendarSetup() },
     profile && { label: '✏️ Editar perfil', onClick: () => openProfileForm(profile) },
     state.user && { label: '🚪 Sair', onClick: () => logout() },
   ].filter(Boolean);
 
-  const menu = el('div', { id: 'gear-menu', class: 'absolute right-0 top-12 z-30 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[200px]' },
-    ...items.map(it => el('button', {
+  const filterRow = (label, key, options) => {
+    const select = el('select', {
+      class: 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm bg-white',
+      onChange: (e) => {
+        state[key] = e.target.value;
+        localStorage.setItem(key, e.target.value);
+        rerenderBody();
+      },
+    },
+      el('option', { value: 'all', selected: state[key] === 'all' ? 'selected' : false }, 'Todos'),
+      ...options.map(v => el('option', { value: v, selected: state[key] === v ? 'selected' : false }, v)),
+    );
+    return el('label', { class: 'block px-3 py-1.5 text-xs text-slate-600' },
+      el('div', { class: 'mb-1' }, label),
+      select,
+    );
+  };
+
+  const menu = el('div', {
+    id: 'gear-menu',
+    class: 'absolute right-0 top-14 z-30 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[220px]',
+    onClick: (e) => e.stopPropagation(),
+  },
+    ...actions.map(it => el('button', {
       class: 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-100',
       onClick: () => { menu.remove(); it.onClick(); },
     }, it.label)),
+    profile && el('div', { class: 'border-t border-slate-200 my-1' }),
+    profile && el('div', { class: 'px-1 pt-1 pb-2 space-y-2' },
+      filterRow('UF', 'filterUF', ufs),
+      filterRow('Chave', 'filterTier', tierOptions),
+    ),
   );
 
   $('header-bar').appendChild(menu);
@@ -507,6 +562,13 @@ function toggleGearMenu() {
       if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); }
     });
   }, 0);
+}
+
+function rerenderBody() {
+  const old = $('timeline-container');
+  if (!old) { render(); return; }
+  const tournaments = state.data?.tournaments || [];
+  old.replaceWith(renderTimeline(tournaments));
 }
 
 function openCalendarSetup() {
@@ -619,7 +681,9 @@ function renderTournamentCard(t) {
     el('div', { class: 'pr-10' },
       el('div', { class: 'text-sm font-medium text-slate-700 mb-0.5' }, relativeDateLabel(t)),
       el('h3', { class: 'leading-snug font-medium' },
-        t.tier && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium mr-1.5 align-middle' }, t.tier),
+        ...tournamentTiers(t).map(tier =>
+          el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium mr-1 align-middle' }, tier),
+        ),
         el('span', null, t.name || '(sem nome)'),
       ),
       el('div', { class: 'text-sm text-slate-600 mt-0.5' }, cityState || '—'),
@@ -628,6 +692,12 @@ function renderTournamentCard(t) {
       ),
     ),
   );
+}
+
+function tournamentTiers(t) {
+  const list = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
+  const order = new Map(TIER_ORDER.map((x, i) => [x, i]));
+  return [...list].sort((a, b) => (order.get(a) ?? 99) - (order.get(b) ?? 99));
 }
 
 async function toggleSelected(t) {
