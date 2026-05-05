@@ -190,7 +190,7 @@ app.get('/api/profiles/:id/tournaments/:tid/flight-url', requireAuth, ensureOwne
   if (origin === dest) {
     return res.json({
       origin, dest, sameCity: true,
-      message: `Torneio em ${t.city} — mesma cidade da atleta. Sem voo.`,
+      message: `Torneio em ${t.city} — mesma cidade do atleta. Sem voo.`,
     });
   }
 
@@ -346,7 +346,7 @@ function buildIcsFeed(tournaments, profile) {
       : [];
     const desc = [
       tiersList && `Nível: ${tiersList}`,
-      t.isAnnaInscribed && '✓ Inscrita',
+      t.isAnnaInscribed && '✓ Inscrito',
       t.cancelDeadline && `Cancelamento até: ${t.cancelDeadline}`,
       t.notes?.flight && `Voo: ${t.notes.flight}`,
       t.notes?.hotel && `Hotel anotado: ${t.notes.hotel}`,

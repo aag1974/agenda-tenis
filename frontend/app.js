@@ -549,7 +549,7 @@ function toggleGearMenu() {
   const tierOptions = TIER_ORDER.filter(x => tiersInData.has(x));
 
   const actions = [
-    profile && { label: '👤 Sobre a atleta', onClick: () => openAthleteCard() },
+    profile && { label: '👤 Sobre o atleta', onClick: () => openAthleteCard() },
     profile && { label: '📅 Conectar com calendário', onClick: () => openCalendarSetup() },
     profile && { label: '✏️ Editar perfil', onClick: () => openProfileForm(profile) },
     state.user && { label: '🚪 Sair', onClick: () => logout() },
@@ -697,7 +697,7 @@ function openAthleteCard() {
     card.appendChild(el('div', { class: 'border-t border-slate-200 pt-3 space-y-1' },
       sectionTitle('Rankings'),
       rankCBT && kv(`Nacional CBT ${rankCBT.year} ${rankCBT.category}`, `${rankCBT.position}º (${rankCBT.points} pts)`),
-      rankDF && kv('DF (recorte do nacional)', `${rankDF.dfPosition}ª colocada`),
+      rankDF && kv('DF (recorte do nacional)', `${rankDF.dfPosition}º colocado`),
       wtn && kv('WTN', `${wtn.single} simples / ${wtn.double} duplas`),
       athlete.hand && kv('Mão dominante', athlete.hand.charAt(0).toUpperCase() + athlete.hand.slice(1)),
     ));
@@ -723,7 +723,7 @@ function openAthleteCard() {
   // Estatísticas
   card.appendChild(el('div', { class: 'border-t border-slate-200 pt-3 space-y-1' },
     sectionTitle(`Resumo ${today.getFullYear()}`),
-    kv('Inscrita em', `${inscribedThisYear} torneios`),
+    kv('Inscrito em', `${inscribedThisYear} torneios`),
     kv('Boletos pendentes', pendingPayments.length
       ? `${pendingPayments.length} (R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})`
       : '0'),
@@ -733,7 +733,7 @@ function openAthleteCard() {
   const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-40', onClick: close });
   const content = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 max-h-[90vh] overflow-y-auto bg-white sm:rounded-2xl rounded-t-2xl z-50 max-w-xl w-full p-5 shadow-xl' },
     el('div', { class: 'flex items-center justify-between mb-3' },
-      el('h2', { class: 'text-lg font-semibold' }, '👤 Sobre a atleta'),
+      el('h2', { class: 'text-lg font-semibold' }, '👤 Sobre o atleta'),
       el('button', { class: 'text-slate-400 hover:text-slate-700 text-2xl leading-none px-2', onClick: close }, '×'),
     ),
     card,
@@ -995,7 +995,7 @@ async function openTournament(tid) {
         el('div', { class: 'flex items-center gap-2 mb-1 flex-wrap' },
           statusBadge,
           t.tier && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium' }, t.tier),
-          t.isAnnaInscribed && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrita'),
+          t.isAnnaInscribed && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrito'),
           t.pendingPayment && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-amber-600 text-white font-medium' }, '💰 Não pago'),
         ),
         el('h2', { class: 'text-lg font-semibold' }, t.name),
@@ -1049,7 +1049,7 @@ async function openTournament(tid) {
 
       flightInfo && flightInfo.sameCity && el('section', null,
         el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '🏠 Deslocamento'),
-        el('p', { class: 'text-sm text-slate-700' }, `Torneio na mesma cidade da atleta (${flightInfo.origin}) — sem voo.`),
+        el('p', { class: 'text-sm text-slate-700' }, `Torneio na mesma cidade do atleta (${flightInfo.origin}) — sem voo.`),
       ),
 
       flightInfo && !flightInfo.error && !flightInfo.sameCity && flightInfo.arrival && flightInfo.ret && el('section', null,
