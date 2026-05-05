@@ -226,6 +226,12 @@ function brToIso(s) {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+// TI mistura "R$ 217,00" e "R$ 217.00" — sempre exibimos com vírgula (padrão BR).
+function normalizeBrCurrency(s) {
+  if (!s) return s;
+  return String(s).replace(/(\d)\.(\d{2})(?!\d)/, '$1,$2');
+}
+
 function addDays(iso, n) {
   if (!iso) return null;
   const d = new Date(iso + 'T00:00:00');
@@ -391,7 +397,7 @@ function buildIcsFeed(tournaments, profile) {
 
     const desc = [
       pp.category && `Categoria: ${pp.category}`,
-      pp.value && `Valor: ${pp.value}`,
+      pp.value && `Valor: ${normalizeBrCurrency(pp.value)}`,
       `Vence: ${pp.dueDate} (16h horário de Brasília)`,
       '',
       pp.boletoUrl && `Boleto: ${pp.boletoUrl}`,
