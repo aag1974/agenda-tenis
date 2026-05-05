@@ -838,8 +838,12 @@ function renderTournamentCard(t) {
   const pp = t.pendingPayment;
   const manualInscribed = !!t.notes?.manualInscribed;
   const inscribed = t.isAnnaInscribed || manualInscribed;
+  const end = brToDate(t.endDate);
+  const isPast = end && end < startOfToday();
   const cardClass = pp
     ? 'bg-amber-50 border-amber-300'
+    : (inscribed && isPast)
+    ? 'bg-rose-50 border-rose-300'
     : inscribed
     ? 'bg-emerald-50 border-emerald-300'
     : 'bg-white border-slate-200';
