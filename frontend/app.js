@@ -16,8 +16,6 @@ const el = (tag, attrs, ...children) => {
   return e;
 };
 
-function monthStart(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
-function addMonths(d, n) { return new Date(d.getFullYear(), d.getMonth() + n, 1); }
 function brToDate(s) {
   if (!s) return null;
   const [d, m, y] = s.split('/').map(Number);
@@ -93,18 +91,6 @@ function brToIso(s) {
   const [d, m, y] = s.split('/');
   return `${y}-${m}-${d}`;
 }
-function fmtRelative(iso) {
-  if (!iso) return 'nunca';
-  const ms = Date.now() - new Date(iso).getTime();
-  const min = Math.floor(ms / 60000);
-  if (min < 1) return 'agora';
-  if (min < 60) return `há ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `há ${h}h`;
-  const d = Math.floor(h / 24);
-  return `há ${d}d`;
-}
-
 const STATUS_LABELS = {
   upcoming: 'Futuro',
   ongoing: 'Em andamento',
@@ -118,8 +104,6 @@ const STATUS_BADGE = {
   unknown: 'bg-slate-100 text-slate-500',
 };
 
-const TIERS = ['GA', 'G1+', 'G1', 'G2', 'G3', 'Federações'];
-
 const state = {
   user: null,
   hasUsers: false,
@@ -127,20 +111,7 @@ const state = {
   activeProfileId: localStorage.getItem('activeProfileId') || null,
   data: null,
   syncStatus: null,
-  filters: {
-    year: 'all',
-    uf: 'all',
-    status: 'all',
-    tier: 'all',
-    onlyAnna: false,
-    onlyStarred: false,
-    onlyPending: false,
-  },
-  view: localStorage.getItem('view') || 'list',
-  calendarMonth: monthStart(new Date()),
 };
-// Drop legacy calendar view state
-if (state.view === 'calendar') state.view = 'list';
 
 const api = {
   async me() { return (await fetch('/api/auth/me')).json(); },
@@ -178,7 +149,6 @@ const api = {
   },
   async flightUrl(profileId, tid) { return (await fetch(`/api/profiles/${profileId}/tournaments/${tid}/flight-url`)).json(); },
   async tournamentDetails(tid) { return (await fetch(`/api/tournament-details/${tid}`)).json(); },
-  async shutdown() { return fetch('/api/shutdown', { method: 'POST' }); },
 };
 
 // ===== Init =====
@@ -331,104 +301,103 @@ function render() {
     return;
   }
 
-  root.appendChild(renderViewToggle());
-
-  if (state.view === 'subscribe') {
-    root.appendChild(renderSubscribe());
-  } else {
-    root.appendChild(renderFilters(tournaments));
-    root.appendChild(renderTournaments(tournaments));
-  }
+  root.appendChild(renderTimeline(tournaments));
 }
 
-function renderSubscribe() {
-  const profile = state.profiles.find(p => p.id === state.activeProfileId);
-  if (!profile) return el('div', null);
+// ===== Timeline (single sectioned list) =====
+const DAY = 24 * 60 * 60 * 1000;
 
-  const baseUrl = `${location.protocol}//${location.host}`;
-  const isLocal = location.hostname === 'localhost' || location.hostname.startsWith('192.168.') || location.hostname.startsWith('10.') || location.hostname.startsWith('127.');
+function startOfToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+function endOfMonth() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59); }
 
-  const wrapper = el('div', { class: 'mt-4 space-y-4' });
+function daysFromToday(date) {
+  if (!date) return null;
+  return Math.round((date.getTime() - startOfToday().getTime()) / DAY);
+}
 
-  (async () => {
-    let token = profile.calendarToken;
-    if (!token) {
-      const r = await fetch(`/api/profiles/${profile.id}/calendar-token`);
-      const d = await r.json();
-      token = d.token;
-      profile.calendarToken = token;
-    }
-    const httpUrl = `${baseUrl}/calendar/${token}.ics`;
-    const webcalUrl = `webcal://${location.host}/calendar/${token}.ics`;
+function categorizeForTimeline(t) {
+  const start = brToDate(t.startDate);
+  const end = brToDate(t.endDate) || start;
+  const today = startOfToday();
+  const inOneWeek = new Date(today.getTime() + 7 * DAY);
+  const monthEnd = endOfMonth();
 
-    wrapper.innerHTML = '';
+  // Urgent: pending payment due in <=7 days (and tournament not yet ended)
+  const pp = t.pendingPayment;
+  if (pp?.dueDate) {
+    const due = brToDate(pp.dueDate);
+    if (due && due >= today && due <= inOneWeek && (!end || end >= today)) return 'urgent';
+  }
 
-    const starredCount = (state.data?.tournaments || []).filter(t => t.notes?.selected).length;
-    const pendingCount = (state.data?.tournaments || []).filter(t => t.pendingPayment).length;
+  if (!start) return 'upcoming';
+  if (end < today) return 'past';
+  if (start <= inOneWeek) return 'thisWeek';
+  if (start <= monthEnd) return 'thisMonth';
+  return 'upcoming';
+}
 
-    wrapper.appendChild(el('div', { class: 'bg-emerald-50 border border-emerald-200 rounded-lg p-4' },
-      el('h2', { class: 'text-lg font-semibold text-emerald-900 mb-1' }, '📅 Sincronizar com a agenda do celular'),
-      el('p', { class: 'text-sm text-emerald-800' }, `Faça uma vez. Sua agenda nativa puxa atualizações sozinha. Inclui ${starredCount} torneio${starredCount === 1 ? '' : 's'} marcado${starredCount === 1 ? '' : 's'} ⭐ e ${pendingCount} lembrete${pendingCount === 1 ? '' : 's'} de pagamento.`),
-    ));
+function relativeDateLabel(t) {
+  const start = brToDate(t.startDate);
+  const end = brToDate(t.endDate) || start;
+  const today = startOfToday();
+  if (!start) return 'sem data';
+  if (start <= today && end >= today) return 'em andamento agora';
+  const dStart = daysFromToday(start);
+  if (dStart < 0) {
+    const dEnd = daysFromToday(end);
+    if (dEnd === 0) return 'terminou hoje';
+    if (dEnd === -1) return 'terminou ontem';
+    if (dEnd > -7) return `terminou há ${-dEnd} dias`;
+    if (dEnd > -30) return `terminou há ${Math.round(-dEnd / 7)} semanas`;
+    const months = Math.round(-dEnd / 30);
+    return `terminou há ${months} ${months === 1 ? 'mês' : 'meses'}`;
+  }
+  if (dStart === 0) return 'começa hoje';
+  if (dStart === 1) return 'começa amanhã';
+  if (dStart < 14) return `daqui ${dStart} dias`;
+  if (dStart < 60) return `daqui ${Math.round(dStart / 7)} semanas`;
+  return `daqui ${Math.round(dStart / 30)} ${Math.round(dStart / 30) === 1 ? 'mês' : 'meses'}`;
+}
 
-    wrapper.appendChild(el('div', { class: 'bg-white rounded-lg border border-slate-200 p-4 space-y-3' },
-      el('h3', { class: 'font-medium' }, 'Opção 1: Inscrição automática (recomendado)'),
-      el('p', { class: 'text-sm text-slate-600' }, 'A agenda nativa puxa atualizações de hora em hora. Quando você marcar/desmarcar ⭐ aqui, sincroniza sozinho.'),
+function renderTimeline(tournaments) {
+  const buckets = { urgent: [], thisWeek: [], thisMonth: [], upcoming: [], past: [] };
+  for (const t of tournaments) buckets[categorizeForTimeline(t)].push(t);
 
-      isLocal && el('div', { class: 'rounded bg-amber-50 border border-amber-300 p-3 text-sm text-amber-900' },
-        el('strong', null, '⚠️ Você está rodando local'),
-        el('p', { class: 'mt-1 text-xs' }, 'A inscrição só funciona enquanto seu Mac está ligado E na mesma WiFi. Pra usar de qualquer lugar (3G/4G), o próximo passo do projeto é hospedar na nuvem.'),
-      ),
+  const sortByStart = (a, b) => (brToIso(a.startDate) || 'zzzz').localeCompare(brToIso(b.startDate) || 'zzzz');
+  buckets.urgent.sort((a, b) => (brToIso(a.pendingPayment?.dueDate) || 'zzzz').localeCompare(brToIso(b.pendingPayment?.dueDate) || 'zzzz'));
+  buckets.thisWeek.sort(sortByStart);
+  buckets.thisMonth.sort(sortByStart);
+  buckets.upcoming.sort(sortByStart);
+  buckets.past.sort((a, b) => (brToIso(b.startDate) || '').localeCompare(brToIso(a.startDate) || ''));
 
-      el('div', null,
-        el('label', { class: 'block text-xs text-slate-500 mb-1' }, 'URL para inscrever:'),
-        (() => {
-          const inp = el('input', {
-            type: 'text', readonly: 'readonly',
-            class: 'w-full font-mono text-xs px-2 py-1.5 border border-slate-300 rounded bg-slate-50',
-          });
-          inp.value = httpUrl;
-          inp.onclick = () => inp.select();
-          return inp;
-        })(),
-      ),
+  const sections = [
+    { key: 'urgent', title: '⚠️ Urgente', tournaments: buckets.urgent, openByDefault: true, hideIfEmpty: true },
+    { key: 'thisWeek', title: '📌 Esta semana', tournaments: buckets.thisWeek, openByDefault: true, emptyText: 'Nada nessa semana.' },
+    { key: 'thisMonth', title: 'Este mês', tournaments: buckets.thisMonth, openByDefault: true, emptyText: 'Nada mais esse mês.' },
+    { key: 'upcoming', title: 'Próximos meses', tournaments: buckets.upcoming, openByDefault: false },
+    { key: 'past', title: 'Já passaram', tournaments: buckets.past, openByDefault: false },
+  ];
 
-      el('div', { class: 'flex flex-wrap gap-2' },
-        el('a', {
-          href: webcalUrl,
-          class: 'inline-flex items-center gap-1 bg-emerald-600 text-white text-sm px-3 py-1.5 rounded hover:bg-emerald-700',
-        }, '📅 Abrir no Apple Calendar'),
-        el('a', {
-          href: `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(httpUrl)}`,
-          target: '_blank', rel: 'noopener',
-          class: 'inline-flex items-center gap-1 bg-white border border-slate-300 text-slate-700 text-sm px-3 py-1.5 rounded hover:bg-slate-100',
-        }, '🌐 Adicionar no Google Calendar'),
-        el('button', {
-          class: 'inline-flex items-center gap-1 bg-white border border-slate-300 text-slate-700 text-sm px-3 py-1.5 rounded hover:bg-slate-100',
-          onClick: async () => { try { await navigator.clipboard.writeText(httpUrl); alert('URL copiada!'); } catch { alert('Falha ao copiar — selecione manualmente'); } },
-        }, '📋 Copiar URL'),
-      ),
-    ));
+  return el('div', { class: 'mt-4 space-y-4' },
+    ...sections
+      .filter(s => !(s.hideIfEmpty && s.tournaments.length === 0))
+      .map(renderSection),
+  );
+}
 
-    wrapper.appendChild(el('div', { class: 'bg-white rounded-lg border border-slate-200 p-4 space-y-2' },
-      el('h3', { class: 'font-medium' }, 'Opção 2: Baixar uma vez (não atualiza sozinho)'),
-      el('p', { class: 'text-sm text-slate-600' }, 'Baixa um arquivo .ics, importa na agenda. Pra ver mudanças depois, baixa de novo.'),
-      el('a', {
-        href: httpUrl,
-        download: 'agenda-tenis.ics',
-        class: 'inline-block bg-slate-100 border border-slate-300 text-slate-700 text-sm px-3 py-1.5 rounded hover:bg-slate-200',
-      }, '⬇️ Baixar .ics'),
-    ));
+function renderSection({ key, title, tournaments, openByDefault, emptyText }) {
+  const titleNode = el('summary', { class: 'cursor-pointer select-none flex items-center justify-between gap-2 py-2 px-1' },
+    el('span', { class: 'font-medium text-slate-800' }, title),
+    el('span', { class: 'text-xs text-slate-500' }, tournaments.length ? `${tournaments.length} torneio${tournaments.length === 1 ? '' : 's'}` : ''),
+  );
 
-    wrapper.appendChild(el('div', { class: 'bg-slate-50 border border-slate-200 rounded p-3 text-xs text-slate-600 space-y-1' },
-      el('p', { class: 'font-medium text-slate-700' }, 'Como vai ficar no celular:'),
-      el('p', null, '• iPhone: toca em "Abrir no Apple Calendar" → "Inscrever". Frequência de atualização em Ajustes → Calendário → Contas → Inscritos.'),
-      el('p', null, '• Android: "Adicionar no Google Calendar". Sincroniza automaticamente.'),
-      el('p', null, '• Eventos verdes 🎾 = torneios marcados ⭐. Eventos amarelos 💰 = lembretes de pagamento (1 dia antes às 9h, com alarme).'),
-    ));
-  })();
+  const body = tournaments.length
+    ? el('div', { class: 'grid gap-2 mt-1' }, ...tournaments.map(renderTournamentCard))
+    : el('div', { class: 'text-sm text-slate-400 px-1 py-2' }, emptyText || 'Nada por aqui.');
 
-  return wrapper;
+  const attrs = { class: 'border-t border-slate-200 pt-1' };
+  if (openByDefault) attrs.open = 'open';
+  return el('details', attrs, titleNode, body);
 }
 
 function renderHeader() {
@@ -439,14 +408,9 @@ function renderHeader() {
 function renderHeaderEl() {
   const profile = state.profiles.find(p => p.id === state.activeProfileId);
   const ss = state.syncStatus;
-  const lastSync = state.data?.syncedAt;
-
-  const syncLabel = ss?.state === 'running' ? '↻ Sincronizando…'
-    : ss?.state === 'error' ? `⚠ ${ss.error}`
-    : `Sincronizado ${fmtRelative(lastSync)}`;
 
   const profileSelect = state.profiles.length > 0 && el('select', {
-    class: 'rounded border border-slate-300 px-3 py-1.5 text-sm bg-white max-w-[55vw] truncate',
+    class: 'rounded border border-slate-300 px-3 py-1.5 text-sm bg-white max-w-[60vw] truncate',
     onChange: (e) => switchProfile(e.target.value),
   },
     ...state.profiles.map(p => el('option', { value: p.id, selected: p.id === state.activeProfileId ? 'selected' : false },
@@ -455,34 +419,105 @@ function renderHeaderEl() {
     el('option', { value: '__new__' }, '+ Adicionar atleta…'),
   );
 
-  return el('header', { id: 'header-bar', class: 'flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200' },
-    el('div', { class: 'flex items-center gap-3' },
-      el('span', { class: 'text-2xl' }, '🎾'),
-      el('h1', { class: 'text-xl font-semibold' }, 'Agenda Tênis Integrado'),
-    ),
-    el('div', { class: 'flex items-center gap-2 flex-wrap' },
+  const menuButton = el('button', {
+    id: 'gear-button',
+    class: 'w-10 h-10 flex items-center justify-center rounded hover:bg-slate-100 text-xl leading-none',
+    title: 'Mais opções',
+    onClick: (e) => { e.stopPropagation(); toggleGearMenu(); },
+  }, ss?.state === 'running' ? '↻' : '⚙︎');
+
+  return el('header', { id: 'header-bar', class: 'flex items-center justify-between gap-2 pb-3 border-b border-slate-200 relative' },
+    el('div', { class: 'flex items-center gap-2 min-w-0' },
+      el('span', { class: 'text-2xl flex-shrink-0' }, '🎾'),
       profileSelect,
-      profile && el('button', {
-        class: 'text-xs text-slate-500 hover:text-slate-800 underline',
-        onClick: () => openProfileForm(profile),
-      }, 'editar'),
-      profile && el('span', { class: `hidden sm:inline text-xs ${ss?.state === 'error' ? 'text-red-600' : 'text-slate-500'}` }, syncLabel),
-      profile && el('button', {
-        class: 'rounded bg-slate-900 text-white text-sm px-3 py-1.5 hover:bg-slate-700 disabled:opacity-50',
-        disabled: ss?.state === 'running' ? 'disabled' : false,
-        onClick: () => syncNow(),
-      }, ss?.state === 'running' ? '↻' : 'Sincronizar'),
-      state.user && el('button', {
-        class: 'text-xs text-slate-500 hover:text-slate-800 underline',
-        title: state.user.email,
-        onClick: () => logout(),
-      }, 'Sair'),
-      el('button', {
-        class: 'hidden sm:inline rounded bg-slate-100 text-slate-700 text-sm px-3 py-1.5 hover:bg-slate-200 border border-slate-300',
-        onClick: () => shutdownApp(),
-      }, 'Encerrar'),
     ),
+    menuButton,
   );
+}
+
+function toggleGearMenu() {
+  const existing = $('gear-menu');
+  if (existing) { existing.remove(); return; }
+  const profile = state.profiles.find(p => p.id === state.activeProfileId);
+  const items = [
+    profile && { label: '↻ Sincronizar agora', onClick: () => syncNow() },
+    profile && { label: '📅 Conectar com calendário', onClick: () => openCalendarSetup() },
+    profile && { label: '✏️ Editar perfil', onClick: () => openProfileForm(profile) },
+    state.user && { label: '🚪 Sair', onClick: () => logout() },
+  ].filter(Boolean);
+
+  const menu = el('div', { id: 'gear-menu', class: 'absolute right-0 top-12 z-30 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[200px]' },
+    ...items.map(it => el('button', {
+      class: 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-100',
+      onClick: () => { menu.remove(); it.onClick(); },
+    }, it.label)),
+  );
+
+  $('header-bar').appendChild(menu);
+  setTimeout(() => {
+    document.addEventListener('click', function close(e) {
+      if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); }
+    });
+  }, 0);
+}
+
+function openCalendarSetup() {
+  const profile = state.profiles.find(p => p.id === state.activeProfileId);
+  if (!profile) return;
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-40', onClick: close });
+  const content = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 max-h-[90vh] overflow-y-auto bg-white sm:rounded-2xl rounded-t-2xl z-50 max-w-xl w-full p-5 shadow-xl' },
+    el('div', { class: 'flex items-center justify-between mb-3' },
+      el('h2', { class: 'text-lg font-semibold' }, '📅 Conectar com calendário'),
+      el('button', { class: 'text-slate-400 hover:text-slate-700 text-2xl leading-none px-2', onClick: close }, '×'),
+    ),
+    renderCalendarSetupBody(profile),
+  );
+  root.appendChild(overlay);
+  root.appendChild(content);
+}
+
+function renderCalendarSetupBody(profile) {
+  const wrapper = el('div', { class: 'space-y-3' });
+  (async () => {
+    let token = profile.calendarToken;
+    if (!token) {
+      const r = await fetch(`/api/profiles/${profile.id}/calendar-token`);
+      token = (await r.json()).token;
+      profile.calendarToken = token;
+    }
+    const httpUrl = `${location.protocol}//${location.host}/calendar/${token}.ics`;
+    const webcalUrl = `webcal://${location.host}/calendar/${token}.ics`;
+    const starredCount = (state.data?.tournaments || []).filter(t => t.notes?.selected).length;
+
+    wrapper.innerHTML = '';
+    wrapper.appendChild(el('p', { class: 'text-sm text-slate-700' },
+      `Faça uma vez. Sua agenda nativa puxa as atualizações sozinha. Inclui ${starredCount} torneio${starredCount === 1 ? '' : 's'} marcado${starredCount === 1 ? '' : 's'} ⭐.`,
+    ));
+    wrapper.appendChild(el('div', { class: 'flex flex-col gap-2' },
+      el('a', {
+        href: webcalUrl,
+        class: 'text-center bg-emerald-600 text-white text-sm px-4 py-2.5 rounded hover:bg-emerald-700',
+      }, '📅 Adicionar ao Apple Calendar'),
+      el('a', {
+        href: `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(httpUrl)}`,
+        target: '_blank', rel: 'noopener',
+        class: 'text-center bg-white border border-slate-300 text-slate-700 text-sm px-4 py-2.5 rounded hover:bg-slate-100',
+      }, '🌐 Adicionar ao Google Calendar'),
+      el('button', {
+        class: 'text-center bg-white border border-slate-300 text-slate-700 text-sm px-4 py-2.5 rounded hover:bg-slate-100',
+        onClick: async () => { try { await navigator.clipboard.writeText(httpUrl); alert('URL copiada!'); } catch { alert('Falha ao copiar'); } },
+      }, '📋 Copiar URL'),
+    ));
+    wrapper.appendChild(el('div', { class: 'text-xs text-slate-500 space-y-1 pt-2 border-t border-slate-100' },
+      el('p', null, '• 🎾 Eventos de torneio têm alarme 7 dias antes.'),
+      el('p', null, '• 💰 Eventos de boleto têm alarme 1 dia antes.'),
+      el('p', null, '• Pra editar a frequência de atualização no iPhone: Ajustes → Calendário → Contas → Inscritos.'),
+    ));
+  })();
+  return wrapper;
 }
 
 async function syncNow() {
@@ -512,128 +547,36 @@ function renderEmptyState() {
 
 function renderNeedSync() {
   return el('div', { class: 'mt-12 text-center max-w-md mx-auto' },
-    el('p', { class: 'text-slate-600 mb-4' }, 'Ainda não há torneios carregados. Clique em "Sincronizar" no topo para puxar a lista do Tênis Integrado.'),
-    el('p', { class: 'text-xs text-slate-500' }, 'A sincronização leva ~30 segundos (faz login, baixa o catálogo Juvenil e identifica os torneios da atleta).'),
-  );
-}
-
-function renderViewToggle() {
-  const views = [['list', '📋 Lista'], ['subscribe', '📅 Sincronizar com agenda']];
-  return el('div', { class: 'mt-4 flex gap-2 flex-wrap' },
-    ...views.map(([key, label]) => el('button', {
-      class: `px-3 py-1.5 rounded text-sm ${state.view === key ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-300 hover:bg-slate-100'}`,
-      onClick: () => { state.view = key; localStorage.setItem('view', key); render(); },
-    }, label)),
-  );
-}
-
-// ===== Filters =====
-function renderFilters(tournaments) {
-  // Compute available years and UFs from data
-  const years = [...new Set(tournaments
-    .map(t => t.startDate?.slice(-4))
-    .filter(Boolean))]
-    .sort();
-  const ufs = [...new Set(tournaments.map(t => t.state).filter(Boolean))].sort();
-  const tiers = [...new Set(tournaments.map(t => t.tier).filter(Boolean))];
-
-  const make = (key, label, options) => el('label', { class: 'flex items-center gap-1.5 text-sm' },
-    el('span', { class: 'text-slate-500' }, label + ':'),
-    el('select', {
-      class: 'rounded border border-slate-300 px-2 py-1 text-sm bg-white',
-      onChange: (e) => { state.filters[key] = e.target.value; render(); },
-    },
-      ...options.map(([v, t]) => el('option', { value: v, selected: state.filters[key] === v ? 'selected' : false }, t)),
-    ),
-  );
-
-  return el('div', { class: 'mt-3 bg-white rounded-lg border border-slate-200 p-3 flex flex-wrap items-center gap-3' },
-    make('year', 'Ano', [['all', 'Todos'], ...years.map(y => [y, y])]),
-    make('uf', 'UF', [['all', 'Todas'], ...ufs.map(u => [u, u])]),
-    make('status', 'Status', [
-      ['all', 'Todos'],
-      ['upcoming', 'Futuros'],
-      ['ongoing', 'Em andamento'],
-      ['past', 'Passados'],
-    ]),
-    make('tier', 'Nível', [['all', 'Todos'], ...TIERS.filter(t => tiers.includes(t)).map(t => [t, t])]),
-    el('label', { class: 'flex items-center gap-1.5 text-sm cursor-pointer' },
-      (() => { const cb = el('input', { type: 'checkbox' }); cb.checked = state.filters.onlyAnna; cb.onchange = () => { state.filters.onlyAnna = cb.checked; render(); }; return cb; })(),
-      el('span', null, 'Só inscritos'),
-    ),
-    el('label', { class: 'flex items-center gap-1.5 text-sm cursor-pointer' },
-      (() => { const cb = el('input', { type: 'checkbox' }); cb.checked = state.filters.onlyStarred; cb.onchange = () => { state.filters.onlyStarred = cb.checked; render(); }; return cb; })(),
-      el('span', null, 'Só ⭐'),
-    ),
-    el('label', { class: 'flex items-center gap-1.5 text-sm cursor-pointer' },
-      (() => { const cb = el('input', { type: 'checkbox' }); cb.checked = state.filters.onlyPending; cb.onchange = () => { state.filters.onlyPending = cb.checked; render(); }; return cb; })(),
-      el('span', { class: 'text-amber-800 font-medium' }, '💰 Pendentes'),
-    ),
-    el('button', {
-      class: 'ml-auto text-xs text-slate-500 hover:text-slate-800 underline',
-      onClick: () => { state.filters = { year: 'all', uf: 'all', status: 'all', tier: 'all', onlyAnna: false, onlyStarred: false, onlyPending: false }; render(); },
-    }, 'limpar filtros'),
-  );
-}
-
-function applyFilters(tournaments) {
-  return tournaments.filter(t => {
-    const f = state.filters;
-    if (f.year !== 'all' && !(t.startDate || '').endsWith('/' + f.year)) return false;
-    if (f.uf !== 'all' && t.state !== f.uf) return false;
-    if (f.status !== 'all' && t.derivedStatus !== f.status) return false;
-    if (f.tier !== 'all' && t.tier !== f.tier) return false;
-    if (f.onlyAnna && !t.isAnnaInscribed) return false;
-    if (f.onlyStarred && !t.notes?.selected) return false;
-    if (f.onlyPending && !t.pendingPayment) return false;
-    return true;
-  });
-}
-
-// ===== List =====
-function renderTournaments(tournaments) {
-  const list = applyFilters(tournaments);
-  list.sort((a, b) => (brToIso(a.startDate) || 'zzzz').localeCompare(brToIso(b.startDate) || 'zzzz'));
-
-  if (!list.length) {
-    return el('div', { class: 'mt-4 text-slate-500 text-sm bg-slate-100 rounded p-4 text-center' }, 'Nenhum torneio com esses filtros.');
-  }
-
-  return el('div', { class: 'mt-3' },
-    el('div', { class: 'text-xs text-slate-500 mb-2' }, `${list.length} torneio${list.length === 1 ? '' : 's'}`),
-    el('div', { class: 'grid gap-3' }, ...list.map(renderTournamentCard)),
+    el('p', { class: 'text-slate-600 mb-4' }, 'Ainda não há torneios carregados. Toque em ⚙︎ → Sincronizar agora pra puxar a lista do Tênis Integrado.'),
+    el('p', { class: 'text-xs text-slate-500' }, 'A sincronização leva ~30 segundos.'),
   );
 }
 
 function renderTournamentCard(t) {
   const selected = !!t.notes?.selected;
-  const status = t.derivedStatus || 'unknown';
   const pp = t.pendingPayment;
-  const cardClass = pp
-    ? 'bg-amber-50 border-amber-300'
-    : 'bg-white border-slate-200';
+  const cardClass = pp ? 'bg-amber-50 border-amber-300' : 'bg-white border-slate-200';
+  const cityState = [t.city, t.state].filter(Boolean).join(' / ');
+
   return el('article', {
-    class: `${cardClass} rounded-lg border p-4 hover:shadow-sm cursor-pointer relative`,
+    class: `${cardClass} rounded-lg border p-3 hover:shadow-sm cursor-pointer relative`,
     onClick: () => openTournament(t.id),
   },
     el('button', {
-      class: `absolute top-2 right-2 w-11 h-11 flex items-center justify-center text-2xl leading-none rounded ${selected ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`,
-      title: selected ? 'Remover da agenda' : 'Adicionar à agenda',
+      class: `absolute top-1.5 right-1.5 w-10 h-10 flex items-center justify-center text-2xl leading-none rounded ${selected ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`,
+      title: selected ? 'Remover do calendário' : 'Adicionar ao calendário',
       onClick: (e) => { e.stopPropagation(); toggleSelected(t); },
     }, selected ? '★' : '☆'),
 
-    el('div', { class: 'pr-8' },
-      el('div', { class: 'flex flex-wrap items-center gap-2 mb-1' },
-        el('span', { class: `inline-block px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[status]}` }, STATUS_LABELS[status]),
-        el('span', { class: 'text-xs text-slate-500' }, `${t.startDate || '?'} → ${t.endDate || '?'}`),
-        t.tier && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium' }, t.tier),
-        t.isAnnaInscribed && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrita'),
-        pp && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-amber-600 text-white font-medium' }, `💰 Pagar até ${pp.dueDate || '?'}`),
+    el('div', { class: 'pr-10' },
+      el('div', { class: 'text-sm font-medium text-slate-700 mb-0.5' }, relativeDateLabel(t)),
+      el('h3', { class: 'leading-snug font-medium' },
+        t.tier && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium mr-1.5 align-middle' }, t.tier),
+        el('span', null, t.name || '(sem nome)'),
       ),
-      el('h3', { class: 'font-medium leading-snug' }, t.name || '(sem nome)'),
-      el('div', { class: 'text-sm text-slate-600 mt-1 flex flex-wrap gap-x-3' },
-        el('span', null, [t.city, t.state].filter(Boolean).join(' / ') || '—'),
-        pp && el('span', { class: 'text-amber-800 font-medium' }, `${pp.value || ''}${pp.category ? ' · ' + pp.category : ''}`),
+      el('div', { class: 'text-sm text-slate-600 mt-0.5' }, cityState || '—'),
+      pp && el('div', { class: 'mt-2 text-sm font-medium text-amber-800' },
+        `💰 Boleto vence em ${pp.dueDate}` + (pp.value ? ` — ${pp.value}` : ''),
       ),
     ),
   );
@@ -963,15 +906,6 @@ function openProfileForm(profile = null) {
   root.appendChild(panel);
 }
 
-async function shutdownApp() {
-  if (!confirm('Encerrar o app? O servidor vai parar e a janela do terminal pode ser fechada.')) return;
-  try { await api.shutdown(); } catch {}
-  document.body.innerHTML = `
-    <div class="max-w-md mx-auto mt-24 text-center text-slate-700">
-      <h2 class="text-xl font-semibold mb-2">App encerrado</h2>
-      <p class="text-sm text-slate-500">Pode fechar esta aba e a janela do terminal.</p>
-    </div>`;
-}
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
