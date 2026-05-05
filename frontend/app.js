@@ -1028,7 +1028,12 @@ async function openTournament(tid) {
         merged.cancelDeadline && el('p', { class: 'text-xs text-slate-500 mt-0.5' }, `Cancelamento até ${merged.cancelDeadline}`),
       ),
 
-      flightInfo && !flightInfo.error && el('section', null,
+      flightInfo && flightInfo.sameCity && el('section', null,
+        el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '🏠 Deslocamento'),
+        el('p', { class: 'text-sm text-slate-700' }, `Torneio na mesma cidade da atleta (${flightInfo.origin}) — sem voo.`),
+      ),
+
+      flightInfo && !flightInfo.error && !flightInfo.sameCity && el('section', null,
         el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '✈ Passagens'),
         el('p', { class: 'text-sm mb-2' }, `${flightInfo.origin} → ${flightInfo.dest}  ·  ida ${flightInfo.arrival}, volta ${flightInfo.ret}`),
         el('div', { class: 'flex flex-wrap gap-2' },
@@ -1046,7 +1051,7 @@ async function openTournament(tid) {
         el('p', { class: 'text-xs text-slate-500' }, 'Não foi possível gerar link de busca (cidade sem aeroporto cadastrado).'),
       ),
 
-      isFuture && merged.hotels?.length > 0 && el('section', null,
+      isFuture && merged.hotels?.length > 0 && !flightInfo?.sameCity && el('section', null,
         el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, `🏨 Hotéis oficiais (${merged.hotels.length})`),
         el('ul', { class: 'space-y-2' },
           ...merged.hotels.map(h => el('li', { class: 'text-sm border border-slate-200 rounded p-2' },

@@ -186,6 +186,14 @@ app.get('/api/profiles/:id/tournaments/:tid/flight-url', requireAuth, ensureOwne
   const origin = (p.originAirport || 'BSB').toUpperCase();
   const dest = destAirport.toUpperCase();
 
+  // Same-city tournaments: skip flight search — return a friendly hint instead.
+  if (origin === dest) {
+    return res.json({
+      origin, dest, sameCity: true,
+      message: `Torneio em ${t.city} — mesma cidade da atleta. Sem voo.`,
+    });
+  }
+
   const startISO = brToIso(t.startDate);
   const endISO = brToIso(t.endDate);
   const arrival = addDays(startISO, -1);
