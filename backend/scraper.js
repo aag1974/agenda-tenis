@@ -147,6 +147,7 @@ const CATEGORY_IDS = { '12F': 9, '14F': 10, '16F': 11, '18F': 12 }; // simples c
 const UF_DF_ID = 7;
 
 // Compute Anna's position among DF athletes for a given category
+// Returns { dfPosition, totalDF, cutoffDate } or null
 async function getDFPosition(client, athleteTiId, categoryCode = '12F') {
   const catId = CATEGORY_IDS[categoryCode];
   if (!catId) return null;
@@ -155,9 +156,14 @@ async function getDFPosition(client, athleteTiId, categoryCode = '12F') {
     const initial = await client.getText(`/ranking_painel_classif/index/${RANKING_PAGE_ID_CURRENT_YEAR}`);
     const $ = cheerio.load(initial);
     let latestCorte = null;
+    let latestCorteDate = null;
     $('select#id_corte option').each((i, opt) => {
       const v = ($(opt).attr('value') || '').trim();
-      if (/^\d+$/.test(v) && (!latestCorte || parseInt(v) > parseInt(latestCorte))) latestCorte = v;
+      const t = $(opt).text().trim();
+      if (/^\d+$/.test(v) && (!latestCorte || parseInt(v) > parseInt(latestCorte))) {
+        latestCorte = v;
+        latestCorteDate = (t.match(/\d{2}\/\d{2}\/\d{4}/) || [])[0] || null;
+      }
     });
 
     const body = new URLSearchParams({
@@ -179,8 +185,8 @@ async function getDFPosition(client, athleteTiId, categoryCode = '12F') {
       entries.push({ nationalPos: parseInt(m[1]), id: m[2] });
     }
     const idx = entries.findIndex(e => e.id === athleteTiId);
-    if (idx < 0) return null;
-    return { dfPosition: idx + 1, totalDF: entries.length };
+    if (idx < 0) return { dfPosition: null, totalDF: entries.length, cutoffDate: latestCorteDate };
+    return { dfPosition: idx + 1, totalDF: entries.length, cutoffDate: latestCorteDate };
   } catch (err) {
     return null;
   }

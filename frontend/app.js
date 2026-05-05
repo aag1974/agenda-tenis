@@ -694,10 +694,11 @@ function openAthleteCard() {
   const rankDF = athlete.rankingDF;
   const wtn = athlete.wtn;
   if (rankCBT || rankDF || wtn) {
+    const cutoff = rankDF?.cutoffDate;
     card.appendChild(el('div', { class: 'border-t border-slate-200 pt-3 space-y-1' },
-      sectionTitle('Rankings'),
+      sectionTitle(cutoff ? `Rankings (${cutoff})` : 'Rankings'),
       rankCBT && kv(`Nacional CBT ${rankCBT.year} ${rankCBT.category}`, `${rankCBT.position}º (${rankCBT.points} pts)`),
-      rankDF && kv('DF (recorte do nacional)', `${rankDF.dfPosition}º colocado`),
+      rankDF && rankDF.dfPosition && kv('DF (recorte do nacional)', `${rankDF.dfPosition}º colocado`),
       wtn && kv('WTN', `${wtn.single} simples / ${wtn.double} duplas`),
       athlete.hand && kv('Mão dominante', athlete.hand.charAt(0).toUpperCase() + athlete.hand.slice(1)),
     ));
