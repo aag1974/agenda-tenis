@@ -835,9 +835,10 @@ function renderNeedSync() {
 
 function renderTournamentCard(t) {
   const selected = !!t.notes?.selected;
-  const pp = t.pendingPayment;
   const manualInscribed = !!t.notes?.manualInscribed;
-  const inscribed = t.isAnnaInscribed || manualInscribed;
+  const givenUp = !!t.notes?.manualGiveUp;
+  const pp = givenUp ? null : t.pendingPayment;
+  const inscribed = givenUp ? false : (t.isAnnaInscribed || manualInscribed);
   const end = brToDate(t.endDate);
   const isPast = end && end < startOfToday();
   const cardClass = pp
@@ -889,8 +890,45 @@ function renderTournamentCard(t) {
           onClick: (e) => { e.stopPropagation(); revertManualInscription(t); },
         }, 'desfazer'),
       ),
+      // Quando ainda há pp mostrado (não desistiu), oferecer desistir
+      pp && !isPast && el('button', {
+        class: 'mt-2 ml-3 text-xs text-slate-500 hover:text-slate-800 underline',
+        onClick: (e) => { e.stopPropagation(); giveUpTournament(t); },
+      }, '✕ Desisti deste torneio'),
+      givenUp && el('div', { class: 'mt-1 text-xs text-slate-500 italic flex items-center gap-2' },
+        el('span', null, '✕ marcado como desistido'),
+        el('button', {
+          class: 'underline hover:text-slate-800',
+          onClick: (e) => { e.stopPropagation(); revertGiveUp(t); },
+        }, 'desfazer'),
+      ),
     ),
   );
+}
+
+async function giveUpTournament(t) {
+  if (!confirm(`Marcar "${t.name}" como desistido?\n\nO torneio vai sair do calendário e o lembrete de boleto será removido.`)) return;
+  t.notes = { ...(t.notes || {}), manualGiveUp: true, selected: false };
+  rerenderBody();
+  try {
+    await api.updateNotes(state.activeProfileId, t.id, { manualGiveUp: true, selected: false });
+  } catch (err) {
+    t.notes.manualGiveUp = false;
+    rerenderBody();
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function revertGiveUp(t) {
+  t.notes = { ...(t.notes || {}), manualGiveUp: false };
+  rerenderBody();
+  try {
+    await api.updateNotes(state.activeProfileId, t.id, { manualGiveUp: false });
+  } catch (err) {
+    t.notes.manualGiveUp = true;
+    rerenderBody();
+    alert('Erro: ' + err.message);
+  }
 }
 
 async function confirmInscription(t) {

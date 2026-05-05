@@ -384,8 +384,10 @@ function buildIcsFeed(tournaments, profile) {
     );
   }
 
-  // Payment reminders
+  // Payment reminders — só para torneios estrelados (mesmo critério do evento principal)
   for (const t of tournaments) {
+    if (!t.notes?.selected) continue;
+    if (t.notes?.manualGiveUp) continue;
     const pp = t.pendingPayment;
     if (!pp?.dueDate) continue;
     const [d, m, y] = pp.dueDate.split('/').map(Number);
