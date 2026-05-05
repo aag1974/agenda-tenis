@@ -446,11 +446,11 @@ function renderHeaderEl() {
     : `Sincronizado ${fmtRelative(lastSync)}`;
 
   const profileSelect = state.profiles.length > 0 && el('select', {
-    class: 'rounded border border-slate-300 px-3 py-1.5 text-sm bg-white',
+    class: 'rounded border border-slate-300 px-3 py-1.5 text-sm bg-white max-w-[55vw] truncate',
     onChange: (e) => switchProfile(e.target.value),
   },
     ...state.profiles.map(p => el('option', { value: p.id, selected: p.id === state.activeProfileId ? 'selected' : false },
-      `${p.athleteName || 'Atleta'} (${p.tiEmail})`
+      p.athleteName || p.tiEmail || 'Atleta'
     )),
     el('option', { value: '__new__' }, '+ Adicionar atleta…'),
   );
