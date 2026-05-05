@@ -104,6 +104,7 @@ const STATUS_BADGE = {
   unknown: 'bg-slate-100 text-slate-500',
 };
 
+const DEFAULT_OPEN_SECTIONS = ['urgent', 'thisWeek', 'thisMonth'];
 const state = {
   user: null,
   hasUsers: false,
@@ -111,6 +112,7 @@ const state = {
   activeProfileId: localStorage.getItem('activeProfileId') || null,
   data: null,
   syncStatus: null,
+  openSections: new Set(JSON.parse(localStorage.getItem('openSections') || 'null') || DEFAULT_OPEN_SECTIONS),
 };
 
 const api = {
@@ -371,11 +373,11 @@ function renderTimeline(tournaments) {
   buckets.past.sort((a, b) => (brToIso(b.startDate) || '').localeCompare(brToIso(a.startDate) || ''));
 
   const sections = [
-    { key: 'urgent', title: '⚠️ Urgente', tournaments: buckets.urgent, openByDefault: true, hideIfEmpty: true },
-    { key: 'thisWeek', title: '📌 Esta semana', tournaments: buckets.thisWeek, openByDefault: true, emptyText: 'Nada nessa semana.' },
-    { key: 'thisMonth', title: 'Este mês', tournaments: buckets.thisMonth, openByDefault: true, emptyText: 'Nada mais esse mês.' },
-    { key: 'upcoming', title: 'Próximos meses', tournaments: buckets.upcoming, openByDefault: false },
-    { key: 'past', title: 'Já passaram', tournaments: buckets.past, openByDefault: false },
+    { key: 'urgent', title: '⚠️ Urgente', tournaments: buckets.urgent, hideIfEmpty: true },
+    { key: 'thisWeek', title: '📌 Esta semana', tournaments: buckets.thisWeek, emptyText: 'Nada nessa semana.' },
+    { key: 'thisMonth', title: 'Este mês', tournaments: buckets.thisMonth, emptyText: 'Nada mais esse mês.' },
+    { key: 'upcoming', title: 'Próximos meses', tournaments: buckets.upcoming },
+    { key: 'past', title: 'Já passaram', tournaments: buckets.past },
   ];
 
   return el('div', { class: 'mt-4 space-y-4' },
@@ -385,7 +387,7 @@ function renderTimeline(tournaments) {
   );
 }
 
-function renderSection({ key, title, tournaments, openByDefault, emptyText }) {
+function renderSection({ key, title, tournaments, emptyText }) {
   const titleNode = el('summary', { class: 'cursor-pointer select-none flex items-center justify-between gap-2 py-2 px-1' },
     el('span', { class: 'font-medium text-slate-800' }, title),
     el('span', { class: 'text-xs text-slate-500' }, tournaments.length ? `${tournaments.length} torneio${tournaments.length === 1 ? '' : 's'}` : ''),
@@ -396,8 +398,14 @@ function renderSection({ key, title, tournaments, openByDefault, emptyText }) {
     : el('div', { class: 'text-sm text-slate-400 px-1 py-2' }, emptyText || 'Nada por aqui.');
 
   const attrs = { class: 'border-t border-slate-200 pt-1' };
-  if (openByDefault) attrs.open = 'open';
-  return el('details', attrs, titleNode, body);
+  if (state.openSections.has(key)) attrs.open = 'open';
+  const details = el('details', attrs, titleNode, body);
+  details.addEventListener('toggle', () => {
+    if (details.open) state.openSections.add(key);
+    else state.openSections.delete(key);
+    localStorage.setItem('openSections', JSON.stringify([...state.openSections]));
+  });
+  return details;
 }
 
 function renderHeader() {
