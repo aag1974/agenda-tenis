@@ -527,6 +527,7 @@ function toggleGearMenu() {
   const tierOptions = TIER_ORDER.filter(x => tiersInData.has(x));
 
   const actions = [
+    profile && { label: '👤 Sobre a atleta', onClick: () => openAthleteCard() },
     profile && { label: '↻ Sincronizar agora', onClick: () => syncNow() },
     profile && { label: '📅 Conectar com calendário', onClick: () => openCalendarSetup() },
     profile && { label: '✏️ Editar perfil', onClick: () => openProfileForm(profile) },
@@ -614,6 +615,112 @@ function rerenderBody() {
   if (!old) { render(); return; }
   const tournaments = state.data?.tournaments || [];
   old.replaceWith(renderTimeline(tournaments));
+}
+
+function openAthleteCard() {
+  const profile = state.profiles.find(p => p.id === state.activeProfileId);
+  const data = state.data;
+  if (!profile || !data) return;
+  const athlete = data.athlete || {};
+  const tournaments = data.tournaments || [];
+  const today = startOfToday();
+
+  const future = tournaments
+    .filter(t => brToDate(t.startDate) && brToDate(t.startDate) >= today)
+    .sort((a, b) => (brToIso(a.startDate) || '').localeCompare(brToIso(b.startDate) || ''));
+  const past = tournaments
+    .filter(t => brToDate(t.endDate) && brToDate(t.endDate) < today)
+    .sort((a, b) => (brToIso(b.endDate) || '').localeCompare(brToIso(a.endDate) || ''));
+  const next = future[0];
+  const last = past[0];
+
+  const inscribedThisYear = tournaments.filter(t => {
+    const d = brToDate(t.startDate);
+    return (t.isAnnaInscribed || t.notes?.manualInscribed) && d && d.getFullYear() === today.getFullYear();
+  }).length;
+  const pendingPayments = tournaments.filter(t => t.pendingPayment);
+  const totalPending = pendingPayments.reduce((sum, t) => {
+    const v = t.pendingPayment?.value || '';
+    const n = parseFloat(String(v).replace(/[^\d,.]/g, '').replace('.', '').replace(',', '.'));
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+
+  const sectionTitle = (t) => el('div', { class: 'text-xs font-medium text-slate-500 uppercase tracking-wide' }, t);
+  const kv = (label, value) => el('div', { class: 'flex justify-between gap-3 py-1' },
+    el('span', { class: 'text-sm text-slate-600' }, label),
+    el('span', { class: 'text-sm font-medium text-slate-900 text-right' }, value || '—'),
+  );
+
+  const card = el('div', { class: 'space-y-4' });
+
+  // Identificação
+  card.appendChild(el('div', null,
+    el('h2', { class: 'text-xl font-semibold text-slate-900' }, athlete.name || profile.athleteName || 'Atleta'),
+    el('div', { class: 'text-xs text-slate-500 mt-0.5' },
+      `ID TI ${athlete.id || '—'}`,
+      athlete.about ? ` • ${athlete.about}` : '',
+    ),
+    athlete.profileUrl && el('a', {
+      href: athlete.profileUrl, target: '_blank', rel: 'noopener',
+      class: 'text-xs text-emerald-700 hover:text-emerald-900 underline',
+    }, 'Ver perfil no Tênis Integrado ↗'),
+  ));
+
+  // Rankings
+  const rankCBT = athlete.rankingNational;
+  const rankDF = athlete.rankingDF;
+  const wtn = athlete.wtn;
+  if (rankCBT || rankDF || wtn) {
+    card.appendChild(el('div', { class: 'border-t border-slate-200 pt-3 space-y-1' },
+      sectionTitle('Rankings'),
+      rankCBT && kv(`Nacional CBT ${rankCBT.year} ${rankCBT.category}`, `${rankCBT.position}º (${rankCBT.points} pts)`),
+      rankDF && kv('DF (recorte do nacional)', `${rankDF.dfPosition}ª colocada`),
+      wtn && kv('WTN', `${wtn.single} simples / ${wtn.double} duplas`),
+      athlete.hand && kv('Mão dominante', athlete.hand.charAt(0).toUpperCase() + athlete.hand.slice(1)),
+    ));
+  }
+
+  // Próximo / último torneio
+  card.appendChild(el('div', { class: 'border-t border-slate-200 pt-3 space-y-2' },
+    sectionTitle('Calendário'),
+    next
+      ? el('div', null,
+          el('div', { class: 'text-xs text-slate-500' }, '📅 Próximo torneio'),
+          el('div', { class: 'text-sm font-medium' }, next.name),
+          el('div', { class: 'text-xs text-slate-600' }, `${[next.city, next.state].filter(Boolean).join(' / ')} • ${relativeDateLabel(next)}`),
+        )
+      : el('div', { class: 'text-sm text-slate-500' }, 'Sem torneio futuro inscrito.'),
+    last && el('div', { class: 'mt-2' },
+      el('div', { class: 'text-xs text-slate-500' }, '🏆 Último torneio'),
+      el('div', { class: 'text-sm font-medium' }, last.name),
+      el('div', { class: 'text-xs text-slate-600' }, `${[last.city, last.state].filter(Boolean).join(' / ')} • ${relativeDateLabel(last)}`),
+    ),
+  ));
+
+  // Estatísticas
+  card.appendChild(el('div', { class: 'border-t border-slate-200 pt-3 space-y-1' },
+    sectionTitle(`Resumo ${today.getFullYear()}`),
+    kv('Inscrita em', `${inscribedThisYear} torneios`),
+    kv('Boletos pendentes', pendingPayments.length
+      ? `${pendingPayments.length} (R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})`
+      : '0'),
+  ));
+
+  // Modal frame
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-40', onClick: close });
+  const content = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 max-h-[90vh] overflow-y-auto bg-white sm:rounded-2xl rounded-t-2xl z-50 max-w-xl w-full p-5 shadow-xl' },
+    el('div', { class: 'flex items-center justify-between mb-3' },
+      el('h2', { class: 'text-lg font-semibold' }, '👤 Sobre a atleta'),
+      el('button', { class: 'text-slate-400 hover:text-slate-700 text-2xl leading-none px-2', onClick: close }, '×'),
+    ),
+    card,
+  );
+  root.appendChild(overlay);
+  root.appendChild(content);
 }
 
 function openCalendarSetup() {
