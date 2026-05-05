@@ -431,8 +431,48 @@ function renderHeaderEl() {
       el('span', { class: 'text-2xl flex-shrink-0' }, '🎾'),
       profileSelect,
     ),
-    menuButton,
+    el('div', { class: 'flex items-center gap-1' },
+      profile && renderSyncIndicator(),
+      menuButton,
+    ),
   );
+}
+
+function renderSyncIndicator() {
+  const ss = state.syncStatus;
+  const lastSync = state.data?.syncedAt;
+  let color, title;
+  if (ss?.state === 'running') { color = 'bg-amber-400 animate-pulse'; title = 'Sincronizando…'; }
+  else if (ss?.state === 'error') { color = 'bg-red-500'; title = 'Erro: ' + (ss.error || 'desconhecido'); }
+  else if (lastSync) { color = 'bg-emerald-500'; title = 'Sincronizado'; }
+  else { color = 'bg-slate-300'; title = 'Ainda não sincronizou'; }
+  return el('button', {
+    class: 'w-10 h-10 flex items-center justify-center rounded hover:bg-slate-100',
+    title,
+    onClick: () => showSyncStatus(),
+  }, el('span', { class: `inline-block w-3 h-3 rounded-full ${color}` }));
+}
+
+function showSyncStatus() {
+  const ss = state.syncStatus;
+  const lastSync = state.data?.syncedAt;
+  const fmtBR = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+  let msg;
+  if (ss?.state === 'running') {
+    msg = `🟡 Sincronizando agora…`;
+  } else if (ss?.state === 'error') {
+    msg = `🔴 Última sincronização falhou\n\nErro: ${ss.error || 'desconhecido'}` +
+          (lastSync ? `\n\nÚltima OK: ${fmtBR(lastSync)}` : '');
+  } else if (lastSync) {
+    msg = `🟢 Sincronizado em\n${fmtBR(lastSync)}`;
+  } else {
+    msg = `⚫ Ainda não sincronizou.\n\nUse ⚙︎ → Sincronizar agora.`;
+  }
+  alert(msg);
 }
 
 function toggleGearMenu() {
