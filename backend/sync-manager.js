@@ -55,15 +55,25 @@ export async function syncProfile(profileId) {
   return promise;
 }
 
-// Auto-star inscribed tournaments unless the user has explicitly set selected.
-// We only set selected=true for tournaments that have no note yet,
-// so a manual unstar by the user is preserved across syncs.
+// Auto-star tournaments based on TI signals.
+// Rules:
+//   - If user marked manualGiveUp → never re-star (respect the give-up)
+//   - If pendingPayment exists → always star (financial reminder is non-optional)
+//   - Else if isAnnaInscribed and user hasn't decided yet → star
+//   - Else: leave whatever the user chose
 function autoStarInscribed(profileId, tournaments) {
   const notes = getNotes(profileId);
   for (const t of tournaments) {
+    const existing = notes[t.id] || {};
+    if (existing.manualGiveUp) continue;
+    if (t.pendingPayment) {
+      if (existing.selected !== true) {
+        updateTournamentNotes(profileId, t.id, { selected: true, autoStarred: true });
+      }
+      continue;
+    }
     if (!t.isAnnaInscribed) continue;
-    const existing = notes[t.id];
-    if (existing && 'selected' in existing) continue; // user already decided
+    if ('selected' in existing) continue; // user already decided
     updateTournamentNotes(profileId, t.id, { selected: true, autoStarred: true });
   }
 }
