@@ -463,7 +463,7 @@ function renderHeaderEl() {
     el('div', { class: 'flex items-center gap-2 flex-wrap' },
       profileSelect,
       profile && el('button', {
-        class: 'hidden sm:inline text-xs text-slate-500 hover:text-slate-800 underline',
+        class: 'text-xs text-slate-500 hover:text-slate-800 underline',
         onClick: () => openProfileForm(profile),
       }, 'editar'),
       profile && el('span', { class: `hidden sm:inline text-xs ${ss?.state === 'error' ? 'text-red-600' : 'text-slate-500'}` }, syncLabel),
@@ -473,7 +473,7 @@ function renderHeaderEl() {
         onClick: () => syncNow(),
       }, ss?.state === 'running' ? '↻' : 'Sincronizar'),
       state.user && el('button', {
-        class: 'hidden sm:inline text-xs text-slate-500 hover:text-slate-800 underline',
+        class: 'text-xs text-slate-500 hover:text-slate-800 underline',
         title: state.user.email,
         onClick: () => logout(),
       }, 'Sair'),
