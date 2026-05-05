@@ -1021,10 +1021,10 @@ async function openTournament(tid) {
           el('div', { class: 'text-xs text-amber-800 mt-0.5' }, `${fmtValueNoCents(t.pendingPayment.value)}${t.pendingPayment.category ? ' · ' + t.pendingPayment.category : ''}`),
           el('div', { class: 'flex flex-wrap gap-2 mt-2' },
             el('a', {
-              href: t.pendingPayment.boletoUrl || t.url || 'https://www.tenisintegrado.com.br',
+              href: t.url || 'https://www.tenisintegrado.com.br',
               target: '_blank', rel: 'noopener',
               class: 'text-xs bg-amber-600 text-white px-2 py-1 rounded hover:bg-amber-700',
-            }, t.pendingPayment.boletoUrl ? 'Abrir boleto ↗' : 'Pagar no TI ↗'),
+            }, 'Abrir torneio no TI ↗'),
             reminder && el('button', {
               type: 'button',
               class: 'text-xs bg-white border border-amber-400 text-amber-800 px-2 py-1 rounded hover:bg-amber-100',
