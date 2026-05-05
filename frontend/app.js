@@ -1049,12 +1049,21 @@ async function openTournament(tid) {
       ),
     ),
     el('div', { class: 'px-6 py-4 space-y-4' },
-      isFuture && !t.pendingPayment && t.url && el('section', null,
-        el('a', {
-          href: t.url, target: '_blank', rel: 'noopener',
-          class: 'inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded',
-        }, '🎾 Inscrever no Tênis Integrado ↗'),
-      ),
+      isFuture && !t.pendingPayment && !t.isAnnaInscribed && !t.notes?.manualInscribed && t.url && (() => {
+        const closed = /encerrad/i.test(t.registrationStatus || '');
+        return el('section', null,
+          closed
+            ? el('a', {
+                href: t.url, target: '_blank', rel: 'noopener',
+                class: 'inline-flex items-center gap-2 bg-slate-300 text-slate-700 text-sm font-medium px-4 py-2 rounded cursor-not-allowed',
+                title: 'Já não aceita novas inscrições. Toque pra abrir mesmo assim.',
+              }, '🚫 Inscrições encerradas')
+            : el('a', {
+                href: t.url, target: '_blank', rel: 'noopener',
+                class: 'inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded',
+              }, '🎾 Inscrever no Tênis Integrado ↗'),
+        );
+      })(),
 
       t.pendingPayment && (() => {
         const reminder = buildPaymentReminder(t);
