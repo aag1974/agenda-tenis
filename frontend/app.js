@@ -17,7 +17,7 @@ const el = (tag, attrs, ...children) => {
 };
 
 function fmtValueNoCents(s) {
-  return s ? String(s).replace(/,\d{2}\b/, '') : '';
+  return s ? String(s).replace(/[.,]\d{2}(?!\d)/, '') : '';
 }
 
 function brToDate(s) {

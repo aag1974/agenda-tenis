@@ -187,7 +187,7 @@ async function fetchCatalog(client, { category = JUVENIL_CATEGORY, year = new Da
   return raw.map(r => {
     const [startDate, endDate] = parseDateRange(r.datesText);
     const tiersFromRanking = [...new Set(
-      [...r.rankingText.matchAll(/(GA\+|GA|G1\+|G1|G2|G3)\b/g)].map(m => m[1])
+      [...r.rankingText.matchAll(/(GA\+|GA|G1\+|G1|G2|G3)(?!\w)/g)].map(m => m[1])
     )];
     const fallback = extractTier(r.name);
     const tiers = tiersFromRanking.length ? tiersFromRanking : (fallback ? [fallback] : []);
