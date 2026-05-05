@@ -520,18 +520,20 @@ function showSyncStatus() {
     const d = new Date(iso);
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
-  let msg;
   if (ss?.state === 'running') {
-    msg = '🟡 Sincronizando agora…';
-  } else if (ss?.state === 'error') {
-    msg = `🔴 Última sincronização falhou\n\nErro: ${ss.error || 'desconhecido'}` +
-          (lastSync ? `\n\nÚltima OK: ${fmtBR(lastSync)}` : '');
-  } else if (lastSync) {
-    msg = `🟢 Sincronizado em\n${fmtBR(lastSync)}`;
-  } else {
-    msg = '⚫ Ainda não sincronizou.';
+    alert('🟡 Sincronizando agora…');
+    return;
   }
-  alert(msg);
+  let header;
+  if (ss?.state === 'error') {
+    header = `🔴 Última sincronização falhou\n\nErro: ${ss.error || 'desconhecido'}` +
+             (lastSync ? `\n\nÚltima OK: ${fmtBR(lastSync)}` : '');
+  } else if (lastSync) {
+    header = `🟢 Sincronizado em\n${fmtBR(lastSync)}`;
+  } else {
+    header = '⚫ Ainda não sincronizou.';
+  }
+  if (confirm(`${header}\n\nSincronizar agora?`)) syncNow();
 }
 
 function toggleGearMenu() {
@@ -548,7 +550,6 @@ function toggleGearMenu() {
 
   const actions = [
     profile && { label: '👤 Sobre a atleta', onClick: () => openAthleteCard() },
-    profile && { label: '↻ Sincronizar agora', onClick: () => syncNow() },
     profile && { label: '📅 Conectar com calendário', onClick: () => openCalendarSetup() },
     profile && { label: '✏️ Editar perfil', onClick: () => openProfileForm(profile) },
     state.user && { label: '🚪 Sair', onClick: () => logout() },
