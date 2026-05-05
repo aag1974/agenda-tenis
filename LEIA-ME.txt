@@ -1,0 +1,127 @@
+════════════════════════════════════════════════════════
+  AGENDA TÊNIS INTEGRADO — instalação no seu computador
+════════════════════════════════════════════════════════
+
+App local pra organizar a agenda de torneios do seu filho/filha,
+integrado ao Tênis Integrado: calendário, hotéis oficiais, busca de
+passagem aérea pré-preenchida, anotações de viagem.
+
+────────────────────────────────────────────────────────
+PRÉ-REQUISITO (única coisa que precisa instalar antes)
+────────────────────────────────────────────────────────
+
+  Node.js 18 ou superior
+  Baixe em: https://nodejs.org/  (versão LTS)
+
+Pra confirmar que instalou, abra o Terminal e digite:
+  node --version
+Se aparecer "v22.x" ou similar, está pronto.
+
+────────────────────────────────────────────────────────
+COMO ABRIR O APP
+────────────────────────────────────────────────────────
+
+1. Descompacte este zip em qualquer pasta (ex: Documentos)
+
+2. Entre na pasta "agenda-app"
+
+3. Duplo-clique em "Abrir Agenda Tênis.command"
+
+   ⚠ ATENÇÃO: na PRIMEIRA VEZ o macOS bloqueia.
+      Faça assim:
+        - Botão direito no arquivo → Abrir
+        - Aparece um aviso → clica em "Abrir"
+      A partir da 2ª vez, duplo-clique funciona normal.
+
+4. Na 1ª execução, espera ~3-5 minutos enquanto baixa as
+   dependências (~200 MB, principalmente o navegador headless
+   que faz a sincronização com o Tênis Integrado).
+
+5. O navegador abre automaticamente em:
+        http://localhost:4173
+
+────────────────────────────────────────────────────────
+PRIMEIRO USO
+────────────────────────────────────────────────────────
+
+1. Tela inicial: "Nenhum perfil cadastrado"
+
+2. Clica em "Adicionar atleta" e preenche:
+   - Nome do atleta (do seu filho/filha)
+   - Email/login do Tênis Integrado (seu acesso)
+   - Senha do Tênis Integrado
+   - Cidade de origem (de onde saem as viagens)
+   - Aeroporto IATA (ex: GRU=Guarulhos, BSB=Brasília,
+     CGH=Congonhas, GIG=Galeão, etc.)
+
+3. Clica "Criar"
+
+4. Clica em "Sincronizar" no topo (~1 min)
+   - Faz login no Tênis Integrado
+   - Baixa os 80+ torneios Juvenil do ano
+   - Identifica os que o seu atleta está inscrito
+
+────────────────────────────────────────────────────────
+COMO USAR
+────────────────────────────────────────────────────────
+
+LISTA — todos os torneios. Filtros: Ano, UF, Status,
+       Nível (G1/G2/G3/GA), Só inscritos, Só ⭐, Pendentes 💰.
+       Cada card: ⭐ pra marcar (entra no calendário).
+
+CALENDÁRIO — visão mensal dos torneios marcados (ou todos
+       se você desmarcar "Só ⭐" nos filtros).
+
+DETALHE DO TORNEIO (clica no card) — datas, hotéis oficiais,
+       locais dos jogos, link pra buscar passagem (Kayak,
+       Google Flights, Skyscanner) e anotações de viagem.
+
+PAGAMENTO PENDENTE — torneios em que o atleta está inscrito
+       mas o boleto não foi pago aparecem com fundo amarelo
+       e aviso de vencimento.
+
+────────────────────────────────────────────────────────
+SEGURANÇA
+────────────────────────────────────────────────────────
+
+- A senha do Tênis Integrado fica APENAS no seu computador,
+  criptografada com AES-256 (chave gerada local na 1ª
+  execução, em data/.secret)
+
+- Nada é enviado pra nenhum servidor externo, exceto:
+  - O próprio Tênis Integrado (login do atleta)
+  - Sites de busca de voo (Kayak/Google) quando você clica
+    no link de passagem
+
+- Os dados sincronizados ficam em data/profile-XXXX/
+
+────────────────────────────────────────────────────────
+COMO FECHAR O APP
+────────────────────────────────────────────────────────
+
+Botão "Encerrar" no canto superior direito da página.
+Ou Ctrl+C no Terminal e fecha a janela.
+
+────────────────────────────────────────────────────────
+PROBLEMAS COMUNS
+────────────────────────────────────────────────────────
+
+"Node.js não encontrado" — instalou Node? abra o Terminal e
+   digite "node --version" pra checar. Se não aparecer
+   versão, reinstale de https://nodejs.org
+
+"Falha no login: credenciais inválidas" — confira o email
+   e senha. Acesse www.tenisintegrado.com.br e tente login
+   manual. Se o login no site funciona mas no app falha,
+   me avise.
+
+"Sincronizando" preso há mais de 3 minutos — o site
+   pode estar lento. Cancela o terminal (Ctrl+C) e abre de
+   novo.
+
+Não vê torneios futuros — sincroniza de novo, o catálogo
+   de torneios é atualizado semanalmente no TI.
+
+────────────────────────────────────────────────────────
+
+Dúvidas: fale com quem te enviou este app.
