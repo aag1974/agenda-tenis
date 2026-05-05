@@ -20,6 +20,26 @@ function fmtValueNoCents(s) {
   return s ? String(s).replace(/[.,]\d{2}(?!\d)/, '') : '';
 }
 
+// Parses a Brazilian currency value robustly. Handles the TI quirk
+// where the decimal separator is sometimes "." and sometimes ",".
+//   "R$ 217,00"   → 217
+//   "R$ 297.00"   → 297
+//   "R$ 1.200,50" → 1200.5
+//   "R$ 1,234.56" → 1234.56  (rare)
+function parseBrCurrency(s) {
+  if (!s) return 0;
+  const cleaned = String(s).replace(/[^\d,.]/g, '');
+  if (!cleaned) return 0;
+  // The last separator (comma or dot) before exactly 2 trailing digits is the decimal
+  const m = cleaned.match(/^(.*)([.,])(\d{2})$/);
+  if (m) {
+    const intPart = m[1].replace(/[.,]/g, '');
+    return parseFloat(intPart + '.' + m[3]);
+  }
+  // No decimals — treat all separators as thousand separators
+  return parseFloat(cleaned.replace(/[.,]/g, '')) || 0;
+}
+
 function brToDate(s) {
   if (!s) return null;
   const [d, m, y] = s.split('/').map(Number);
@@ -640,9 +660,7 @@ function openAthleteCard() {
   }).length;
   const pendingPayments = tournaments.filter(t => t.pendingPayment);
   const totalPending = pendingPayments.reduce((sum, t) => {
-    const v = t.pendingPayment?.value || '';
-    const n = parseFloat(String(v).replace(/[^\d,.]/g, '').replace('.', '').replace(',', '.'));
-    return sum + (Number.isFinite(n) ? n : 0);
+    return sum + parseBrCurrency(t.pendingPayment?.value);
   }, 0);
 
   const root = $('modal-root');
@@ -1033,7 +1051,7 @@ async function openTournament(tid) {
         el('p', { class: 'text-sm text-slate-700' }, `Torneio na mesma cidade da atleta (${flightInfo.origin}) — sem voo.`),
       ),
 
-      flightInfo && !flightInfo.error && !flightInfo.sameCity && el('section', null,
+      flightInfo && !flightInfo.error && !flightInfo.sameCity && flightInfo.arrival && flightInfo.ret && el('section', null,
         el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '✈ Passagens'),
         el('p', { class: 'text-sm mb-2' }, `${flightInfo.origin} → ${flightInfo.dest}  ·  ida ${flightInfo.arrival}, volta ${flightInfo.ret}`),
         el('div', { class: 'flex flex-wrap gap-2' },
