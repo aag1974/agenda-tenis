@@ -710,12 +710,18 @@ function renderNeedSync() {
 function renderTournamentCard(t) {
   const selected = !!t.notes?.selected;
   const pp = t.pendingPayment;
+  const manualInscribed = !!t.notes?.manualInscribed;
+  const inscribed = t.isAnnaInscribed || manualInscribed;
   const cardClass = pp
     ? 'bg-amber-50 border-amber-300'
-    : t.isAnnaInscribed
+    : inscribed
     ? 'bg-emerald-50 border-emerald-300'
     : 'bg-white border-slate-200';
   const cityState = [t.city, t.state].filter(Boolean).join(' / ');
+  const isUpcoming = !pp && !inscribed && (() => {
+    const start = brToDate(t.startDate);
+    return start && start >= startOfToday();
+  })();
 
   return el('article', {
     class: `${cardClass} rounded-lg border p-3 hover:shadow-sm cursor-pointer relative`,
@@ -739,8 +745,44 @@ function renderTournamentCard(t) {
       pp && el('div', { class: 'mt-2 text-sm font-medium text-amber-800' },
         `💰 Boleto vence em ${pp.dueDate}` + (pp.value ? ` — ${fmtValueNoCents(pp.value)}` : ''),
       ),
+      isUpcoming && el('button', {
+        class: 'mt-2 text-xs text-emerald-700 hover:text-emerald-900 underline',
+        onClick: (e) => { e.stopPropagation(); confirmInscription(t); },
+      }, '✓ Já me inscrevi'),
+      manualInscribed && !t.isAnnaInscribed && el('div', { class: 'mt-1 text-xs text-emerald-700 italic flex items-center gap-2' },
+        el('span', null, '✓ inscrição confirmada manualmente'),
+        el('button', {
+          class: 'underline hover:text-emerald-900',
+          onClick: (e) => { e.stopPropagation(); revertManualInscription(t); },
+        }, 'desfazer'),
+      ),
     ),
   );
+}
+
+async function confirmInscription(t) {
+  t.notes = { ...(t.notes || {}), manualInscribed: true };
+  if (!t.notes.selected) t.notes.selected = true; // also star (calendar)
+  rerenderBody();
+  try {
+    await api.updateNotes(state.activeProfileId, t.id, { manualInscribed: true, selected: t.notes.selected });
+  } catch (err) {
+    t.notes.manualInscribed = false;
+    rerenderBody();
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function revertManualInscription(t) {
+  t.notes = { ...(t.notes || {}), manualInscribed: false };
+  rerenderBody();
+  try {
+    await api.updateNotes(state.activeProfileId, t.id, { manualInscribed: false });
+  } catch (err) {
+    t.notes.manualInscribed = true;
+    rerenderBody();
+    alert('Erro: ' + err.message);
+  }
 }
 
 function tournamentTiers(t) {
