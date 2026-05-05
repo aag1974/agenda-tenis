@@ -975,7 +975,7 @@ function receiptsBlock(t) {
     el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '📂 Comprovantes do torneio'),
     el('div', { class: 'rounded border border-slate-200 bg-slate-50 p-3 space-y-2' },
       el('p', { class: 'text-xs text-slate-600' },
-        'Crie uma nota no app Notas e use o scanner (segundo botão da barra inferior).',
+        'Crie uma nota no app Notas com este nome e use o scanner (segundo botão da barra inferior). A mesma nota pode juntar comprovantes scaneados E suas observações livres do torneio.',
       ),
       el('div', { class: 'flex items-center gap-2' },
         el('code', { class: 'flex-1 text-sm font-mono bg-white border border-slate-300 rounded px-2 py-1.5 break-all' }, noteName),
@@ -1193,14 +1193,14 @@ async function openTournament(tid) {
         ),
       ),
 
-      receiptsBlock(t),
-
       observationsBlock,
 
       el('section', null,
         el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, 'Anotações'),
         renderNotesForm(t.id, notes),
       ),
+
+      receiptsBlock(t),
 
       !isFuture && t.url && el('div', { class: 'pt-4 border-t border-slate-200 flex gap-3' },
         el('a', { href: t.url, target: '_blank', rel: 'noopener', class: 'text-sm text-slate-600 hover:underline' }, 'Ver no Tênis Integrado ↗'),
