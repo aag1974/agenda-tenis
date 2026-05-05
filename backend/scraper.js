@@ -119,7 +119,7 @@ async function getAthleteInfo(client) {
 
   // Rankings shown in profile: "Ranking Nacional Juvenil 2026 - 12F 01/01/2026 Criado por CBT 141.75 - 52º Colocado"
   const rankings = [];
-  const rxRanking = /Ranking\s+Nacional\s+Juvenil\s+(\d{4})\s*-\s*(\d{1,2}[FM])[^0-9]*?(\d+[.,]?\d*)\s*-\s*(\d+)º\s*Colocado/g;
+  const rxRanking = /Ranking\s+Nacional\s+Juvenil\s+(\d{4})\s*-\s*(\d{1,2}[FM])[\s\S]*?([\d.,]+)\s*-\s*(\d+)º\s*Colocado/g;
   for (const m of bodyText.matchAll(rxRanking)) {
     rankings.push({
       year: parseInt(m[1]),
