@@ -16,6 +16,10 @@ const el = (tag, attrs, ...children) => {
   return e;
 };
 
+function fmtValueNoCents(s) {
+  return s ? String(s).replace(/,\d{2}\b/, '') : '';
+}
+
 function brToDate(s) {
   if (!s) return null;
   const [d, m, y] = s.split('/').map(Number);
@@ -729,7 +733,7 @@ function renderTournamentCard(t) {
       ),
       el('div', { class: 'text-sm text-slate-600 mt-0.5' }, cityState || '—'),
       pp && el('div', { class: 'mt-2 text-sm font-medium text-amber-800' },
-        `💰 Boleto vence em ${pp.dueDate}` + (pp.value ? ` — ${pp.value}` : ''),
+        `💰 Boleto vence em ${pp.dueDate}` + (pp.value ? ` — ${fmtValueNoCents(pp.value)}` : ''),
       ),
     ),
   );
@@ -839,7 +843,7 @@ async function openTournament(tid) {
         const reminder = buildPaymentReminder(t);
         return el('section', { class: 'rounded-lg bg-amber-50 border border-amber-300 p-3' },
           el('div', { class: 'text-sm font-medium text-amber-900' }, `💰 Pagamento pendente — vence ${t.pendingPayment.dueDate || '?'}`),
-          el('div', { class: 'text-xs text-amber-800 mt-0.5' }, `${t.pendingPayment.value || ''}${t.pendingPayment.category ? ' · ' + t.pendingPayment.category : ''}`),
+          el('div', { class: 'text-xs text-amber-800 mt-0.5' }, `${fmtValueNoCents(t.pendingPayment.value)}${t.pendingPayment.category ? ' · ' + t.pendingPayment.category : ''}`),
           el('div', { class: 'flex flex-wrap gap-2 mt-2' },
             el('a', {
               href: t.pendingPayment.boletoUrl || t.url || 'https://www.tenisintegrado.com.br',
