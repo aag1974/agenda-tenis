@@ -404,7 +404,7 @@ function parseVenuesSection(text) {
   return result;
 }
 
-export async function syncAthlete({ email, password }) {
+export async function syncAthlete({ email, password, starredIds = [] }) {
   const client = new TIClient();
   await client.login(email, password);
 
@@ -448,6 +448,51 @@ export async function syncAthlete({ email, password }) {
       isAnnaInscribed: true,
       pendingPayment: pp,
     });
+  }
+
+  // Enrich starred + upcoming tournaments with details (hotels, prices, venues, etc.)
+  // Adds ~1 HTTP request per starred-future tournament. Capped at 25 to keep sync responsive.
+  const todayMs = Date.now() - 86400000;
+  const enrichSet = new Set([
+    ...starredIds,
+    // also enrich any inscribed-future tournament even if not starred yet
+    ...tournaments
+      .filter(t => (t.isAnnaInscribed || !!t.pendingPayment) && t.startDate)
+      .map(t => t.id),
+  ]);
+  const tournamentsById = new Map(tournaments.map(t => [t.id, t]));
+  const toEnrich = [...enrichSet]
+    .filter(id => {
+      const t = tournamentsById.get(id);
+      if (!t) return false;
+      if (!t.startDate) return false;
+      const [d, m, y] = t.startDate.split('/').map(Number);
+      if (!y) return false;
+      return new Date(y, m - 1, d).getTime() >= todayMs;
+    })
+    .slice(0, 25);
+
+  if (toEnrich.length) {
+    const enrichResults = await Promise.all(
+      toEnrich.map(id => fetchTournamentDetails(id).catch(() => null))
+    );
+    for (const det of enrichResults) {
+      if (!det) continue;
+      const t = tournamentsById.get(det.id);
+      if (!t) continue;
+      // Merge: prefer existing values, but bring in details when missing or from richer source.
+      t.hotels = det.hotels && det.hotels.length ? det.hotels : (t.hotels || []);
+      t.venues = det.venues && det.venues.length ? det.venues : (t.venues || []);
+      t.prices = det.prices && Object.keys(det.prices).length ? det.prices : (t.prices || {});
+      if (det.observations) t.observations = det.observations;
+      if (det.cancelDeadline) t.cancelDeadline = det.cancelDeadline;
+      // Tiers: union of catalog tiers + details tiers
+      const all = new Set([...(t.tiers || []), ...(det.tiers || [])]);
+      if (all.size) {
+        t.tiers = [...all];
+        if (!t.tier) t.tier = t.tiers[0];
+      }
+    }
   }
 
   // Optional: DF ranking (ignored on failure)

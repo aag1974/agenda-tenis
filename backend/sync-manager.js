@@ -21,7 +21,11 @@ export async function syncProfile(profileId) {
 
   const promise = (async () => {
     try {
-      const result = await syncAthlete(creds);
+      const notes = getNotes(profileId);
+      const starredIds = Object.entries(notes)
+        .filter(([, n]) => n?.selected || n?.manualInscribed)
+        .map(([id]) => id);
+      const result = await syncAthlete({ ...creds, starredIds });
       saveSyncedData(profileId, result);
       const p = getProfile(profileId);
       if (p && (!p.athleteName || p.athleteName === 'Atleta') && result.athlete?.name) {

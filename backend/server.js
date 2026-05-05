@@ -332,18 +332,24 @@ function buildIcsFeed(tournaments, profile) {
     const endNext = new Date(Date.UTC(ey, em - 1, ed + 1));
     const endStr = `${endNext.getUTCFullYear()}${String(endNext.getUTCMonth()+1).padStart(2,'0')}${String(endNext.getUTCDate()).padStart(2,'0')}`;
 
+    const tiersList = (t.tiers && t.tiers.length) ? t.tiers.join(', ') : t.tier;
+    const hotelLines = (t.hotels && t.hotels.length)
+      ? ['Hotéis sugeridos:', ...t.hotels.slice(0, 5).map(h => `  • ${h.name}${h.phone ? ' — ' + h.phone : ''}`)]
+      : [];
     const desc = [
-      t.tier && `Nível: ${t.tier}`,
+      tiersList && `Nível: ${tiersList}`,
       t.isAnnaInscribed && '✓ Inscrita',
       t.cancelDeadline && `Cancelamento até: ${t.cancelDeadline}`,
       t.notes?.flight && `Voo: ${t.notes.flight}`,
-      t.notes?.hotel && `Hotel: ${t.notes.hotel}`,
+      t.notes?.hotel && `Hotel anotado: ${t.notes.hotel}`,
       t.notes?.transport && `Transporte: ${t.notes.transport}`,
       t.notes?.cost && `Custo: ${t.notes.cost}`,
       t.notes?.general && `Notas: ${t.notes.general}`,
+      hotelLines.length ? '' : null,
+      ...hotelLines,
       '',
       `Detalhes: ${t.url || ''}`,
-    ].filter(Boolean).join('\n');
+    ].filter(x => x !== null && x !== undefined && x !== false).join('\n');
 
     lines.push(
       'BEGIN:VEVENT',
