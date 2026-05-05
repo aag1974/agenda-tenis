@@ -700,7 +700,6 @@ function openAthleteCard() {
       rankCBT && kv(`Nacional CBT ${rankCBT.year} ${rankCBT.category}`, `${rankCBT.position}º (${rankCBT.points} pts)`),
       rankDF && rankDF.dfPosition && kv('DF (recorte do nacional)', `${rankDF.dfPosition}º colocado`),
       wtn && kv('WTN', `${wtn.single} simples / ${wtn.double} duplas`),
-      athlete.hand && kv('Mão dominante', athlete.hand.charAt(0).toUpperCase() + athlete.hand.slice(1)),
     ));
   }
 
