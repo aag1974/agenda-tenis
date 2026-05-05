@@ -347,9 +347,11 @@ function parseDetailsHtml(html, id, url) {
     observations = text.slice(obsIdx + 'Informações/Observações'.length, endIdx).trim().slice(0, 3000);
   }
 
-  // All tiers mentioned in the panel (extracted from category lines like "12 Anos Feminino Simples (G1+)")
+  // Tiers do panel: extraídos APENAS de marcações entre parênteses
+  // (formato real das categorias: "12 Anos Feminino Simples (G1+)").
+  // Evita falsos positivos vindos de prosa nas observações (ex.: "...categorias GA no Circuito Nacional e GA+ no Brasileirão").
   const tiers = [...new Set(
-    [...text.matchAll(/(GA\+|GA|G1\+|G1|G2|G3)(?!\w)/g)].map(m => m[1])
+    [...text.matchAll(/\((GA\+|GA|G1\+|G1|G2|G3)\)/g)].map(m => m[1])
   )];
 
   return {
@@ -456,27 +458,19 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
     });
   }
 
-  // Enrich starred + upcoming tournaments with details (hotels, prices, venues, etc.)
-  // Adds ~1 HTTP request per starred-future tournament. Capped at 25 to keep sync responsive.
-  const todayMs = Date.now() - 86400000;
+  // Enrich starred (todos: passados ou futuros) + inscritos/pendentes futuros com detalhes
+  // (hoteis, preços, tiers reais). ~1 HTTP request por torneio. Limitado a 30 pra não atrapalhar.
   const enrichSet = new Set([
     ...starredIds,
-    // also enrich any inscribed-future tournament even if not starred yet
+    // também enriquece inscrita futura sem estrela ainda
     ...tournaments
       .filter(t => (t.isAnnaInscribed || !!t.pendingPayment) && t.startDate)
       .map(t => t.id),
   ]);
   const tournamentsById = new Map(tournaments.map(t => [t.id, t]));
   const toEnrich = [...enrichSet]
-    .filter(id => {
-      const t = tournamentsById.get(id);
-      if (!t) return false;
-      if (!t.startDate) return false;
-      const [d, m, y] = t.startDate.split('/').map(Number);
-      if (!y) return false;
-      return new Date(y, m - 1, d).getTime() >= todayMs;
-    })
-    .slice(0, 25);
+    .filter(id => tournamentsById.has(id))
+    .slice(0, 30);
 
   if (toEnrich.length) {
     const enrichResults = await Promise.all(
