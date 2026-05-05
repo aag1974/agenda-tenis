@@ -975,7 +975,7 @@ function receiptsBlock(t) {
     el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '📂 Comprovantes do torneio'),
     el('div', { class: 'rounded border border-slate-200 bg-slate-50 p-3 space-y-2' },
       el('p', { class: 'text-xs text-slate-600' },
-        'Crie uma nota no app Notas com este nome e use o scanner (segundo botão da barra inferior). A mesma nota pode juntar comprovantes scaneados E suas observações livres do torneio.',
+        'Crie uma nota no app Notas do iPhone com este nome. Lá você usa o scanner (segundo botão da barra inferior do Notas) pra capturar os comprovantes, e pode juntar suas observações do torneio na mesma nota.',
       ),
       el('div', { class: 'flex items-center gap-2' },
         el('code', { class: 'flex-1 text-sm font-mono bg-white border border-slate-300 rounded px-2 py-1.5 break-all' }, noteName),
@@ -988,18 +988,8 @@ function receiptsBlock(t) {
           },
         }, '📋'),
       ),
-      el('div', { class: 'flex flex-wrap gap-2 pt-1' },
-        el('a', {
-          href: 'mobilenotes://',
-          class: 'text-xs bg-yellow-200 hover:bg-yellow-300 text-yellow-900 px-3 py-1.5 rounded border border-yellow-400',
-        }, '📓 Abrir Notas'),
-        el('a', {
-          href: 'shareddocuments://',
-          class: 'text-xs bg-blue-100 hover:bg-blue-200 text-blue-900 px-3 py-1.5 rounded border border-blue-300',
-        }, '📁 Abrir Arquivos'),
-      ),
       el('p', { class: 'text-xs text-slate-500 italic' },
-        'Dica: use cores ou prefixos no nome de cada scan (ex.: "Aliment-…", "Transp-…") pra agrupar por tipo. Pra prestação, exporta a nota inteira como PDF.',
+        'Dica: prefixe cada scan com o tipo (ex.: "Aliment-…", "Transp-…") pra agrupar. Pra prestação de contas, exporta a nota inteira como PDF.',
       ),
     ),
   );
