@@ -710,7 +710,11 @@ function renderNeedSync() {
 function renderTournamentCard(t) {
   const selected = !!t.notes?.selected;
   const pp = t.pendingPayment;
-  const cardClass = pp ? 'bg-amber-50 border-amber-300' : 'bg-white border-slate-200';
+  const cardClass = pp
+    ? 'bg-amber-50 border-amber-300'
+    : t.isAnnaInscribed
+    ? 'bg-emerald-50 border-emerald-300'
+    : 'bg-white border-slate-200';
   const cityState = [t.city, t.state].filter(Boolean).join(' / ');
 
   return el('article', {
