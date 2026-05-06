@@ -139,12 +139,28 @@ const state = {
   filterUFs: (() => {
     const raw = localStorage.getItem('filterUFs');
     try { const v = JSON.parse(raw); if (Array.isArray(v)) return v; } catch {}
-    // migrate old single-value localStorage 'filterUF'
     const old = localStorage.getItem('filterUF');
     if (old && old !== 'all') return [old];
     return [];
   })(),
-  filterTier: localStorage.getItem('filterTier') || 'all',
+  filterTiers: (() => {
+    const raw = localStorage.getItem('filterTiers');
+    try { const v = JSON.parse(raw); if (Array.isArray(v)) return v; } catch {}
+    // migrate old single-value localStorage 'filterTier'
+    const old = localStorage.getItem('filterTier');
+    if (old && old !== 'all') return [old];
+    return [];
+  })(),
+  columnSort: (() => {
+    try { return JSON.parse(localStorage.getItem('columnSort') || '{}'); }
+    catch { return {}; }
+  })(),
+  columnOrder: (() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('columnOrder') || 'null');
+      return Array.isArray(v) ? v : null;
+    } catch { return null; }
+  })(),
 };
 
 const api = {
@@ -474,9 +490,9 @@ function applyHeaderFilters(tournaments) {
   const f = state;
   return tournaments.filter(t => {
     if (f.filterUFs.length && !f.filterUFs.includes(t.state)) return false;
-    if (f.filterTier !== 'all') {
+    if (f.filterTiers.length) {
       const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
-      if (!tiers.includes(f.filterTier)) return false;
+      if (!tiers.some(x => f.filterTiers.includes(x))) return false;
     }
     return true;
   });
@@ -518,6 +534,14 @@ function renderKanban(allTournaments) {
   document.body.classList.add('kanban-mode');
   const tournaments = applyHeaderFilters(allTournaments);
 
+  // Resolve a ordem das colunas conforme preferência do usuário
+  const orderedColumns = state.columnOrder
+    ? [
+        ...state.columnOrder.map(id => KANBAN_COLUMNS.find(c => c.id === id)).filter(Boolean),
+        ...KANBAN_COLUMNS.filter(c => !state.columnOrder.includes(c.id)),
+      ]
+    : KANBAN_COLUMNS;
+
   // Group by column
   const cardsByColumn = Object.fromEntries(KANBAN_COLUMN_IDS.map(c => [c, []]));
   for (const t of tournaments) {
@@ -525,26 +549,31 @@ function renderKanban(allTournaments) {
     if (!cardsByColumn[col]) cardsByColumn[col] = [];
     cardsByColumn[col].push(t);
   }
-  // Sort within each column: manual cardOrder first, then by start date
-  const sortFn = (a, b) => {
-    const oa = a.notes?.cardOrder, ob = b.notes?.cardOrder;
-    if (typeof oa === 'number' && typeof ob === 'number') return oa - ob;
-    if (typeof oa === 'number') return -1;
-    if (typeof ob === 'number') return 1;
-    return (brToIso(a.startDate) || 'zzzz').localeCompare(brToIso(b.startDate) || 'zzzz');
+  // Sort within each column: manual cardOrder first, then by start date (asc/desc por coluna)
+  const sortForColumn = (colId) => {
+    const dir = state.columnSort[colId] === 'desc' ? 'desc' : 'asc';
+    return (a, b) => {
+      const oa = a.notes?.cardOrder, ob = b.notes?.cardOrder;
+      if (typeof oa === 'number' && typeof ob === 'number') return oa - ob;
+      if (typeof oa === 'number') return -1;
+      if (typeof ob === 'number') return 1;
+      const da = brToIso(a.startDate) || 'zzzz';
+      const db = brToIso(b.startDate) || 'zzzz';
+      return dir === 'desc' ? db.localeCompare(da) : da.localeCompare(db);
+    };
   };
-  for (const col of KANBAN_COLUMN_IDS) cardsByColumn[col].sort(sortFn);
+  for (const c of orderedColumns) cardsByColumn[c.id].sort(sortForColumn(c.id));
 
   const container = el('div', { id: 'kanban-board', class: 'mt-4 flex flex-col min-h-0' },
-    // Aviso compacto em telas pequenas — Kanban é otimizado pra desktop
     el('div', { class: 'sm:hidden mb-3 shrink-0 text-xs px-3 py-2 rounded bg-amber-100/20 border border-amber-300/30 text-amber-100' },
       '📱 Versão mobile chegando. Por enquanto, deslize lateralmente entre colunas.',
     ),
     el('div', {
+      id: 'kanban-col-row',
       class: 'flex-1 min-h-0 flex gap-3 overflow-x-auto pb-2 px-1 -mx-1',
       style: 'scroll-snap-type: x proximity;',
     },
-      ...KANBAN_COLUMNS.map(col => renderKanbanColumn(col, cardsByColumn[col.id] || [])),
+      ...orderedColumns.map(col => renderKanbanColumn(col, cardsByColumn[col.id] || [])),
     ),
   );
 
@@ -556,22 +585,41 @@ function renderKanban(allTournaments) {
 
 function renderKanbanColumn(col, cards) {
   const list = el('div', {
-    class: 'kanban-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-2',
+    class: 'kanban-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-2 pb-6',
     'data-column': col.id,
   });
   for (const t of cards) list.appendChild(renderKanbanCard(t));
 
+  const sortDir = state.columnSort[col.id] === 'desc' ? 'desc' : 'asc';
+  const sortIcon = sortDir === 'desc' ? '↓' : '↑';
+  const sortTitle = sortDir === 'desc'
+    ? 'Ordenado: mais recente primeiro (click pra inverter)'
+    : 'Ordenado: mais antigo primeiro (click pra inverter)';
+
   return el('div', {
     class: 'kanban-col rounded-lg shrink-0 w-72 sm:w-80 flex flex-col text-slate-100 max-h-full',
+    'data-column-id': col.id,
     style: 'scroll-snap-align: start;',
   },
-    // Header da coluna — fixo no topo
-    el('div', { class: 'shrink-0 px-3 py-2 flex items-center justify-between gap-2 border-b border-white/10' },
-      el('div', { class: 'flex items-center gap-2 font-medium text-sm' },
+    // Header da coluna — fixo no topo, serve de handle pra drag-drop
+    el('div', { class: 'kanban-col-header shrink-0 px-3 py-2 flex items-center justify-between gap-2 border-b border-white/10 cursor-grab hover:bg-white/5' },
+      el('div', { class: 'flex items-center gap-2 font-medium text-sm min-w-0' },
         el('span', { class: 'text-base' }, col.icon),
-        el('span', null, col.label),
+        el('span', { class: 'truncate' }, col.label),
       ),
-      el('span', { class: 'text-xs text-white/60' }, String(cards.length)),
+      el('div', { class: 'flex items-center gap-1.5 shrink-0' },
+        el('button', {
+          class: 'text-xs text-white/60 hover:text-white px-1 cursor-pointer',
+          title: sortTitle,
+          onClick: (e) => {
+            e.stopPropagation();
+            state.columnSort[col.id] = sortDir === 'desc' ? 'asc' : 'desc';
+            localStorage.setItem('columnSort', JSON.stringify(state.columnSort));
+            rerenderBody();
+          },
+        }, sortIcon),
+        el('span', { class: 'text-xs text-white/60' }, String(cards.length)),
+      ),
     ),
     list,
   );
@@ -889,6 +937,8 @@ function labelExpandedClass(color) {
 
 function wireKanbanSortable(container) {
   if (typeof Sortable === 'undefined') return;
+
+  // SortableJS pra cards (drag entre colunas)
   const lists = container.querySelectorAll('.kanban-list');
   for (const list of lists) {
     Sortable.create(list, {
@@ -903,14 +953,31 @@ function wireKanbanSortable(container) {
         if (!tid || !newColumn) return;
         const t = state.data?.tournaments?.find(x => x.id === tid);
         if (!t) return;
-        // Optimistic: update local notes
         t.notes = { ...(t.notes || {}), column: newColumn, cardOrder: newIndex };
         try {
           await api.moveCard(state.activeProfileId, tid, newColumn, newIndex);
         } catch (err) {
           alert('Erro ao mover: ' + err.message);
-          render(); // revert by re-rendering from server state next refresh
+          render();
         }
+      },
+    });
+  }
+
+  // SortableJS pra colunas (drag pra reordenar) — group separado
+  const colRow = container.querySelector('#kanban-col-row');
+  if (colRow) {
+    Sortable.create(colRow, {
+      group: 'kanban-cols',
+      animation: 150,
+      handle: '.kanban-col-header',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      draggable: '.kanban-col',
+      onEnd: () => {
+        const ids = [...colRow.querySelectorAll('.kanban-col')].map(c => c.dataset.columnId).filter(Boolean);
+        state.columnOrder = ids;
+        localStorage.setItem('columnOrder', JSON.stringify(ids));
       },
     });
   }
@@ -1040,22 +1107,26 @@ function toggleGearMenu() {
     );
   };
 
-  const tierSelectRow = el('label', { class: 'block px-3 py-2 text-xs text-slate-600' },
-    el('div', { class: 'mb-1.5' }, 'Chave'),
-    (() => {
-      const select = el('select', {
-        class: 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm bg-white',
-        onChange: (e) => {
-          state.filterTier = e.target.value;
-          localStorage.setItem('filterTier', e.target.value);
-          rerenderBody();
-        },
-      },
-        el('option', { value: 'all', selected: state.filterTier === 'all' ? 'selected' : false }, 'Todos'),
-        ...tierOptions.map(v => el('option', { value: v, selected: state.filterTier === v ? 'selected' : false }, v)),
-      );
-      return select;
-    })(),
+  const tierPillRow = pillRow(
+    'Chave',
+    tierOptions,
+    (t) => state.filterTiers.includes(t),
+    (t) => {
+      const idx = state.filterTiers.indexOf(t);
+      if (idx >= 0) state.filterTiers.splice(idx, 1);
+      else state.filterTiers.push(t);
+      localStorage.setItem('filterTiers', JSON.stringify(state.filterTiers));
+      rerenderBody();
+      const oldMenu = $('gear-menu');
+      if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
+    },
+    () => {
+      state.filterTiers = [];
+      localStorage.setItem('filterTiers', '[]');
+      rerenderBody();
+      const oldMenu = $('gear-menu');
+      if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
+    },
   );
 
   // Cabeçalho do menu (estilo Trello): avatar + nome + email
@@ -1116,7 +1187,7 @@ function toggleGearMenu() {
         if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
       },
     ),
-    profile && tierSelectRow,
+    profile && tierPillRow,
     accountActions.length > 0 && el('div', { class: 'border-t border-slate-200 py-1' },
       ...accountActions.map(it => el('button', {
         class: 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-100 text-slate-700',
