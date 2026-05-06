@@ -495,7 +495,7 @@ const KANBAN_COLUMNS = [
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',     icon: '💰' },
   { id: 'confirmado',          label: 'Confirmado',          icon: '✅' },
   { id: 'viagem_comprada',     label: 'Viagem comprada',     icon: '✈️' },
-  { id: 'historico',           label: 'Histórico',           icon: '🎾' },
+  { id: 'historico',           label: 'Encerrados',          icon: '🎾' },
 ];
 const KANBAN_COLUMN_IDS = KANBAN_COLUMNS.map(c => c.id);
 
@@ -1532,7 +1532,7 @@ async function openTournament(tid) {
   root.innerHTML = '';
 
   const close = () => { root.innerHTML = ''; };
-  const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-40', onClick: close });
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-40', onClick: close });
 
   const observationsBlock = merged.observations
     ? el('details', { class: 'mt-3' },
@@ -1544,13 +1544,11 @@ async function openTournament(tid) {
   const status = t.derivedStatus || 'unknown';
   const statusBadge = el('span', { class: `inline-block px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[status]}` }, STATUS_LABELS[status]);
 
-  const starBtn = el('button', {
-    class: 'text-3xl leading-none transition-colors',
-  }, '');
+  const starBtn = el('button', { class: 'text-2xl leading-none transition-colors' }, '');
   const updateStar = () => {
     const sel = !!t.notes?.selected;
     starBtn.textContent = sel ? '★' : '☆';
-    starBtn.className = `text-3xl leading-none transition-colors ${sel ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500'}`;
+    starBtn.className = `text-2xl leading-none transition-colors ${sel ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500'}`;
     starBtn.title = sel ? 'Remover da agenda' : 'Adicionar à agenda';
   };
   updateStar();
@@ -1560,7 +1558,7 @@ async function openTournament(tid) {
     updateStar();
     try {
       await api.updateNotes(state.activeProfileId, t.id, { selected: newVal });
-      render(); // update card list behind the modal
+      render();
     } catch (err) {
       t.notes.selected = !newVal;
       updateStar();
@@ -1568,24 +1566,30 @@ async function openTournament(tid) {
     }
   };
 
-  const panel = el('div', { class: 'fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-xl z-50 overflow-y-auto' },
-    el('div', { class: 'sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-start justify-between gap-4' },
-      el('div', { class: 'min-w-0' },
-        el('div', { class: 'flex items-center gap-2 mb-1 flex-wrap' },
-          statusBadge,
-          t.tier && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium' }, t.tier),
-          t.isAnnaInscribed && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrito'),
-          t.pendingPayment && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-amber-600 text-white font-medium' }, '💰 Não pago'),
-        ),
-        el('h2', { class: 'text-lg font-semibold' }, t.name),
-        el('p', { class: 'text-sm text-slate-600' }, [t.city, t.state].filter(Boolean).join(' / ') || ''),
-      ),
-      el('div', { class: 'flex items-center gap-3 shrink-0' },
-        starBtn,
-        el('button', { class: 'text-slate-500 hover:text-slate-900 text-2xl leading-none', onClick: close }, '×'),
-      ),
-    ),
-    el('div', { class: 'px-6 py-4 space-y-4' },
+  // Column dropdown — change current column directly from modal
+  const currentCol = effectiveColumnFor(t);
+  const colSelect = el('select', {
+    class: 'text-sm bg-white/10 hover:bg-white/15 text-white border border-white/20 rounded px-2 py-1 cursor-pointer',
+    title: 'Mudar coluna',
+  },
+    ...KANBAN_COLUMNS.map(c => el('option', { value: c.id, selected: c.id === currentCol ? 'selected' : false }, `${c.icon} ${c.label}`)),
+  );
+  colSelect.onchange = async () => {
+    const newCol = colSelect.value;
+    const oldCol = t.notes?.column || null;
+    t.notes = { ...(t.notes || {}), column: newCol };
+    try {
+      await api.moveCard(state.activeProfileId, tid, newCol);
+      render();
+    } catch (err) {
+      t.notes.column = oldCol;
+      colSelect.value = currentCol;
+      alert('Erro: ' + err.message);
+    }
+  };
+
+  // Modal panel: centered, wide, 2-column body on md+
+  const mainColumn = el('div', { class: 'flex-1 min-w-0 px-5 py-4 space-y-4' },
       // Aviso prominente quando o torneio foi "perdido"
       isLost && el('section', { class: 'rounded-lg bg-slate-100 border border-slate-300 p-3' },
         el('div', { class: 'text-sm font-medium text-slate-700' },
@@ -1691,16 +1695,218 @@ async function openTournament(tid) {
         renderNotesForm(t.id, notes),
       ),
 
+      // Checklist fixo: 5 itens — primeiros 2 auto pelo TI, últimos 3 manuais
+      renderChecklist(t),
+
       receiptsBlock(t),
 
       !isFuture && t.url && el('div', { class: 'pt-4 border-t border-slate-200 flex gap-3' },
         el('a', { href: t.url, target: '_blank', rel: 'noopener', class: 'text-sm text-slate-600 hover:underline' }, 'Ver no Tênis Integrado ↗'),
+      ),
+  );
+
+  // Activity panel (right sidebar on md+, stacked below on mobile)
+  const activityPanel = renderActivityPanel(t);
+
+  const panel = el('div', { class: 'fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 pointer-events-none' },
+    el('div', { class: 'pointer-events-auto bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden' },
+      // Header bar (dark navy like the kanban background)
+      el('div', { class: 'shrink-0 bg-[#0e3a4d] text-white px-4 sm:px-5 py-3 flex items-center justify-between gap-3' },
+        el('div', { class: 'flex items-center gap-2 flex-wrap min-w-0' },
+          colSelect,
+        ),
+        el('div', { class: 'flex items-center gap-3 shrink-0' },
+          starBtn,
+          el('button', { class: 'text-white/70 hover:text-white text-2xl leading-none', onClick: close, title: 'Fechar' }, '×'),
+        ),
+      ),
+      // Title block
+      el('div', { class: 'shrink-0 px-5 py-3 border-b border-slate-200' },
+        el('div', { class: 'flex items-center gap-2 mb-1.5 flex-wrap' },
+          statusBadge,
+          ...tournamentTiers(t).map(tier =>
+            el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium' }, tier),
+          ),
+          inscribedFinal && !t.pendingPayment && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrito'),
+          t.pendingPayment && !boletoExpired && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-amber-600 text-white font-medium' }, '💰 Não pago'),
+          boletoExpired && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-red-600 text-white font-medium' }, '❌ Boleto vencido'),
+          registrationClosed && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-slate-500 text-white font-medium' }, '🔒 Inscrições encerradas'),
+        ),
+        el('h2', { class: 'text-lg font-semibold leading-snug' }, t.name),
+        el('p', { class: 'text-sm text-slate-600' }, [t.city, t.state].filter(Boolean).join(' / ') || ''),
+      ),
+      // Body: 2-column on md+, stacked on small
+      el('div', { class: 'flex-1 min-h-0 overflow-y-auto md:overflow-hidden md:flex' },
+        mainColumn,
+        el('div', { class: 'md:w-80 md:shrink-0 md:overflow-y-auto md:border-l border-t md:border-t-0 border-slate-200 bg-slate-50' },
+          activityPanel,
+        ),
       ),
     ),
   );
 
   root.appendChild(overlay);
   root.appendChild(panel);
+}
+
+// ===== Checklist fixo de 5 itens =====
+const CHECKLIST_ITEMS = [
+  { key: 'inscrito',  label: 'Inscrito no Tênis Integrado', auto: true },
+  { key: 'pago',      label: 'Pagamento confirmado',          auto: true },
+  { key: 'voo',       label: 'Voo / passagem comprada',       auto: false },
+  { key: 'hotel',     label: 'Hospedagem reservada',          auto: false },
+  { key: 'documentos', label: 'Documentos prontos (RG, autorização)', auto: false },
+];
+
+function renderChecklist(t) {
+  const notes = t.notes || {};
+  const cl = notes.checklist || {};
+  const inscribed = !notes.manualGiveUp && (t.isAnnaInscribed || notes.manualInscribed);
+  const paid = inscribed && !t.pendingPayment;
+
+  const computeChecked = (item) => {
+    if (item.key === 'inscrito') return !!inscribed;
+    if (item.key === 'pago') return !!paid;
+    return !!cl[item.key];
+  };
+
+  const wrapper = el('section', null,
+    el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '✅ Checklist'),
+  );
+  const list = el('ul', { class: 'space-y-1.5' });
+  for (const item of CHECKLIST_ITEMS) {
+    const checked = computeChecked(item);
+    const li = el('li', { class: 'flex items-center gap-2 text-sm' });
+    const cb = el('input', { type: 'checkbox', class: 'h-4 w-4 cursor-pointer', disabled: item.auto ? 'disabled' : false });
+    cb.checked = checked;
+    if (!item.auto) {
+      cb.onchange = async () => {
+        const newCl = { ...(notes.checklist || {}), [item.key]: cb.checked };
+        notes.checklist = newCl;
+        try {
+          await api.updateNotes(state.activeProfileId, t.id, { checklist: newCl });
+        } catch (err) {
+          cb.checked = !cb.checked;
+          alert('Erro: ' + err.message);
+        }
+      };
+    }
+    li.append(
+      cb,
+      el('span', { class: `${checked ? 'line-through text-slate-400' : 'text-slate-700'}` }, item.label),
+      item.auto && el('span', { class: 'text-xs text-slate-400 italic' }, '(auto)'),
+    );
+    list.appendChild(li);
+  }
+  wrapper.appendChild(list);
+  return wrapper;
+}
+
+// ===== Atividade & Comentários =====
+function renderActivityPanel(t) {
+  const wrapper = el('div', { class: 'p-4 space-y-3' },
+    el('h3', { class: 'text-sm font-semibold text-slate-700' }, '💬 Atividade & Comentários'),
+  );
+
+  // Comment input
+  const textarea = el('textarea', {
+    class: 'w-full text-sm border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500',
+    rows: 2,
+    placeholder: 'Adicionar comentário…',
+  });
+  const submitBtn = el('button', {
+    type: 'button',
+    class: 'bg-slate-900 text-white text-xs px-3 py-1 rounded hover:bg-slate-700 disabled:opacity-50',
+  }, 'Comentar');
+
+  const timeline = el('div', { class: 'space-y-2 mt-2' },
+    el('div', { class: 'text-xs text-slate-500' }, 'Carregando...'),
+  );
+
+  async function reload() {
+    try {
+      const data = await api.getCardActivity(state.activeProfileId, t.id);
+      timeline.innerHTML = '';
+      const items = (data.items || []).slice().reverse(); // newest first
+      if (!items.length) {
+        timeline.appendChild(el('div', { class: 'text-xs text-slate-500 italic' }, 'Nenhuma atividade ainda. Comente acima ou aguarde a próxima sincronização.'));
+        return;
+      }
+      for (const item of items) {
+        timeline.appendChild(renderActivityItem(t, item, reload));
+      }
+    } catch (err) {
+      timeline.innerHTML = '';
+      timeline.appendChild(el('div', { class: 'text-xs text-red-600' }, 'Erro: ' + err.message));
+    }
+  }
+
+  submitBtn.onclick = async () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+    submitBtn.disabled = true;
+    try {
+      await api.addComment(state.activeProfileId, t.id, text);
+      textarea.value = '';
+      await reload();
+    } catch (err) {
+      alert('Erro: ' + err.message);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  };
+
+  wrapper.appendChild(el('div', { class: 'space-y-1' },
+    textarea,
+    el('div', { class: 'flex justify-end' }, submitBtn),
+  ));
+  wrapper.appendChild(timeline);
+
+  reload();
+  return wrapper;
+}
+
+function fmtActivityTime(iso) {
+  const d = new Date(iso);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  if (sameDay) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderActivityItem(t, item, reload) {
+  if (item.kind === 'comment') {
+    return el('div', { class: 'bg-white border border-slate-200 rounded p-2 text-sm' },
+      el('div', { class: 'flex items-start justify-between gap-2 mb-1' },
+        el('span', { class: 'text-xs text-slate-500' }, '💬 ' + fmtActivityTime(item.createdAt)),
+        el('div', { class: 'flex gap-2 text-xs' },
+          el('button', {
+            class: 'text-slate-500 hover:text-slate-800',
+            onClick: async () => {
+              const next = prompt('Editar comentário:', item.text);
+              if (next === null || next.trim() === item.text) return;
+              try { await api.editComment(state.activeProfileId, t.id, item.id, next.trim()); await reload(); }
+              catch (e) { alert('Erro: ' + e.message); }
+            },
+          }, 'editar'),
+          el('button', {
+            class: 'text-red-600 hover:text-red-800',
+            onClick: async () => {
+              if (!confirm('Excluir comentário?')) return;
+              try { await api.deleteComment(state.activeProfileId, t.id, item.id); await reload(); }
+              catch (e) { alert('Erro: ' + e.message); }
+            },
+          }, 'excluir'),
+        ),
+      ),
+      el('div', { class: 'text-sm text-slate-800 whitespace-pre-wrap' }, item.text),
+    );
+  }
+  // System activity
+  return el('div', { class: 'flex items-start gap-2 text-xs text-slate-600 px-1' },
+    el('span', { class: 'shrink-0 text-slate-400' }, fmtActivityTime(item.createdAt)),
+    el('span', { class: 'flex-1' }, item.message),
+  );
 }
 
 function renderNotesForm(tid, current) {

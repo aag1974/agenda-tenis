@@ -11,7 +11,7 @@ export const COLUMNS = [
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',     icon: '💰', auto: true,  manual: true },
   { id: 'confirmado',          label: 'Confirmado',          icon: '✅', auto: true,  manual: true },
   { id: 'viagem_comprada',     label: 'Viagem comprada',     icon: '✈️', auto: false, manual: true },
-  { id: 'historico',           label: 'Histórico',           icon: '🎾', auto: true,  manual: true },
+  { id: 'historico',           label: 'Encerrados',          icon: '🎾', auto: true,  manual: true },
 ];
 
 export const COLUMN_IDS = COLUMNS.map(c => c.id);
