@@ -795,11 +795,12 @@ function toggleGearMenu() {
 
   // Cabeçalho do menu (estilo Trello): avatar + nome + email
   const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
-  const userHeader = state.user && el('div', { class: 'px-3 py-3 border-b border-slate-200 flex items-center gap-3' },
+  const displayName = state.user?.name && state.user.name !== state.user.email ? state.user.name : null;
+  const userHeader = state.user && el('div', { class: 'px-3 py-3 border-b border-slate-200 flex items-center gap-3 bg-slate-50' },
     el('span', { class: 'w-10 h-10 rounded-full bg-cyan-600 text-white text-sm font-semibold flex items-center justify-center shrink-0' }, initials),
     el('div', { class: 'min-w-0 flex-1' },
-      el('div', { class: 'text-sm font-medium text-slate-800 truncate' }, state.user.name || state.user.email || 'Conta'),
-      state.user.email && state.user.name !== state.user.email && el('div', { class: 'text-xs text-slate-500 truncate' }, state.user.email),
+      displayName && el('div', { class: 'text-sm font-medium text-slate-800 truncate' }, displayName),
+      el('div', { class: `${displayName ? 'text-xs text-slate-500' : 'text-sm text-slate-700'} truncate` }, state.user.email || 'Conta'),
     ),
   );
 
@@ -815,7 +816,9 @@ function toggleGearMenu() {
 
   const menu = el('div', {
     id: 'gear-menu',
-    class: 'absolute right-0 top-12 z-30 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[280px] max-w-[90vw] overflow-hidden',
+    // bg-white inline style pra não sofrer override do tema kanban-dark
+    style: 'background:#fff; color:#0f172a;',
+    class: 'fixed z-50 border border-slate-200 rounded-lg shadow-xl py-1 w-72 max-w-[calc(100vw-1rem)] overflow-hidden',
     onClick: (e) => e.stopPropagation(),
   },
     userHeader,
@@ -857,10 +860,20 @@ function toggleGearMenu() {
     ),
   );
 
-  $('header-bar').appendChild(menu);
+  // Anexa ao body (fora do #header-bar pra escapar dos overrides do tema kanban)
+  document.body.appendChild(menu);
+
+  // Posiciona logo abaixo do botão avatar, alinhado à direita
+  const anchor = $('avatar-button');
+  if (anchor) {
+    const rect = anchor.getBoundingClientRect();
+    menu.style.top = `${rect.bottom + 6}px`;
+    menu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+  }
+
   setTimeout(() => {
     document.addEventListener('click', function close(e) {
-      if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); }
+      if (!menu.contains(e.target) && e.target.id !== 'avatar-button') { menu.remove(); document.removeEventListener('click', close); }
     });
   }, 0);
 }
