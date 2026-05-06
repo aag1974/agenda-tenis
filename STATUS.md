@@ -74,6 +74,11 @@ App pivotou de "lista cronológica" pra **quadro Kanban estilo Trello** com pale
 - ⏳ **Fase 1.4 — Modal Trello-like** (~3h): redesenho do modal de detalhes com layout Trello (capa, dropdown coluna, etiquetas auto, datas com countdown, checklist fixo de 5 itens auto-marcados pelo TI, painel de atividade + comentários manuais)
 - ⏳ **Fase 1.5 — Polish + migração** (~2h): "de-para" de notas existentes, mobile fallback ("use desktop por enquanto"), limpeza de código morto da timeline antiga
 
+## Backlog
+
+- **Rebrand: "Agenda Tênis Integrado" → "Tennisflow"** — trocar em todos os lugares (HTML title, manifest, header, .command, LEIA-ME, theme-color talvez, ícone). Considerar domínio `tennisflow.com.br` ou similar.
+- **Login com Google (OAuth)** + redesign do menu de perfil estilo Trello (avatar + email no topo, ações agrupadas). Setup Google Cloud Console, rotas `/api/auth/google` + `/callback`, hybrid com email/senha existente.
+
 ## Decisões pra Fase 2 (não MVP)
 
 - Etiquetas customizáveis (criar/aplicar com cor + nome)
