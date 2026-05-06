@@ -346,6 +346,38 @@ const DAY = 24 * 60 * 60 * 1000;
 function startOfToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 function endOfMonth() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59); }
 
+// ===== Estado computado por torneio (cor do card + flags visuais) =====
+const NEW_BADGE_DAYS = 7;
+
+function isBoletoExpired(t) {
+  const pp = t.pendingPayment;
+  if (!pp?.dueDate) return false;
+  const due = brToDate(pp.dueDate);
+  return due && due < startOfToday();
+}
+
+function isRegistrationClosed(t, inscribed) {
+  // Already inscribed → not "missed it"
+  if (inscribed) return false;
+  // TI explicit signal in catalog row
+  if (/encerrad/i.test(t.registrationStatus || '')) return true;
+  // Cancellation deadline already passed
+  if (t.cancelDeadline) {
+    const cd = brToDate(t.cancelDeadline);
+    if (cd && cd < startOfToday()) return true;
+  }
+  // Tournament already started (= no longer accepting)
+  const start = brToDate(t.startDate);
+  if (start && start <= startOfToday()) return true;
+  return false;
+}
+
+function isNewlyAdded(t) {
+  if (!t.firstSeenAt) return false;
+  const ms = Date.now() - new Date(t.firstSeenAt).getTime();
+  return ms >= 0 && ms < NEW_BADGE_DAYS * DAY;
+}
+
 function daysFromToday(date) {
   if (!date) return null;
   return Math.round((date.getTime() - startOfToday().getTime()) / DAY);
@@ -841,15 +873,24 @@ function renderTournamentCard(t) {
   const inscribed = givenUp ? false : (t.isAnnaInscribed || manualInscribed);
   const end = brToDate(t.endDate);
   const isPast = end && end < startOfToday();
-  const cardClass = pp
+  const boletoExpired = pp && isBoletoExpired(t);
+  const registrationClosed = !pp && !isPast && isRegistrationClosed(t, inscribed);
+  const isNew = isNewlyAdded(t);
+
+  const cardClass = boletoExpired
+    ? 'bg-red-50 border-red-300'
+    : pp
     ? 'bg-amber-50 border-amber-300'
     : (inscribed && isPast)
     ? 'bg-rose-50 border-rose-300'
     : inscribed
     ? 'bg-emerald-50 border-emerald-300'
+    : registrationClosed
+    ? 'bg-slate-100 border-slate-300'
     : 'bg-white border-slate-200';
+
   const cityState = [t.city, t.state].filter(Boolean).join(' / ');
-  const isUpcoming = !pp && !inscribed && (() => {
+  const canInscribeNow = !pp && !inscribed && !registrationClosed && (() => {
     const start = brToDate(t.startDate);
     return start && start >= startOfToday();
   })();
@@ -865,7 +906,12 @@ function renderTournamentCard(t) {
     }, selected ? '★' : '☆'),
 
     el('div', { class: 'pr-10' },
-      el('div', { class: 'text-sm font-medium text-slate-700 mb-0.5' }, relativeDateLabel(t)),
+      el('div', { class: 'text-sm font-medium text-slate-700 mb-0.5 flex items-center gap-2 flex-wrap' },
+        el('span', null, relativeDateLabel(t)),
+        isNew && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-blue-500 text-white font-medium' }, '🆕 Novo'),
+        registrationClosed && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-slate-500 text-white font-medium' }, '🔒 Inscrições encerradas'),
+        boletoExpired && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-red-600 text-white font-medium' }, '❌ Boleto vencido'),
+      ),
       el('h3', { class: 'leading-snug font-medium' },
         ...tournamentTiers(t).map(tier =>
           el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium mr-1 align-middle' }, tier),
@@ -879,7 +925,7 @@ function renderTournamentCard(t) {
       pp && el('div', { class: 'mt-2 text-sm font-medium text-amber-800' },
         `💰 Boleto vence em ${pp.dueDate}` + (pp.value ? ` — ${fmtValueNoCents(pp.value)}` : ''),
       ),
-      isUpcoming && el('button', {
+      canInscribeNow && el('button', {
         class: 'mt-2 text-xs text-emerald-700 hover:text-emerald-900 underline',
         onClick: (e) => { e.stopPropagation(); confirmInscription(t); },
       }, '✓ Já me inscrevi'),
@@ -1019,15 +1065,20 @@ async function openTournament(tid) {
   const t = state.data.tournaments.find(x => x.id === tid);
   if (!t) return;
   const isFuture = t.derivedStatus === 'upcoming' && t.startDate && t.endDate;
+  const inscribedFinal = !t.notes?.manualGiveUp && (t.isAnnaInscribed || t.notes?.manualInscribed);
+  const boletoExpired = !t.notes?.manualGiveUp && t.pendingPayment && isBoletoExpired(t);
+  const registrationClosed = !t.pendingPayment && !t.notes?.manualGiveUp && isRegistrationClosed(t, inscribedFinal);
+  const isLost = boletoExpired || (registrationClosed && !inscribedFinal);
+  const showTravelTools = isFuture && !isLost;
 
-  // Lazy-fetch full details (hotels, venues, observations) and merge — only for future
+  // Lazy-fetch full details (hotels, venues, observations) and merge — only when relevant
   let details = null;
   if (isFuture) {
     try { details = await api.tournamentDetails(tid); } catch {}
   }
   const merged = details ? { ...t, hotels: details.hotels || t.hotels || [], venues: details.venues || t.venues || [], observations: details.observations || t.observations, cancelDeadline: details.cancelDeadline || t.cancelDeadline, prices: details.prices || t.prices } : t;
 
-  const flightInfo = isFuture ? await api.flightUrl(state.activeProfileId, tid).catch(err => ({ error: true })) : null;
+  const flightInfo = showTravelTools ? await api.flightUrl(state.activeProfileId, tid).catch(err => ({ error: true })) : null;
 
   const notes = t.notes || {};
   const root = $('modal-root');
@@ -1088,21 +1139,24 @@ async function openTournament(tid) {
       ),
     ),
     el('div', { class: 'px-6 py-4 space-y-4' },
-      isFuture && !t.pendingPayment && !t.isAnnaInscribed && !t.notes?.manualInscribed && t.url && (() => {
-        const closed = /encerrad/i.test(t.registrationStatus || '');
-        return el('section', null,
-          closed
-            ? el('a', {
-                href: t.url, target: '_blank', rel: 'noopener',
-                class: 'inline-flex items-center gap-2 bg-slate-300 text-slate-700 text-sm font-medium px-4 py-2 rounded cursor-not-allowed',
-                title: 'Já não aceita novas inscrições. Toque pra abrir mesmo assim.',
-              }, '🚫 Inscrições encerradas')
-            : el('a', {
-                href: t.url, target: '_blank', rel: 'noopener',
-                class: 'inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded',
-              }, '🎾 Inscrever no Tênis Integrado ↗'),
-        );
-      })(),
+      // Aviso prominente quando o torneio foi "perdido"
+      isLost && el('section', { class: 'rounded-lg bg-slate-100 border border-slate-300 p-3' },
+        el('div', { class: 'text-sm font-medium text-slate-700' },
+          boletoExpired ? '❌ Boleto vencido — inscrição perdida' : '🔒 Inscrições encerradas',
+        ),
+        el('div', { class: 'text-xs text-slate-600 mt-1' },
+          boletoExpired
+            ? 'O prazo de pagamento passou. Você não pode mais participar deste torneio.'
+            : 'O TI não aceita mais novas inscrições neste torneio.',
+        ),
+      ),
+
+      isFuture && !isLost && !t.pendingPayment && !t.isAnnaInscribed && !t.notes?.manualInscribed && t.url && el('section', null,
+        el('a', {
+          href: t.url, target: '_blank', rel: 'noopener',
+          class: 'inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded',
+        }, '🎾 Inscrever no Tênis Integrado ↗'),
+      ),
 
       t.pendingPayment && (() => {
         const reminder = buildPaymentReminder(t);
@@ -1160,7 +1214,7 @@ async function openTournament(tid) {
         el('p', { class: 'text-xs text-slate-500' }, 'Não foi possível gerar link de busca (cidade sem aeroporto cadastrado).'),
       ),
 
-      isFuture && merged.hotels?.length > 0 && !flightInfo?.sameCity && el('section', null,
+      showTravelTools && merged.hotels?.length > 0 && !flightInfo?.sameCity && el('section', null,
         el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, `🏨 Hotéis oficiais (${merged.hotels.length})`),
         el('ul', { class: 'space-y-2' },
           ...merged.hotels.map(h => el('li', { class: 'text-sm border border-slate-200 rounded p-2' },
@@ -1172,7 +1226,7 @@ async function openTournament(tid) {
         ),
       ),
 
-      isFuture && merged.venues?.length > 0 && el('section', null,
+      showTravelTools && merged.venues?.length > 0 && el('section', null,
         el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '📍 Locais dos jogos'),
         el('ul', { class: 'space-y-2' },
           ...merged.venues.map(v => el('li', { class: 'text-sm border border-slate-200 rounded p-2' },

@@ -26,6 +26,16 @@ export async function syncProfile(profileId) {
         .filter(([, n]) => n?.selected || n?.manualInscribed)
         .map(([id]) => id);
       const result = await syncAthlete({ ...creds, starredIds });
+      // Preserve firstSeenAt per tournament across syncs (used by "🆕 Novo" badge for 7 days)
+      const previous = getSyncedData(profileId);
+      const firstSeenById = new Map(
+        (previous?.tournaments || []).map(t => [t.id, t.firstSeenAt]).filter(([_, ts]) => ts)
+      );
+      const nowIso = new Date().toISOString();
+      result.tournaments = (result.tournaments || []).map(t => ({
+        ...t,
+        firstSeenAt: firstSeenById.get(t.id) || nowIso,
+      }));
       saveSyncedData(profileId, result);
       const p = getProfile(profileId);
       if (p && (!p.athleteName || p.athleteName === 'Atleta') && result.athlete?.name) {
