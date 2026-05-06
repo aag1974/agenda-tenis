@@ -1106,16 +1106,6 @@ function renderHeaderEl() {
     ),
   );
 
-  const profileSelect = state.profiles.length > 0 && el('select', {
-    class: 'rounded border border-slate-300 px-2 py-1 text-sm bg-white max-w-[40vw] sm:max-w-xs truncate',
-    onChange: (e) => switchProfile(e.target.value),
-  },
-    ...state.profiles.map(p => el('option', { value: p.id, selected: p.id === state.activeProfileId ? 'selected' : false },
-      p.athleteName || p.tiEmail || 'Atleta'
-    )),
-    el('option', { value: '__new__' }, '+ Adicionar atleta…'),
-  );
-
   const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
   const avatarButton = state.user && el('button', {
     id: 'avatar-button',
@@ -1126,9 +1116,6 @@ function renderHeaderEl() {
 
   return el('header', { id: 'header-bar', class: 'flex items-center justify-between gap-2 pb-2 border-b border-slate-200 relative' },
     logo,
-    el('div', { class: 'flex items-center gap-1 sm:gap-2 min-w-0' },
-      profileSelect,
-    ),
     el('div', { class: 'flex items-center gap-1 shrink-0' },
       profile && renderSyncIndicator(),
       avatarButton,
@@ -1276,6 +1263,43 @@ function toggleGearMenu() {
     ),
   );
 
+  // Bloco do atleta — clique abre submenu pra trocar/adicionar
+  const reopen = () => { const m = $('gear-menu'); if (m) { m.remove(); toggleGearMenu(); } };
+  const athleteHeader = profile && el('div', { class: 'px-3 py-2.5 border-b border-slate-200' },
+    el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1' }, 'Atleta'),
+    el('button', {
+      class: 'w-full flex items-center justify-between gap-2 text-left rounded px-2 py-1.5 hover:bg-slate-100',
+      onClick: () => { state.athleteSwitcherOpen = !state.athleteSwitcherOpen; reopen(); },
+    },
+      el('span', { class: 'flex items-center gap-2 min-w-0' },
+        el('span', { class: 'text-base shrink-0' }, '👤'),
+        el('span', { class: 'text-sm font-medium text-slate-900 truncate' }, profile.athleteName || profile.tiEmail || 'Atleta'),
+      ),
+      el('span', { class: 'text-xs text-slate-400 shrink-0' }, state.athleteSwitcherOpen ? '▴' : '▾'),
+    ),
+    state.athleteSwitcherOpen && el('div', { class: 'mt-1 space-y-0.5' },
+      ...state.profiles.map(p => el('button', {
+        class: `w-full text-left text-sm px-2 py-1.5 rounded flex items-center gap-2 ${p.id === state.activeProfileId ? 'bg-cyan-50 text-cyan-900' : 'hover:bg-slate-100 text-slate-700'}`,
+        onClick: () => {
+          state.athleteSwitcherOpen = false;
+          const m = $('gear-menu'); if (m) m.remove();
+          switchProfile(p.id);
+        },
+      },
+        el('span', { class: 'shrink-0 w-4 text-center' }, p.id === state.activeProfileId ? '✓' : ''),
+        el('span', { class: 'truncate' }, p.athleteName || p.tiEmail || 'Atleta'),
+      )),
+      el('button', {
+        class: 'w-full text-left text-sm px-2 py-1.5 rounded text-cyan-700 hover:bg-cyan-50',
+        onClick: () => {
+          state.athleteSwitcherOpen = false;
+          const m = $('gear-menu'); if (m) m.remove();
+          switchProfile('__new__');
+        },
+      }, '+ Adicionar atleta'),
+    ),
+  );
+
   // Separa as ações em "Atleta" e "Conta" pra deixar mais organizado
   const athleteActions = profile ? [
     { label: '👤 Sobre o atleta', onClick: () => openAthleteCard() },
@@ -1294,6 +1318,7 @@ function toggleGearMenu() {
     onClick: (e) => e.stopPropagation(),
   },
     userHeader,
+    athleteHeader,
     athleteActions.length > 0 && el('div', { class: 'py-1' },
       ...athleteActions.map(it => el('button', {
         class: 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-100',
