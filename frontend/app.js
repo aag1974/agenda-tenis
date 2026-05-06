@@ -657,12 +657,30 @@ function renderHeader() {
   if (old) old.replaceWith(renderHeaderEl());
 }
 
+function userInitials(emailOrName) {
+  if (!emailOrName) return '?';
+  const s = emailOrName.trim();
+  // If it's an email, take the first 2 letters before @
+  const local = s.includes('@') ? s.split('@')[0] : s;
+  // Split on common separators and take initials
+  const parts = local.split(/[._\s-]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return local.slice(0, 2).toUpperCase();
+}
+
 function renderHeaderEl() {
   const profile = state.profiles.find(p => p.id === state.activeProfileId);
-  const ss = state.syncStatus;
+
+  const logo = el('div', { class: 'flex items-center gap-2 shrink-0 select-none' },
+    el('span', { class: 'text-xl' }, '🎾'),
+    el('span', { class: 'font-bold tracking-tight text-base sm:text-lg' },
+      el('span', { class: 'text-slate-900' }, 'Tennis'),
+      el('span', { class: 'text-cyan-600 ml-0.5' }, 'Flow'),
+    ),
+  );
 
   const profileSelect = state.profiles.length > 0 && el('select', {
-    class: 'rounded border border-slate-300 px-3 py-1.5 text-sm bg-white max-w-[60vw] truncate',
+    class: 'rounded border border-slate-300 px-2 py-1 text-sm bg-white max-w-[40vw] sm:max-w-xs truncate',
     onChange: (e) => switchProfile(e.target.value),
   },
     ...state.profiles.map(p => el('option', { value: p.id, selected: p.id === state.activeProfileId ? 'selected' : false },
@@ -671,25 +689,22 @@ function renderHeaderEl() {
     el('option', { value: '__new__' }, '+ Adicionar atleta…'),
   );
 
-  const isRunning = ss?.state === 'running';
-  const icon = isRunning
-    ? el('span', { class: 'inline-block animate-spin text-3xl leading-none' }, '↻')
-    : el('span', { class: 'inline-block text-3xl leading-none' }, '⚙︎');
-  const menuButton = el('button', {
-    id: 'gear-button',
-    class: 'w-12 h-12 flex items-center justify-center rounded hover:bg-slate-100',
-    title: 'Mais opções',
+  const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
+  const avatarButton = state.user && el('button', {
+    id: 'avatar-button',
+    class: 'w-9 h-9 rounded-full bg-cyan-600 text-white text-xs font-semibold flex items-center justify-center hover:bg-cyan-700 shrink-0',
+    title: state.user.email || 'Conta',
     onClick: (e) => { e.stopPropagation(); toggleGearMenu(); },
-  }, icon);
+  }, initials);
 
-  return el('header', { id: 'header-bar', class: 'flex items-center justify-between gap-2 pb-3 border-b border-slate-200 relative' },
-    el('div', { class: 'flex items-center gap-2 min-w-0' },
-      el('span', { class: 'text-2xl flex-shrink-0' }, '🎾'),
+  return el('header', { id: 'header-bar', class: 'flex items-center justify-between gap-2 pb-2 border-b border-slate-200 relative' },
+    logo,
+    el('div', { class: 'flex items-center gap-1 sm:gap-2 min-w-0' },
       profileSelect,
     ),
-    el('div', { class: 'flex items-center gap-1' },
+    el('div', { class: 'flex items-center gap-1 shrink-0' },
       profile && renderSyncIndicator(),
-      menuButton,
+      avatarButton,
     ),
   );
 }
@@ -745,13 +760,6 @@ function toggleGearMenu() {
   }
   const tierOptions = TIER_ORDER.filter(x => tiersInData.has(x));
 
-  const actions = [
-    profile && { label: '👤 Sobre o atleta', onClick: () => openAthleteCard() },
-    profile && { label: '📅 Conectar com calendário', onClick: () => openCalendarSetup() },
-    profile && { label: '✏️ Editar perfil', onClick: () => openProfileForm(profile) },
-    state.user && { label: '🚪 Sair', onClick: () => logout() },
-  ].filter(Boolean);
-
   const pillRow = (label, options, isSelected, onTogglePill, onClearAll) => {
     const allActive = !options.some(isSelected);
     const pill = (text, active, onClick) => el('button', {
@@ -785,16 +793,39 @@ function toggleGearMenu() {
     })(),
   );
 
+  // Cabeçalho do menu (estilo Trello): avatar + nome + email
+  const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
+  const userHeader = state.user && el('div', { class: 'px-3 py-3 border-b border-slate-200 flex items-center gap-3' },
+    el('span', { class: 'w-10 h-10 rounded-full bg-cyan-600 text-white text-sm font-semibold flex items-center justify-center shrink-0' }, initials),
+    el('div', { class: 'min-w-0 flex-1' },
+      el('div', { class: 'text-sm font-medium text-slate-800 truncate' }, state.user.name || state.user.email || 'Conta'),
+      state.user.email && state.user.name !== state.user.email && el('div', { class: 'text-xs text-slate-500 truncate' }, state.user.email),
+    ),
+  );
+
+  // Separa as ações em "Atleta" e "Conta" pra deixar mais organizado
+  const athleteActions = profile ? [
+    { label: '👤 Sobre o atleta', onClick: () => openAthleteCard() },
+    { label: '📅 Conectar agenda', onClick: () => openCalendarSetup() },
+    { label: '✏️  Editar perfil', onClick: () => openProfileForm(profile) },
+  ] : [];
+  const accountActions = state.user ? [
+    { label: '🚪 Sair', onClick: () => logout() },
+  ] : [];
+
   const menu = el('div', {
     id: 'gear-menu',
-    class: 'absolute right-0 top-14 z-30 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[260px] max-w-[90vw]',
+    class: 'absolute right-0 top-12 z-30 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[280px] max-w-[90vw] overflow-hidden',
     onClick: (e) => e.stopPropagation(),
   },
-    ...actions.map(it => el('button', {
-      class: 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-100',
-      onClick: () => { menu.remove(); it.onClick(); },
-    }, it.label)),
-    profile && el('div', { class: 'border-t border-slate-200 my-1' }),
+    userHeader,
+    athleteActions.length > 0 && el('div', { class: 'py-1' },
+      ...athleteActions.map(it => el('button', {
+        class: 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-100',
+        onClick: () => { menu.remove(); it.onClick(); },
+      }, it.label)),
+    ),
+    profile && el('div', { class: 'border-t border-slate-200' }),
     profile && pillRow(
       'UF',
       ufs,
@@ -818,6 +849,12 @@ function toggleGearMenu() {
       },
     ),
     profile && tierSelectRow,
+    accountActions.length > 0 && el('div', { class: 'border-t border-slate-200 py-1' },
+      ...accountActions.map(it => el('button', {
+        class: 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-100 text-slate-700',
+        onClick: () => { menu.remove(); it.onClick(); },
+      }, it.label)),
+    ),
   );
 
   $('header-bar').appendChild(menu);
