@@ -361,7 +361,9 @@ function renderAuth() {
   root.innerHTML = '';
 
   const isFirstUser = !state.hasUsers;
-  let mode = isFirstUser ? 'signup' : 'login';
+  // Convite pendente — default pra signup (suposição: convidado é novo no app)
+  const hasInvite = !!state.pendingInviteInfo;
+  let mode = (isFirstUser || hasInvite) ? 'signup' : 'login';
 
   const draw = () => {
     root.innerHTML = '';
@@ -413,10 +415,9 @@ function renderAuth() {
       el('div', { class: 'font-medium mb-0.5' }, '🎾 Você foi convidado'),
       el('div', { class: 'text-xs text-white/80' },
         state.pendingInviteInfo.inviterEmail
-          ? `${state.pendingInviteInfo.inviterEmail} compartilhou os atletas com você.`
-          : 'Aceite o convite pra ver os atletas compartilhados.',
-        ' ',
-        mode === 'signup' ? 'Crie sua conta pra continuar.' : 'Entre na sua conta pra continuar.',
+          ? `${state.pendingInviteInfo.inviterEmail} compartilhou os atletas com você. `
+          : 'Aceite o convite pra ver os atletas compartilhados. ',
+        mode === 'signup' ? 'Crie sua conta pra aceitar.' : 'Entre na sua conta pra aceitar.',
       ),
     );
 
@@ -1578,7 +1579,6 @@ function toggleGearMenu() {
     { label: 'Editar atleta', onClick: () => openProfileForm(profile) },
   ] : [];
   const accountActions = state.user ? [
-    { label: 'Convidar membro', onClick: () => openInviteModal() },
     { label: 'Sair', onClick: () => logout() },
   ] : [];
 
