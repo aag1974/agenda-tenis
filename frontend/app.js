@@ -518,12 +518,15 @@ function renderKanban(allTournaments) {
   };
   for (const col of KANBAN_COLUMN_IDS) cardsByColumn[col].sort(sortFn);
 
-  const container = el('div', { id: 'kanban-board', class: 'mt-4' },
+  const container = el('div', { id: 'kanban-board', class: 'mt-4 flex flex-col min-h-0' },
     // Aviso compacto em telas pequenas — Kanban é otimizado pra desktop
-    el('div', { class: 'sm:hidden mb-3 text-xs px-3 py-2 rounded bg-amber-100/20 border border-amber-300/30 text-amber-100' },
+    el('div', { class: 'sm:hidden mb-3 shrink-0 text-xs px-3 py-2 rounded bg-amber-100/20 border border-amber-300/30 text-amber-100' },
       '📱 Versão mobile chegando. Por enquanto, deslize lateralmente entre colunas.',
     ),
-    el('div', { class: 'flex gap-3 overflow-x-auto pb-4 px-1 -mx-1', style: 'scroll-snap-type: x proximity;' },
+    el('div', {
+      class: 'flex-1 min-h-0 flex gap-3 overflow-x-auto pb-2 px-1 -mx-1',
+      style: 'scroll-snap-type: x proximity;',
+    },
       ...KANBAN_COLUMNS.map(col => renderKanbanColumn(col, cardsByColumn[col.id] || [])),
     ),
   );
@@ -536,16 +539,17 @@ function renderKanban(allTournaments) {
 
 function renderKanbanColumn(col, cards) {
   const list = el('div', {
-    class: 'kanban-list flex flex-col gap-2 p-2 min-h-[60px]',
+    class: 'kanban-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-2',
     'data-column': col.id,
   });
   for (const t of cards) list.appendChild(renderKanbanCard(t));
 
   return el('div', {
-    class: 'kanban-col rounded-lg shrink-0 w-72 sm:w-80 flex flex-col text-slate-100',
+    class: 'kanban-col rounded-lg shrink-0 w-72 sm:w-80 flex flex-col text-slate-100 max-h-full',
     style: 'scroll-snap-align: start;',
   },
-    el('div', { class: 'px-3 py-2 flex items-center justify-between gap-2 border-b border-white/10' },
+    // Header da coluna — fixo no topo
+    el('div', { class: 'shrink-0 px-3 py-2 flex items-center justify-between gap-2 border-b border-white/10' },
       el('div', { class: 'flex items-center gap-2 font-medium text-sm' },
         el('span', { class: 'text-base' }, col.icon),
         el('span', null, col.label),
