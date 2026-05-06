@@ -26,16 +26,44 @@ export async function syncProfile(profileId) {
         .filter(([, n]) => n?.selected || n?.manualInscribed)
         .map(([id]) => id);
       const result = await syncAthlete({ ...creds, starredIds });
-      // Preserve firstSeenAt per tournament across syncs (used by "🆕 Novo" badge for 7 days)
+      // Preserve firstSeenAt per tournament across syncs (used by "🆕" badge for 7 days)
       const previous = getSyncedData(profileId);
       const firstSeenById = new Map(
         (previous?.tournaments || []).map(t => [t.id, t.firstSeenAt]).filter(([_, ts]) => ts)
       );
       const nowIso = new Date().toISOString();
-      result.tournaments = (result.tournaments || []).map(t => ({
-        ...t,
-        firstSeenAt: firstSeenById.get(t.id) || nowIso,
-      }));
+      const FAR_PAST = '2020-01-01T00:00:00.000Z';
+
+      // Migration detection — don't mark anything as "new" if:
+      //   - First-ever sync (no previous data), OR
+      //   - Previous data had no firstSeenAt at all, OR
+      //   - >= 80% of previous firstSeenAt cluster within a 5-min window (= they were
+      //     all set together, meaning a previous sync was the baseline)
+      const times = [...firstSeenById.values()]
+        .map(ts => new Date(ts).getTime())
+        .sort((a, b) => a - b);
+      const WINDOW_MS = 5 * 60 * 1000;
+      let maxCluster = 0;
+      for (let i = 0; i < times.length; i++) {
+        let j = i;
+        while (j < times.length && times[j] - times[i] <= WINDOW_MS) j++;
+        if (j - i > maxCluster) maxCluster = j - i;
+      }
+      const isBaselineEstablishment =
+        !previous?.tournaments?.length ||
+        firstSeenById.size === 0 ||
+        (times.length > 0 && maxCluster / times.length >= 0.8);
+
+      result.tournaments = (result.tournaments || []).map(t => {
+        const known = firstSeenById.get(t.id);
+        if (known) {
+          // Override clustered firstSeenAt during baseline establishment
+          if (isBaselineEstablishment) return { ...t, firstSeenAt: FAR_PAST };
+          return { ...t, firstSeenAt: known };
+        }
+        // Tournament not seen before
+        return { ...t, firstSeenAt: isBaselineEstablishment ? FAR_PAST : nowIso };
+      });
       saveSyncedData(profileId, result);
       const p = getProfile(profileId);
       if (p && (!p.athleteName || p.athleteName === 'Atleta') && result.athlete?.name) {
