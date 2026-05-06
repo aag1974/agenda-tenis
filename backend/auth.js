@@ -97,11 +97,12 @@ export function createUser({ email, password }) {
     id,
     email: email.toLowerCase(),
     passwordHash: hashPassword(password),
+    householdId: id, // solo household por default — invite muda isso
     createdAt: new Date().toISOString(),
   };
   users.push(user);
   writeUsers(users);
-  return { id, email: user.email, createdAt: user.createdAt, isFirst: users.length === 1 };
+  return { id, email: user.email, householdId: user.householdId, createdAt: user.createdAt, isFirst: users.length === 1 };
 }
 
 export function authenticate(email, password) {
@@ -123,6 +124,7 @@ export function authMiddleware(req, res, next) {
   if (user) {
     req.userId = user.id;
     req.userEmail = user.email;
+    req.householdId = user.householdId || user.id;
   }
   next();
 }

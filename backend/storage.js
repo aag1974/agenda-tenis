@@ -53,12 +53,20 @@ function writeJson(file, data) {
   writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
-export function listProfiles(userId = null) {
+export function listProfiles({ userId = null, householdId = null } = {}) {
   return readJson(PROFILES_FILE, [])
-    .filter(p => userId ? p.userId === userId : true)
+    .filter(p => {
+      if (householdId) {
+        if (p.householdId) return p.householdId === householdId;
+        return p.userId === householdId; // legado
+      }
+      if (userId) return p.userId === userId;
+      return true;
+    })
     .map(p => ({
       id: p.id,
       userId: p.userId || null,
+      householdId: p.householdId || null,
       athleteName: p.athleteName,
       tiEmail: p.tiEmail,
       originAirport: p.originAirport,
@@ -91,13 +99,14 @@ export function getProfileCredentials(id) {
   return { email: p.tiEmail, password: decrypt(p.tiPassword) };
 }
 
-export function createProfile({ userId, athleteName, tiEmail, tiPassword, originAirport, originCity }) {
+export function createProfile({ userId, householdId, athleteName, tiEmail, tiPassword, originAirport, originCity }) {
   const all = readJson(PROFILES_FILE, []);
   const id = randomBytes(8).toString('hex');
   const calendarToken = randomBytes(20).toString('hex');
   const profile = {
     id,
     userId: userId || null,
+    householdId: householdId || userId || null,
     athleteName: athleteName || null,
     tiEmail,
     tiPassword: encrypt(tiPassword),

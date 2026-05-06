@@ -165,6 +165,27 @@ const state = {
 
 const api = {
   async me() { return (await fetch('/api/auth/me')).json(); },
+  async listInvites() { return (await fetch('/api/household/invites')).json(); },
+  async createInvite(label) {
+    const r = await fetch('/api/household/invites', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async revokeInvite(token) {
+    return fetch('/api/household/invites/' + token, { method: 'DELETE' });
+  },
+  async getInvite(token) {
+    const r = await fetch('/api/invite/' + token);
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async acceptInvite(token) {
+    const r = await fetch('/api/invite/' + token + '/accept', { method: 'POST' });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
   async signup(email, password) {
     const r = await fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
     if (!r.ok) throw new Error((await r.json()).error || 'Erro');
@@ -271,9 +292,39 @@ const api = {
 
 // ===== Init =====
 async function init() {
+  // Captura token de convite na URL (compartilhado por WhatsApp/email)
+  const urlInviteToken = new URLSearchParams(window.location.search).get('invite');
+
   const me = await api.me();
-  state.user = me.userId ? { id: me.userId, email: me.email } : null;
+  state.user = me.userId ? {
+    id: me.userId, email: me.email,
+    householdId: me.householdId, members: me.members || [],
+  } : null;
   state.hasUsers = !!me.hasUsers;
+
+  if (urlInviteToken) {
+    state.pendingInviteToken = urlInviteToken;
+    if (!state.user) {
+      try {
+        const info = await api.getInvite(urlInviteToken);
+        state.pendingInviteInfo = info;
+      } catch {}
+      renderAuth();
+      return;
+    }
+    // Já logado — aceita imediatamente
+    try {
+      await api.acceptInvite(urlInviteToken);
+      const refreshed = await api.me();
+      state.user.householdId = refreshed.householdId;
+      state.user.members = refreshed.members || [];
+      window.history.replaceState({}, '', '/');
+      state.pendingInviteToken = null;
+      alert('Convite aceito! Você agora vê os atletas dessa família.');
+    } catch (err) {
+      alert('Erro ao aceitar convite: ' + err.message);
+    }
+  }
 
   if (!state.user) {
     renderAuth();
@@ -347,6 +398,17 @@ function renderAuth() {
     // Enter no input dispara submit
     const onEnter = (e) => { if (e.key === 'Enter') submit(); };
 
+    const inviteBanner = state.pendingInviteInfo && el('div', { class: 'rounded-lg bg-cyan-500/15 border border-cyan-300/40 px-3 py-2.5 text-sm text-white' },
+      el('div', { class: 'font-medium mb-0.5' }, '🎾 Você foi convidado'),
+      el('div', { class: 'text-xs text-white/80' },
+        state.pendingInviteInfo.inviterEmail
+          ? `${state.pendingInviteInfo.inviterEmail} compartilhou os atletas com você.`
+          : 'Aceite o convite pra ver os atletas compartilhados.',
+        ' ',
+        mode === 'signup' ? 'Crie sua conta pra continuar.' : 'Entre na sua conta pra continuar.',
+      ),
+    );
+
     const card = el('div', { class: 'w-full max-w-sm bg-slate-900/40 backdrop-blur-md border border-white/15 rounded-2xl shadow-2xl p-7 space-y-5' },
       el('div', { class: 'space-y-1' },
         el('h2', { class: 'text-xl font-semibold text-white' }, mode === 'signup' ? 'Criar conta' : 'Entrar'),
@@ -356,6 +418,7 @@ function renderAuth() {
             : (mode === 'signup' ? 'Crie sua conta pra começar.' : 'Bem-vindo de volta.'),
         ),
       ),
+      inviteBanner,
 
       field('email', 'Email', 'email', 'voce@email.com', '✉'),
       field('password', mode === 'signup' ? 'Senha (mín. 6 caracteres)' : 'Senha', 'password', '••••••••', '🔒'),
@@ -399,6 +462,119 @@ function renderAuth() {
     inputs.email.focus();
   };
   draw();
+}
+
+async function openInviteModal() {
+  const root = $('modal-root');
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden',
+  });
+  const header = el('div', { class: 'shrink-0 bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
+    el('h3', { class: 'font-medium' }, '👥 Convidar membro'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  );
+  const body = el('div', { class: 'flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4' });
+  card.appendChild(header);
+  card.appendChild(body);
+  root.appendChild(overlay);
+  root.appendChild(card);
+
+  const renderBody = async () => {
+    body.innerHTML = '';
+    body.appendChild(el('p', { class: 'text-sm text-slate-600' },
+      'Pessoas convidadas enxergam todos os atletas da sua família e podem editar tudo. Mande o link por WhatsApp, email ou SMS.'));
+
+    // Form pra criar novo convite
+    const labelInput = el('input', {
+      type: 'text', placeholder: 'Apelido (opcional, ex: "Maria")',
+      class: 'flex-1 text-sm rounded border border-slate-300 px-2 py-1.5 outline-none focus:border-cyan-400',
+    });
+    const createBtn = el('button', {
+      type: 'button',
+      class: 'shrink-0 text-sm rounded bg-cyan-600 hover:bg-cyan-700 text-white font-medium px-3 py-1.5',
+      onClick: async () => {
+        createBtn.disabled = true; createBtn.textContent = 'Gerando…';
+        try {
+          await api.createInvite(labelInput.value.trim() || null);
+          await renderBody();
+        } catch (err) {
+          alert('Erro: ' + err.message);
+          createBtn.disabled = false; createBtn.textContent = 'Gerar link';
+        }
+      },
+    }, 'Gerar link');
+    body.appendChild(el('div', { class: 'flex items-center gap-2' }, labelInput, createBtn));
+
+    // Membros atuais
+    const meRes = await api.me();
+    state.user.members = meRes.members || [];
+    if (state.user.members.length > 1) {
+      body.appendChild(el('div', { class: 'pt-3 border-t border-slate-200' },
+        el('h4', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2' }, 'Membros atuais'),
+        el('ul', { class: 'space-y-1' },
+          ...state.user.members.map(m => el('li', { class: 'flex items-center gap-2 text-sm' },
+            el('span', { class: 'w-7 h-7 rounded-full bg-cyan-600 text-white text-[10px] font-semibold flex items-center justify-center shrink-0' }, userInitials(m.email || m.name)),
+            el('span', { class: 'truncate' }, m.email || m.name || 'membro'),
+            m.id === state.user.id && el('span', { class: 'text-xs text-slate-400' }, '(você)'),
+          )),
+        ),
+      ));
+    }
+
+    // Convites pendentes
+    let invitesData;
+    try { invitesData = await api.listInvites(); } catch { invitesData = { invites: [] }; }
+    const pending = (invitesData.invites || []).filter(i => !i.acceptedBy && new Date(i.expiresAt) > new Date());
+    if (pending.length) {
+      const origin = window.location.origin;
+      body.appendChild(el('div', { class: 'pt-3 border-t border-slate-200' },
+        el('h4', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2' }, 'Convites pendentes'),
+        el('ul', { class: 'space-y-2' },
+          ...pending.map(inv => {
+            const url = `${origin}/?invite=${inv.token}`;
+            const linkInput = el('input', {
+              type: 'text', value: url, readonly: 'readonly',
+              class: 'flex-1 text-xs bg-slate-50 border border-slate-300 rounded px-2 py-1 font-mono',
+              onClick: (e) => e.target.select(),
+            });
+            const copyBtn = el('button', {
+              type: 'button',
+              class: 'shrink-0 text-xs rounded bg-slate-700 hover:bg-slate-800 text-white px-2 py-1',
+              onClick: async () => {
+                try {
+                  await navigator.clipboard.writeText(url);
+                  copyBtn.textContent = 'Copiado!';
+                  setTimeout(() => copyBtn.textContent = 'Copiar', 1500);
+                } catch { linkInput.select(); document.execCommand('copy'); }
+              },
+            }, 'Copiar');
+            const wppBtn = el('a', {
+              href: `https://wa.me/?text=${encodeURIComponent('Você foi convidado pra ver os atletas no Tennis Flow: ' + url)}`,
+              target: '_blank', rel: 'noopener',
+              class: 'shrink-0 text-xs rounded bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1',
+            }, 'WhatsApp');
+            const revokeBtn = el('button', {
+              type: 'button',
+              class: 'shrink-0 text-xs rounded text-rose-700 hover:bg-rose-50 px-2 py-1',
+              onClick: async () => {
+                if (!confirm('Revogar este convite?')) return;
+                await api.revokeInvite(inv.token);
+                renderBody();
+              },
+            }, '🗑');
+            return el('li', null,
+              inv.label && el('div', { class: 'text-xs text-slate-600 mb-1' }, inv.label),
+              el('div', { class: 'flex items-center gap-1' }, linkInput, copyBtn, wppBtn, revokeBtn),
+            );
+          }),
+        ),
+      ));
+    }
+  };
+
+  renderBody();
 }
 
 async function logout() {
@@ -1336,6 +1512,7 @@ function toggleGearMenu() {
     { label: '✏️  Editar perfil', onClick: () => openProfileForm(profile) },
   ] : [];
   const accountActions = state.user ? [
+    { label: '👥 Convidar membro', onClick: () => openInviteModal() },
     { label: '🚪 Sair', onClick: () => logout() },
   ] : [];
 

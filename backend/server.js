@@ -26,6 +26,12 @@ import {
   createUser, authenticate, signCookie, authMiddleware, requireAuth,
   userCount, listUsers,
 } from './auth.js';
+import {
+  migrateHouseholdsOnBoot, listHouseholdMembers, profileBelongsToHousehold,
+  createInvite, getInvite, listInvitesByHousehold, revokeInvite, acceptInvite,
+} from './household.js';
+
+migrateHouseholdsOnBoot();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -46,7 +52,15 @@ const COOKIE_OPTIONS = (req) => {
 
 // ===== Auth =====
 app.get('/api/auth/me', (req, res) => {
-  res.json({ userId: req.userId || null, email: req.userEmail || null, hasUsers: userCount() > 0 });
+  const householdId = req.householdId || null;
+  const members = householdId ? listHouseholdMembers(householdId) : [];
+  res.json({
+    userId: req.userId || null,
+    email: req.userEmail || null,
+    householdId,
+    members,
+    hasUsers: userCount() > 0,
+  });
 });
 
 app.post('/api/auth/signup', (req, res) => {
@@ -77,11 +91,59 @@ app.post('/api/auth/logout', (req, res) => {
   res.status(204).end();
 });
 
+// ===== Household / convites =====
+app.get('/api/household/members', requireAuth, (req, res) => {
+  res.json({ members: listHouseholdMembers(req.householdId) });
+});
+
+app.get('/api/household/invites', requireAuth, (req, res) => {
+  res.json({ invites: listInvitesByHousehold(req.householdId) });
+});
+
+app.post('/api/household/invites', requireAuth, (req, res) => {
+  const { label } = req.body || {};
+  const inv = createInvite({ householdId: req.householdId, invitedBy: req.userId, label: label || null });
+  res.status(201).json(inv);
+});
+
+app.delete('/api/household/invites/:token', requireAuth, (req, res) => {
+  const ok = revokeInvite(req.params.token, req.householdId);
+  if (!ok) return res.status(404).json({ error: 'Convite não encontrado' });
+  res.status(204).end();
+});
+
+// Público — usado pela página de aceite pra mostrar quem te convidou
+app.get('/api/invite/:token', (req, res) => {
+  const inv = getInvite(req.params.token);
+  if (!inv) return res.status(404).json({ error: 'Convite inválido' });
+  if (inv.expiresAt && new Date(inv.expiresAt) < new Date()) {
+    return res.status(410).json({ error: 'Convite expirado' });
+  }
+  if (inv.acceptedBy) return res.status(409).json({ error: 'Convite já utilizado' });
+  const inviter = listUsers().find(u => u.id === inv.invitedBy);
+  res.json({
+    token: inv.token,
+    inviterEmail: inviter?.email || null,
+    label: inv.label,
+    createdAt: inv.createdAt,
+    expiresAt: inv.expiresAt,
+  });
+});
+
+app.post('/api/invite/:token/accept', requireAuth, (req, res) => {
+  try {
+    const result = acceptInvite(req.params.token, req.userId);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 app.use(express.static(join(__dirname, '..', 'frontend')));
 
-// Profiles — all scoped to req.userId
+// Profiles — escopados pela household do usuário
 app.get('/api/profiles', requireAuth, (req, res) => {
-  res.json(listProfiles(req.userId));
+  res.json(listProfiles({ householdId: req.householdId }));
 });
 
 app.post('/api/profiles', requireAuth, (req, res) => {
@@ -89,14 +151,19 @@ app.post('/api/profiles', requireAuth, (req, res) => {
   if (!tiEmail || !tiPassword) {
     return res.status(400).json({ error: 'tiEmail e tiPassword são obrigatórios' });
   }
-  const profile = createProfile({ userId: req.userId, athleteName, tiEmail, tiPassword, originAirport, originCity });
+  const profile = createProfile({
+    userId: req.userId, householdId: req.householdId,
+    athleteName, tiEmail, tiPassword, originAirport, originCity,
+  });
   res.status(201).json(profile);
 });
 
 function ensureOwnedProfile(req, res, next) {
   const p = getProfile(req.params.id);
   if (!p) return res.status(404).json({ error: 'Perfil não encontrado' });
-  if (p.userId && p.userId !== req.userId) return res.status(403).json({ error: 'Acesso negado' });
+  if (!profileBelongsToHousehold(p, req.householdId)) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
   next();
 }
 
