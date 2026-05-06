@@ -31,6 +31,7 @@ import {
   createInvite, getInvite, listInvitesByHousehold, revokeInvite, acceptInvite,
   removeHouseholdMember,
 } from './household.js';
+import * as admin from './admin-cli.js';
 
 migrateHouseholdsOnBoot();
 
@@ -150,6 +151,27 @@ app.post('/api/invite/:token/accept', requireAuth, (req, res) => {
   try {
     const result = acceptInvite(req.params.token, req.userId);
     res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Endpoint admin — protegido por env var ADMIN_TOKEN.
+// curl -X POST https://app/api/admin -H 'Content-Type: application/json' \
+//   -d '{"token":"...","cmd":"delete-user","args":["email@x.com"]}'
+app.post('/api/admin', (req, res) => {
+  const expected = process.env.ADMIN_TOKEN;
+  if (!expected) return res.status(503).json({ error: 'ADMIN_TOKEN não configurado' });
+  const { token, cmd, args = [] } = req.body || {};
+  if (!token || token !== expected) return res.status(401).json({ error: 'Token inválido' });
+  try {
+    let result;
+    if (cmd === 'list-users') result = admin.listUsers();
+    else if (cmd === 'delete-user') result = admin.deleteUser(args[0]);
+    else if (cmd === 'reset-password') result = admin.resetPassword(args[0], args[1]);
+    else if (cmd === 'show-household') result = admin.showHousehold(args[0]);
+    else return res.status(400).json({ error: 'cmd inválido (use: list-users | delete-user | reset-password | show-household)' });
+    res.json({ ok: true, result });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
