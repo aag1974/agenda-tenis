@@ -128,7 +128,6 @@ const STATUS_BADGE = {
   unknown: 'bg-slate-100 text-slate-500',
 };
 
-const DEFAULT_OPEN_SECTIONS = ['urgent', 'thisWeek', 'thisMonth'];
 const TIER_ORDER = ['GA+', 'GA', 'G1+', 'G1', 'G2', 'G3'];
 const state = {
   user: null,
@@ -137,7 +136,6 @@ const state = {
   activeProfileId: localStorage.getItem('activeProfileId') || null,
   data: null,
   syncStatus: null,
-  openSections: new Set(JSON.parse(localStorage.getItem('openSections') || 'null') || DEFAULT_OPEN_SECTIONS),
   filterUFs: (() => {
     const raw = localStorage.getItem('filterUFs');
     try { const v = JSON.parse(raw); if (Array.isArray(v)) return v; } catch {}
@@ -431,26 +429,6 @@ function daysFromToday(date) {
   return Math.round((date.getTime() - startOfToday().getTime()) / DAY);
 }
 
-function categorizeForTimeline(t) {
-  const start = brToDate(t.startDate);
-  const end = brToDate(t.endDate) || start;
-  const today = startOfToday();
-  const inOneWeek = new Date(today.getTime() + 7 * DAY);
-  const monthEnd = endOfMonth();
-
-  // Urgent: pending payment due in <=7 days (and tournament not yet ended)
-  const pp = t.pendingPayment;
-  if (pp?.dueDate) {
-    const due = brToDate(pp.dueDate);
-    if (due && due >= today && due <= inOneWeek && (!end || end >= today)) return 'urgent';
-  }
-
-  if (!start) return 'upcoming';
-  if (end < today) return 'past';
-  if (start <= inOneWeek) return 'thisWeek';
-  if (start <= monthEnd) return 'thisMonth';
-  return 'upcoming';
-}
 
 function relativeDateLabel(t) {
   const start = brToDate(t.startDate);
@@ -541,6 +519,10 @@ function renderKanban(allTournaments) {
   for (const col of KANBAN_COLUMN_IDS) cardsByColumn[col].sort(sortFn);
 
   const container = el('div', { id: 'kanban-board', class: 'mt-4' },
+    // Aviso compacto em telas pequenas — Kanban é otimizado pra desktop
+    el('div', { class: 'sm:hidden mb-3 text-xs px-3 py-2 rounded bg-amber-100/20 border border-amber-300/30 text-amber-100' },
+      '📱 Versão mobile chegando. Por enquanto, deslize lateralmente entre colunas.',
+    ),
     el('div', { class: 'flex gap-3 overflow-x-auto pb-4 px-1 -mx-1', style: 'scroll-snap-type: x proximity;' },
       ...KANBAN_COLUMNS.map(col => renderKanbanColumn(col, cardsByColumn[col.id] || [])),
     ),
@@ -665,53 +647,6 @@ function wireKanbanSortable(container) {
   }
 }
 
-function renderTimeline(allTournaments) {
-  const tournaments = applyHeaderFilters(allTournaments);
-  const buckets = { urgent: [], thisWeek: [], thisMonth: [], upcoming: [], past: [] };
-  for (const t of tournaments) buckets[categorizeForTimeline(t)].push(t);
-
-  const sortByStart = (a, b) => (brToIso(a.startDate) || 'zzzz').localeCompare(brToIso(b.startDate) || 'zzzz');
-  buckets.urgent.sort((a, b) => (brToIso(a.pendingPayment?.dueDate) || 'zzzz').localeCompare(brToIso(b.pendingPayment?.dueDate) || 'zzzz'));
-  buckets.thisWeek.sort(sortByStart);
-  buckets.thisMonth.sort(sortByStart);
-  buckets.upcoming.sort(sortByStart);
-  buckets.past.sort((a, b) => (brToIso(b.startDate) || '').localeCompare(brToIso(a.startDate) || ''));
-
-  const sections = [
-    { key: 'urgent', title: '⚠️ Urgente', tournaments: buckets.urgent, hideIfEmpty: true },
-    { key: 'thisWeek', title: '📌 Esta semana', tournaments: buckets.thisWeek, emptyText: 'Nada nessa semana.' },
-    { key: 'thisMonth', title: 'Este mês', tournaments: buckets.thisMonth, emptyText: 'Nada mais esse mês.' },
-    { key: 'upcoming', title: 'Próximos meses', tournaments: buckets.upcoming },
-    { key: 'past', title: 'Já passaram', tournaments: buckets.past },
-  ];
-
-  return el('div', { id: 'timeline-container', class: 'mt-4 space-y-4' },
-    ...sections
-      .filter(s => !(s.hideIfEmpty && s.tournaments.length === 0))
-      .map(renderSection),
-  );
-}
-
-function renderSection({ key, title, tournaments, emptyText }) {
-  const titleNode = el('summary', { class: 'cursor-pointer select-none flex items-center justify-between gap-2 py-2 px-1' },
-    el('span', { class: 'font-medium text-slate-800' }, title),
-    el('span', { class: 'text-xs text-slate-500' }, tournaments.length ? `${tournaments.length} torneio${tournaments.length === 1 ? '' : 's'}` : ''),
-  );
-
-  const body = tournaments.length
-    ? el('div', { class: 'grid gap-2 mt-1' }, ...tournaments.map(renderTournamentCard))
-    : el('div', { class: 'text-sm text-slate-400 px-1 py-2' }, emptyText || 'Nada por aqui.');
-
-  const attrs = { class: 'border-t border-slate-200 pt-1' };
-  if (state.openSections.has(key)) attrs.open = 'open';
-  const details = el('details', attrs, titleNode, body);
-  details.addEventListener('toggle', () => {
-    if (details.open) state.openSections.add(key);
-    else state.openSections.delete(key);
-    localStorage.setItem('openSections', JSON.stringify([...state.openSections]));
-  });
-  return details;
-}
 
 function renderHeader() {
   const old = $('header-bar');
@@ -890,10 +825,13 @@ function toggleGearMenu() {
 }
 
 function rerenderBody() {
-  const old = $('timeline-container');
-  if (!old) { render(); return; }
   const tournaments = state.data?.tournaments || [];
-  old.replaceWith(renderTimeline(tournaments));
+  const oldKanban = $('kanban-board');
+  if (oldKanban) {
+    oldKanban.replaceWith(renderKanban(tournaments));
+    return;
+  }
+  render();
 }
 
 function openAthleteCard() {
@@ -1088,94 +1026,6 @@ function renderNeedSync() {
   return el('div', { class: 'mt-12 text-center max-w-md mx-auto' },
     el('p', { class: 'text-slate-600 mb-4' }, 'Ainda não há torneios carregados. Toque em ⚙︎ → Sincronizar agora pra puxar a lista do Tênis Integrado.'),
     el('p', { class: 'text-xs text-slate-500' }, 'A sincronização leva ~30 segundos.'),
-  );
-}
-
-function renderTournamentCard(t) {
-  const selected = !!t.notes?.selected;
-  const manualInscribed = !!t.notes?.manualInscribed;
-  const givenUp = !!t.notes?.manualGiveUp;
-  const pp = givenUp ? null : t.pendingPayment;
-  const inscribed = givenUp ? false : (t.isAnnaInscribed || manualInscribed);
-  const end = brToDate(t.endDate);
-  const isPast = end && end < startOfToday();
-  const boletoExpired = pp && isBoletoExpired(t);
-  const registrationClosed = !pp && !isPast && isRegistrationClosed(t, inscribed);
-  const isNew = isNewlyAdded(t);
-
-  const cardClass = boletoExpired
-    ? 'bg-red-50 border-red-300'
-    : pp
-    ? 'bg-amber-50 border-amber-300'
-    : (inscribed && isPast)
-    ? 'bg-rose-50 border-rose-300'
-    : inscribed
-    ? 'bg-emerald-50 border-emerald-300'
-    : registrationClosed
-    ? 'bg-slate-100 border-slate-300'
-    : 'bg-white border-slate-200';
-
-  const cityState = [t.city, t.state].filter(Boolean).join(' / ');
-  const canInscribeNow = !pp && !inscribed && !registrationClosed && (() => {
-    const start = brToDate(t.startDate);
-    return start && start >= startOfToday();
-  })();
-
-  return el('article', {
-    class: `${cardClass} rounded-lg border p-3 hover:shadow-sm cursor-pointer relative`,
-    onClick: () => openTournament(t.id),
-  },
-    el('button', {
-      class: `absolute top-1.5 right-1.5 w-10 h-10 flex items-center justify-center text-2xl leading-none rounded ${selected ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`,
-      title: selected ? 'Remover do calendário' : 'Adicionar ao calendário',
-      onClick: (e) => { e.stopPropagation(); toggleSelected(t); },
-    }, selected ? '★' : '☆'),
-
-    el('div', { class: 'pr-10' },
-      el('div', { class: 'text-sm font-medium text-slate-700 mb-0.5 flex items-center gap-2 flex-wrap' },
-        el('span', null, relativeDateLabel(t)),
-        isNew && el('span', { class: 'text-base leading-none', title: 'Adicionado recentemente' }, '🆕'),
-        inscribed && !pp && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrito'),
-        registrationClosed && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-slate-500 text-white font-medium' }, '🔒 Inscrições encerradas'),
-        boletoExpired && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-red-600 text-white font-medium' }, '❌ Boleto vencido'),
-      ),
-      el('h3', { class: 'leading-snug font-medium' },
-        ...tournamentTiers(t).map(tier =>
-          el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium mr-1 align-middle' }, tier),
-        ),
-        el('span', null, t.name || '(sem nome)'),
-      ),
-      el('div', { class: 'text-sm text-slate-600 mt-0.5' }, cityState || '—'),
-      t.hotels && t.hotels.length > 0 && el('div', { class: 'mt-1 text-xs text-slate-500' },
-        `🏨 ${t.hotels[0].name}` + (t.hotels.length > 1 ? ` +${t.hotels.length - 1}` : ''),
-      ),
-      pp && el('div', { class: 'mt-2 text-sm font-medium text-amber-800' },
-        `💰 Boleto vence em ${pp.dueDate}` + (pp.value ? ` — ${fmtValueNoCents(pp.value)}` : ''),
-      ),
-      canInscribeNow && el('button', {
-        class: 'mt-2 text-xs text-emerald-700 hover:text-emerald-900 underline',
-        onClick: (e) => { e.stopPropagation(); confirmInscription(t); },
-      }, '✓ Já me inscrevi'),
-      manualInscribed && !t.isAnnaInscribed && el('div', { class: 'mt-1 text-xs text-emerald-700 italic flex items-center gap-2' },
-        el('span', null, '✓ inscrição confirmada manualmente'),
-        el('button', {
-          class: 'underline hover:text-emerald-900',
-          onClick: (e) => { e.stopPropagation(); revertManualInscription(t); },
-        }, 'desfazer'),
-      ),
-      // Quando ainda há pp mostrado (não desistiu), oferecer desistir
-      pp && !isPast && el('button', {
-        class: 'mt-2 ml-3 text-xs text-slate-500 hover:text-slate-800 underline',
-        onClick: (e) => { e.stopPropagation(); giveUpTournament(t); },
-      }, '✕ Desisti deste torneio'),
-      givenUp && el('div', { class: 'mt-1 text-xs text-slate-500 italic flex items-center gap-2' },
-        el('span', null, '✕ marcado como desistido'),
-        el('button', {
-          class: 'underline hover:text-slate-800',
-          onClick: (e) => { e.stopPropagation(); revertGiveUp(t); },
-        }, 'desfazer'),
-      ),
-    ),
   );
 }
 
