@@ -76,8 +76,9 @@ App pivotou de "lista cronológica" pra **quadro Kanban estilo Trello** com pale
 
 ## Backlog
 
-- **Rebrand: "Agenda Tênis Integrado" → "Tennisflow"** — trocar em todos os lugares (HTML title, manifest, header, .command, LEIA-ME, theme-color talvez, ícone). Considerar domínio `tennisflow.com.br` ou similar.
-- **Login com Google (OAuth)** + redesign do menu de perfil estilo Trello (avatar + email no topo, ações agrupadas). Setup Google Cloud Console, rotas `/api/auth/google` + `/callback`, hybrid com email/senha existente.
+- **Rebrand: "Agenda Tênis Integrado" → "Tennis Flow"** — trocar em todos os lugares (HTML title, manifest, header, .command, LEIA-ME, theme-color talvez, ícone). Considerar domínio `tennisflow.com.br` ou similar.
+- **Login com Google (OAuth)** — adicionar como alternativa ao email/senha existente. Setup Google Cloud Console, rotas `/api/auth/google` + `/callback`. Aproveitar pra trazer foto/nome do Google pro avatar.
+- **Compartilhar acesso (família/co-gestor)** — opção no menu pra convidar outra pessoa (mãe, técnico, outro pai) pra ter acesso ao mesmo perfil de atleta. Modelo: owner vs collaborator. Implementação: link de convite, aceite via signup/login, perfil ganha múltiplos `userIds`. Frontend: item "👥 Convidar membro" no menu.
 
 ## Decisões pra Fase 2 (não MVP)
 
