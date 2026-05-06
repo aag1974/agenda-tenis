@@ -530,11 +530,21 @@ function relativeDateLabel(t) {
 
 function applyHeaderFilters(tournaments) {
   const f = state;
+  const q = (f.searchQuery || '').trim().toLowerCase();
+  const terms = q ? q.split(/\s+/).filter(Boolean) : [];
   return tournaments.filter(t => {
     if (f.filterUFs.length && !f.filterUFs.includes(t.state)) return false;
     if (f.filterTiers.length) {
       const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
       if (!tiers.some(x => f.filterTiers.includes(x))) return false;
+    }
+    if (terms.length) {
+      const haystack = [
+        t.name, t.city, t.state,
+        ...(t.tiers || []), t.tier,
+        ...(t.labels || []).map(L => L.name),
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!terms.every(term => haystack.includes(term))) return false;
     }
     return true;
   });
@@ -1114,8 +1124,27 @@ function renderHeaderEl() {
     onClick: (e) => { e.stopPropagation(); toggleGearMenu(); },
   }, initials);
 
-  return el('header', { id: 'header-bar', class: 'flex items-center justify-between gap-2 pb-2 border-b border-slate-200 relative' },
+  // Busca livre — vive no header e filtra por nome/cidade/UF/etiqueta/chave
+  const searchInput = profile && el('input', {
+    id: 'header-search',
+    type: 'search',
+    placeholder: 'Buscar por nome, cidade, etiqueta…',
+    value: state.searchQuery || '',
+    class: 'w-full max-w-md text-sm bg-white/10 hover:bg-white/15 focus:bg-white/20 text-white placeholder-white/50 border border-white/20 rounded px-3 py-1.5 outline-none focus:border-cyan-300',
+  });
+  if (searchInput) {
+    searchInput.oninput = (e) => {
+      state.searchQuery = e.target.value;
+      // Mantém o foco no input mesmo após re-render do body
+      rerenderBody();
+      const live = $('header-search');
+      if (live && document.activeElement !== live) live.focus();
+    };
+  }
+
+  return el('header', { id: 'header-bar', class: 'flex items-center gap-3 pb-2 border-b border-slate-200 relative' },
     logo,
+    profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchInput),
     el('div', { class: 'flex items-center gap-1 shrink-0' },
       profile && renderSyncIndicator(),
       avatarButton,
