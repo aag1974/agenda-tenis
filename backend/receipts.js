@@ -42,6 +42,18 @@ export function listReceipts(profileId, tournamentId) {
   return readMeta(profileId, tournamentId);
 }
 
+// Mapa { tournamentId: count } pra mostrar no card do Kanban
+export function receiptsCountByTournament(profileId) {
+  const dir = profileReceiptsDir(profileId);
+  if (!existsSync(dir)) return {};
+  const out = {};
+  for (const tid of readdirSync(dir)) {
+    const meta = readMeta(profileId, tid);
+    if (meta.length) out[tid] = meta.length;
+  }
+  return out;
+}
+
 export function getProfileStorageBytes(profileId) {
   const dir = profileReceiptsDir(profileId);
   if (!existsSync(dir)) return 0;

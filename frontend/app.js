@@ -216,12 +216,17 @@ const api = {
   },
   async deleteLabel(profileId, lid) { return fetch(`/api/profiles/${profileId}/labels/${lid}`, { method: 'DELETE' }); },
   async getLabelColors() { return (await fetch('/api/label-colors')).json(); },
-  async moveCard(profileId, tid, column, order) {
+  async moveCard(profileId, tid, column, order, siblings, sourceColumn, sourceSiblings) {
     const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/column`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ column, order }),
+      body: JSON.stringify({ column, order, siblings, sourceColumn, sourceSiblings }),
     });
-    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    if (!r.ok) {
+      const text = await r.text().catch(() => '');
+      let msg = `HTTP ${r.status}`;
+      try { msg = JSON.parse(text).error || msg; } catch { if (text) msg += ` — ${text.slice(0, 120)}`; }
+      throw new Error(msg);
+    }
     return r.json();
   },
   async getCardActivity(profileId, tid) { return (await fetch(`/api/profiles/${profileId}/tournaments/${tid}/activity`)).json(); },
@@ -710,6 +715,8 @@ function renderKanbanCard(t) {
       el('span', { class: 'shrink-0 text-slate-500' }, t.startDate ? t.startDate.slice(0, 5) : ''),
     ),
 
+    cardMetaRow(t),
+
     el('div', { class: 'mt-1.5 flex items-center justify-between gap-2 text-xs text-slate-500' },
       el('span', { class: 'truncate' }, relativeDateLabel(t)),
       el('button', {
@@ -719,6 +726,36 @@ function renderKanbanCard(t) {
       }, selected ? '★' : '☆'),
     ),
   );
+}
+
+function cardMetaRow(t) {
+  const comments = t.commentsCount || 0;
+  const receipts = t.receiptsCount || 0;
+  const days = daysUntilStart(t);
+  if (!comments && !receipts && days === null) return null;
+
+  const items = [];
+  if (comments) items.push(el('span', { class: 'inline-flex items-center gap-0.5', title: `${comments} comentário(s)` }, '💬', String(comments)));
+  if (receipts) items.push(el('span', { class: 'inline-flex items-center gap-0.5', title: `${receipts} comprovante(s)` }, '📎', String(receipts)));
+  if (days !== null) {
+    const label = days === 0 ? 'hoje' : (days > 0 ? `${days}d` : `${days}d`);
+    const cls = days < 0
+      ? 'text-slate-400'
+      : days <= 7 ? 'text-amber-700' : 'text-slate-500';
+    items.push(el('span', { class: `inline-flex items-center gap-0.5 ${cls}`, title: 'Dias até o início' }, '⏳', label));
+  }
+  if (!items.length) return null;
+  return el('div', { class: 'mt-1.5 flex items-center gap-2 text-[11px] text-slate-500' }, ...items);
+}
+
+function daysUntilStart(t) {
+  if (!t.startDate) return null;
+  const iso = brToIso(t.startDate);
+  if (!iso) return null;
+  const start = new Date(iso + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((start - today) / 86400000);
 }
 
 // ===== Etiquetas: seção do modal + picker =====
@@ -993,9 +1030,29 @@ function wireKanbanSortable(container) {
         if (!tid || !newColumn) return;
         const t = state.data?.tournaments?.find(x => x.id === tid);
         if (!t) return;
-        t.notes = { ...(t.notes || {}), column: newColumn, cardOrder: newIndex };
+        const siblings = Array.from(evt.to.querySelectorAll('[data-tid]')).map(n => n.dataset.tid);
+        const fromColumn = evt.from.dataset.column;
+        const crossColumn = fromColumn && fromColumn !== newColumn;
+        const sourceSiblings = crossColumn
+          ? Array.from(evt.from.querySelectorAll('[data-tid]')).map(n => n.dataset.tid)
+          : null;
+        // Optimistic update: aplica cardOrder em todos os irmãos da coluna destino
+        siblings.forEach((sid, idx) => {
+          const tt = state.data?.tournaments?.find(x => x.id === sid);
+          if (tt) tt.notes = { ...(tt.notes || {}), cardOrder: idx, ...(sid === tid ? { column: newColumn } : {}) };
+        });
+        if (sourceSiblings) {
+          sourceSiblings.forEach((sid, idx) => {
+            const tt = state.data?.tournaments?.find(x => x.id === sid);
+            if (tt) tt.notes = { ...(tt.notes || {}), cardOrder: idx };
+          });
+        }
         try {
-          await api.moveCard(state.activeProfileId, tid, newColumn, newIndex);
+          await api.moveCard(
+            state.activeProfileId, tid, newColumn, newIndex, siblings,
+            crossColumn ? fromColumn : null,
+            sourceSiblings,
+          );
         } catch (err) {
           alert('Erro ao mover: ' + err.message);
           render();

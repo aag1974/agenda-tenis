@@ -14,6 +14,7 @@ import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn } from './board
 import {
   listReceipts, addReceipt, getReceiptFile, updateReceiptCategory, deleteReceipt,
   getQuotaInfo, RECEIPT_CATEGORIES, daysUntilCleanup, CLEANUP_DAYS_AFTER_END,
+  receiptsCountByTournament,
 } from './receipts.js';
 import {
   ensureDefaultLabels, listManualLabels, createManualLabel, updateManualLabel,
@@ -133,6 +134,7 @@ app.get('/api/profiles/:id/tournaments', requireAuth, ensureOwnedProfile, (req, 
   ensureDefaultLabels(req.params.id);
   const data = getSyncedData(req.params.id);
   const notes = getNotes(req.params.id);
+  const receiptsCount = receiptsCountByTournament(req.params.id);
 
   const today = new Date();
   const tournaments = (data?.tournaments || []).map(t => {
@@ -141,6 +143,8 @@ app.get('/api/profiles/:id/tournaments', requireAuth, ensureOwnedProfile, (req, 
     const autoLabels = deriveAutoLabels(ts, n || {});
     const manualLabels = resolveManualLabels(req.params.id, (n && n.labelIds) || []);
     ts.labels = [...autoLabels, ...manualLabels];
+    ts.receiptsCount = receiptsCount[t.id] || 0;
+    ts.commentsCount = (n?.comments || []).length;
     return ts;
   });
 
@@ -496,18 +500,27 @@ app.get('/api/profiles/:id/board', requireAuth, ensureOwnedProfile, (req, res) =
 });
 
 app.patch('/api/profiles/:id/tournaments/:tid/column', requireAuth, ensureOwnedProfile, (req, res) => {
-  const { column, order } = req.body || {};
+  const { column, order, siblings, sourceSiblings } = req.body || {};
   if (!COLUMN_IDS.includes(column)) {
     return res.status(400).json({ error: 'Coluna inválida' });
   }
   try {
     setCardColumn(req.params.id, req.params.tid, column);
-    if (typeof order === 'number') {
-      // Update cardOrder via updateTournamentNotes
+    if (Array.isArray(siblings)) {
+      siblings.forEach((sid, idx) => {
+        if (typeof sid === 'string') updateTournamentNotes(req.params.id, sid, { cardOrder: idx });
+      });
+    } else if (typeof order === 'number') {
       updateTournamentNotes(req.params.id, req.params.tid, { cardOrder: order });
+    }
+    if (Array.isArray(sourceSiblings)) {
+      sourceSiblings.forEach((sid, idx) => {
+        if (typeof sid === 'string') updateTournamentNotes(req.params.id, sid, { cardOrder: idx });
+      });
     }
     res.json({ ok: true });
   } catch (err) {
+    console.error('[move-card]', err);
     res.status(400).json({ error: err.message });
   }
 });
