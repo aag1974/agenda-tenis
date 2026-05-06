@@ -1,9 +1,10 @@
 import { syncAthlete } from './scraper.js';
 import {
   listProfiles, getProfile, getProfileCredentials, getSyncedData, saveSyncedData,
-  updateProfile, getNotes, updateTournamentNotes,
+  updateProfile, getNotes, updateTournamentNotes, addAutoActivity,
 } from './storage.js';
 import { cleanupExpiredReceipts } from './receipts.js';
+import { diffTournamentForActivity } from './board.js';
 
 const inFlight = new Map(); // profileId -> Promise
 const status = new Map();   // profileId -> { state, startedAt, finishedAt, error }
@@ -65,6 +66,17 @@ export async function syncProfile(profileId) {
         // Tournament not seen before
         return { ...t, firstSeenAt: isBaselineEstablishment ? FAR_PAST : nowIso };
       });
+
+      // Diff against previous to log auto-activity per card.
+      // Skip the first sync (baseline) — would generate activity for everything at once.
+      if (!isBaselineEstablishment && previous?.tournaments) {
+        const prevById = new Map(previous.tournaments.map(t => [t.id, t]));
+        for (const t of result.tournaments) {
+          const events = diffTournamentForActivity(prevById.get(t.id), t);
+          if (events.length) addAutoActivity(profileId, t.id, events);
+        }
+      }
+
       saveSyncedData(profileId, result);
       const p = getProfile(profileId);
       if (p && (!p.athleteName || p.athleteName === 'Atleta') && result.athlete?.name) {

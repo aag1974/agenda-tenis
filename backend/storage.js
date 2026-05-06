@@ -170,6 +170,102 @@ export function updateTournamentNotes(profileId, tournamentId, patch) {
   return notes[tournamentId];
 }
 
+// ===== Kanban — comments, activity, column =====
+function ensureNoteShape(notes, tournamentId) {
+  const cur = notes[tournamentId] || {};
+  if (!Array.isArray(cur.comments)) cur.comments = [];
+  if (!Array.isArray(cur.activity)) cur.activity = [];
+  notes[tournamentId] = cur;
+  return cur;
+}
+
+function newId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+export function setCardColumn(profileId, tournamentId, column, { addActivity = true } = {}) {
+  const notes = getNotes(profileId);
+  const note = ensureNoteShape(notes, tournamentId);
+  const previousColumn = note.column || null;
+  note.column = column;
+  note.columnSetAt = new Date().toISOString();
+  note.updatedAt = note.columnSetAt;
+  if (addActivity && previousColumn !== column) {
+    note.activity.push({
+      id: newId(),
+      type: 'column_change',
+      message: `Movido para "${column}"${previousColumn ? ` (de "${previousColumn}")` : ''}`,
+      createdAt: new Date().toISOString(),
+      auto: false,
+    });
+  }
+  saveNotes(profileId, notes);
+  return note;
+}
+
+export function addCardComment(profileId, tournamentId, text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) throw new Error('Comentário vazio');
+  if (trimmed.length > 5000) throw new Error('Comentário muito longo (max 5000 caracteres)');
+  const notes = getNotes(profileId);
+  const note = ensureNoteShape(notes, tournamentId);
+  const entry = {
+    id: newId(),
+    text: trimmed,
+    createdAt: new Date().toISOString(),
+  };
+  note.comments.push(entry);
+  note.updatedAt = entry.createdAt;
+  saveNotes(profileId, notes);
+  return entry;
+}
+
+export function updateCardComment(profileId, tournamentId, commentId, text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) throw new Error('Comentário vazio');
+  const notes = getNotes(profileId);
+  const note = ensureNoteShape(notes, tournamentId);
+  const c = note.comments.find(c => c.id === commentId);
+  if (!c) return null;
+  c.text = trimmed;
+  c.updatedAt = new Date().toISOString();
+  note.updatedAt = c.updatedAt;
+  saveNotes(profileId, notes);
+  return c;
+}
+
+export function deleteCardComment(profileId, tournamentId, commentId) {
+  const notes = getNotes(profileId);
+  const note = ensureNoteShape(notes, tournamentId);
+  const before = note.comments.length;
+  note.comments = note.comments.filter(c => c.id !== commentId);
+  if (note.comments.length === before) return false;
+  note.updatedAt = new Date().toISOString();
+  saveNotes(profileId, notes);
+  return true;
+}
+
+export function addAutoActivity(profileId, tournamentId, entries) {
+  if (!entries || !entries.length) return;
+  const notes = getNotes(profileId);
+  const note = ensureNoteShape(notes, tournamentId);
+  note.activity.push(...entries);
+  note.updatedAt = new Date().toISOString();
+  saveNotes(profileId, notes);
+}
+
+export function getCardActivity(profileId, tournamentId) {
+  const notes = getNotes(profileId);
+  const note = ensureNoteShape(notes, tournamentId);
+  // Combined timeline: comments tagged as 'comment', activity entries with their own type
+  const items = [
+    ...note.comments.map(c => ({ ...c, kind: 'comment', auto: false })),
+    ...note.activity.map(a => ({ ...a, kind: 'activity' })),
+  ];
+  items.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  return items;
+}
+
 export function getManualTournaments(profileId) {
   return readJson(join(profileDir(profileId), 'manual.json'), []);
 }

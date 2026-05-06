@@ -8,7 +8,9 @@ import {
   listProfiles, getProfile, createProfile, updateProfile, deleteProfile,
   getSyncedData, getNotes, updateTournamentNotes,
   ensureCalendarToken, findProfileByCalendarToken, claimOrphanProfiles,
+  setCardColumn, addCardComment, updateCardComment, deleteCardComment, getCardActivity,
 } from './storage.js';
+import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn } from './board.js';
 import {
   listReceipts, addReceipt, getReceiptFile, updateReceiptCategory, deleteReceipt,
   getQuotaInfo, RECEIPT_CATEGORIES, daysUntilCleanup, CLEANUP_DAYS_AFTER_END,
@@ -432,6 +434,100 @@ function buildIcsFeed(tournaments, profile) {
   lines.push('END:VCALENDAR');
   return lines.filter(Boolean).join('\r\n');
 }
+
+// ===== Kanban =====
+app.get('/api/board/columns', (req, res) => {
+  res.json({ columns: COLUMNS });
+});
+
+app.get('/api/profiles/:id/board', requireAuth, ensureOwnedProfile, (req, res) => {
+  const data = getSyncedData(req.params.id);
+  const notes = getNotes(req.params.id);
+  const tournaments = (data?.tournaments || []).map(t => {
+    const n = notes[t.id] || {};
+    const autoCol = computeAutoColumn(t, n);
+    const col = effectiveColumn(t, n);
+    return {
+      ...t,
+      notes: n,
+      autoColumn: autoCol,
+      column: col,
+    };
+  });
+
+  // Group by column
+  const byColumn = Object.fromEntries(COLUMN_IDS.map(c => [c, []]));
+  for (const t of tournaments) {
+    if (!byColumn[t.column]) byColumn[t.column] = [];
+    byColumn[t.column].push(t);
+  }
+  // Sort within each column: by manual cardOrder if set, else by start date
+  for (const col of Object.keys(byColumn)) {
+    byColumn[col].sort((a, b) => {
+      const oa = a.notes?.cardOrder;
+      const ob = b.notes?.cardOrder;
+      if (typeof oa === 'number' && typeof ob === 'number') return oa - ob;
+      if (typeof oa === 'number') return -1;
+      if (typeof ob === 'number') return 1;
+      // Fallback: chronological by startDate
+      const da = (a.startDate || '').split('/').reverse().join('-');
+      const db = (b.startDate || '').split('/').reverse().join('-');
+      return da.localeCompare(db);
+    });
+  }
+
+  res.json({
+    columns: COLUMNS,
+    cardsByColumn: byColumn,
+    syncedAt: data?.syncedAt || null,
+  });
+});
+
+app.patch('/api/profiles/:id/tournaments/:tid/column', requireAuth, ensureOwnedProfile, (req, res) => {
+  const { column, order } = req.body || {};
+  if (!COLUMN_IDS.includes(column)) {
+    return res.status(400).json({ error: 'Coluna inválida' });
+  }
+  try {
+    setCardColumn(req.params.id, req.params.tid, column);
+    if (typeof order === 'number') {
+      // Update cardOrder via updateTournamentNotes
+      updateTournamentNotes(req.params.id, req.params.tid, { cardOrder: order });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/profiles/:id/tournaments/:tid/activity', requireAuth, ensureOwnedProfile, (req, res) => {
+  res.json({ items: getCardActivity(req.params.id, req.params.tid) });
+});
+
+app.post('/api/profiles/:id/tournaments/:tid/comments', requireAuth, ensureOwnedProfile, (req, res) => {
+  try {
+    const entry = addCardComment(req.params.id, req.params.tid, req.body?.text);
+    res.status(201).json(entry);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.patch('/api/profiles/:id/tournaments/:tid/comments/:cid', requireAuth, ensureOwnedProfile, (req, res) => {
+  try {
+    const entry = updateCardComment(req.params.id, req.params.tid, req.params.cid, req.body?.text);
+    if (!entry) return res.status(404).json({ error: 'Comentário não encontrado' });
+    res.json(entry);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/profiles/:id/tournaments/:tid/comments/:cid', requireAuth, ensureOwnedProfile, (req, res) => {
+  const ok = deleteCardComment(req.params.id, req.params.tid, req.params.cid);
+  if (!ok) return res.status(404).json({ error: 'Comentário não encontrado' });
+  res.status(204).end();
+});
 
 // ===== Comprovantes =====
 app.get('/api/receipt-categories', (req, res) => {
