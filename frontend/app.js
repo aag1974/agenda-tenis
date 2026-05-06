@@ -909,6 +909,7 @@ function renderTournamentCard(t) {
       el('div', { class: 'text-sm font-medium text-slate-700 mb-0.5 flex items-center gap-2 flex-wrap' },
         el('span', null, relativeDateLabel(t)),
         isNew && el('span', { class: 'text-base leading-none', title: 'Adicionado recentemente' }, '🆕'),
+        inscribed && !pp && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrito'),
         registrationClosed && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-slate-500 text-white font-medium' }, '🔒 Inscrições encerradas'),
         boletoExpired && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-red-600 text-white font-medium' }, '❌ Boleto vencido'),
       ),
