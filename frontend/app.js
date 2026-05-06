@@ -1349,6 +1349,25 @@ function renderHeaderEl() {
     onClick: (e) => { e.stopPropagation(); toggleGearMenu(); },
   }, initials);
 
+  // Bolinhas dos membros da household (exceto o usuário ativo) + botão "+"
+  const otherMembers = (state.user?.members || []).filter(m => m.id !== state.user?.id);
+  const memberStack = state.user && el('div', { class: 'flex items-center -space-x-2 shrink-0' },
+    ...otherMembers.slice(0, 4).map(m => el('button', {
+      class: 'w-8 h-8 rounded-full bg-emerald-600 text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-[#0e3a4d] hover:bg-emerald-500',
+      title: m.email,
+      onClick: (e) => { e.stopPropagation(); openInviteModal(); },
+    }, userInitials(m.email || m.name))),
+    otherMembers.length > 4 && el('span', {
+      class: 'w-8 h-8 rounded-full bg-slate-500 text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-[#0e3a4d]',
+      title: `+${otherMembers.length - 4} membros`,
+    }, `+${otherMembers.length - 4}`),
+    el('button', {
+      class: 'w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white text-base font-semibold flex items-center justify-center ring-2 ring-[#0e3a4d]',
+      title: 'Convidar membro',
+      onClick: (e) => { e.stopPropagation(); openInviteModal(); },
+    }, '+'),
+  );
+
   // Busca livre — vive no header e filtra por nome/cidade/UF/etiqueta/chave
   const searchInput = profile && el('input', {
     id: 'header-search',
@@ -1370,7 +1389,8 @@ function renderHeaderEl() {
   return el('header', { id: 'header-bar', class: 'flex items-center gap-3 pb-2 border-b border-slate-200 relative' },
     logo,
     profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchInput),
-    el('div', { class: 'flex items-center gap-1 shrink-0' },
+    el('div', { class: 'flex items-center gap-2 shrink-0' },
+      memberStack,
       profile && renderSyncIndicator(),
       avatarButton,
     ),
