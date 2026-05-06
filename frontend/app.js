@@ -183,6 +183,23 @@ const api = {
   },
   async flightUrl(profileId, tid) { return (await fetch(`/api/profiles/${profileId}/tournaments/${tid}/flight-url`)).json(); },
   async tournamentDetails(tid) { return (await fetch(`/api/tournament-details/${tid}`)).json(); },
+  async listLabels(profileId) { return (await fetch(`/api/profiles/${profileId}/labels`)).json(); },
+  async createLabel(profileId, body) {
+    const r = await fetch(`/api/profiles/${profileId}/labels`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async updateLabel(profileId, lid, body) {
+    const r = await fetch(`/api/profiles/${profileId}/labels/${lid}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async deleteLabel(profileId, lid) { return fetch(`/api/profiles/${profileId}/labels/${lid}`, { method: 'DELETE' }); },
+  async getLabelColors() { return (await fetch('/api/label-colors')).json(); },
   async moveCard(profileId, tid, column, order) {
     const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/column`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -468,7 +485,7 @@ function applyHeaderFilters(tournaments) {
 // ===== Kanban =====
 const KANBAN_COLUMNS = [
   { id: 'inscricoes_abertas', label: 'Inscrições abertas', icon: '🌟' },
-  { id: 'torneios',            label: 'Torneios',            icon: '📋' },
+  { id: 'torneios',            label: 'Inscrições Encerradas', icon: '🔒' },
   { id: 'vou_jogar',           label: 'Vou jogar',           icon: '⭐' },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',     icon: '💰' },
   { id: 'confirmado',          label: 'Confirmado',          icon: '✅' },
@@ -614,6 +631,231 @@ function renderKanbanCard(t) {
       }, selected ? '★' : '☆'),
     ),
   );
+}
+
+// ===== Etiquetas: seção do modal + picker =====
+function renderLabelsSection(t) {
+  const labels = t.labels || [];
+  const wrapper = el('section', { id: `labels-${t.id}` },
+    el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '🏷️ Etiquetas'),
+    el('div', { class: 'flex flex-wrap gap-1.5 items-center' },
+      ...labels.map(L => el('span', {
+        class: `text-xs px-2 py-1 rounded font-medium inline-flex items-center gap-1 ${labelExpandedClass(L.color)}`,
+        title: L.auto ? `${L.name} (automática — vem do Tênis Integrado)` : L.name,
+      }, L.name, L.auto && el('span', { class: 'text-[10px] opacity-60' }, '🔒')),
+      ),
+      el('button', {
+        class: 'text-xs px-2 py-1 rounded border border-dashed border-slate-300 text-slate-600 hover:bg-slate-100',
+        onClick: (e) => { e.stopPropagation(); openLabelPicker(t); },
+      }, '+ Etiqueta'),
+    ),
+  );
+  return wrapper;
+}
+
+async function openLabelPicker(t) {
+  const profileId = state.activeProfileId;
+  const root = $('modal-root');
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-[60]' });
+  const panel = el('div', { class: 'fixed inset-0 z-[61] flex items-center justify-center p-4 pointer-events-none' });
+  const card = el('div', { class: 'pointer-events-auto bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden' });
+  panel.appendChild(card);
+  const close = () => { overlay.remove(); panel.remove(); };
+  overlay.onclick = close;
+
+  // Header
+  card.appendChild(el('div', { class: 'shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between' },
+    el('h3', { class: 'text-sm font-semibold' }, '🏷️ Etiquetas'),
+    el('button', { class: 'text-slate-500 hover:text-slate-900 text-xl leading-none', onClick: close }, '×'),
+  ));
+
+  const body = el('div', { class: 'flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3' });
+  card.appendChild(body);
+
+  body.appendChild(el('div', { class: 'text-xs text-slate-500' }, 'Carregando...'));
+
+  let allManual = [];
+  let appliedIds = new Set(t.notes?.labelIds || []);
+
+  async function reload() {
+    const data = await api.listLabels(profileId);
+    allManual = data.labels || [];
+    drawList();
+  }
+
+  function drawList() {
+    body.innerHTML = '';
+
+    // Auto labels (read-only) — listadas no topo, com cadeado
+    const autoLabels = (t.labels || []).filter(L => L.auto);
+    if (autoLabels.length > 0) {
+      body.appendChild(el('div', null,
+        el('div', { class: 'text-xs text-slate-500 mb-1.5' }, 'Automáticas (do Tênis Integrado)'),
+        el('div', { class: 'flex flex-wrap gap-1.5' },
+          ...autoLabels.map(L => el('span', {
+            class: `text-xs px-2 py-1 rounded font-medium inline-flex items-center gap-1 ${labelExpandedClass(L.color)}`,
+            title: 'Não dá pra editar — controle do sistema',
+          }, L.name, el('span', { class: 'text-[10px] opacity-60' }, '🔒'))),
+        ),
+      ));
+    }
+
+    // Manual labels — selecionar/desselecionar
+    body.appendChild(el('div', { class: 'pt-2 border-t border-slate-200' },
+      el('div', { class: 'text-xs text-slate-500 mb-1.5 flex items-center justify-between' },
+        el('span', null, 'Suas etiquetas'),
+        el('button', {
+          class: 'text-xs text-emerald-700 hover:underline',
+          onClick: () => openLabelEditor(null),
+        }, '+ Criar nova'),
+      ),
+      el('ul', { class: 'space-y-1' },
+        ...allManual.map(L => {
+          const checked = appliedIds.has(L.id);
+          const row = el('li', { class: 'flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-50' });
+          const cb = el('input', { type: 'checkbox', class: 'h-4 w-4 cursor-pointer' });
+          cb.checked = checked;
+          cb.onchange = async () => {
+            if (cb.checked) appliedIds.add(L.id); else appliedIds.delete(L.id);
+            const newIds = [...appliedIds];
+            t.notes = { ...(t.notes || {}), labelIds: newIds };
+            try {
+              await api.updateNotes(profileId, t.id, { labelIds: newIds });
+              // Refresh modal label section + card
+              const sec = $(`labels-${t.id}`);
+              if (sec) {
+                // Reflect locally — server has computed labels but we know what changed
+                const replaced = renderLabelsSection({ ...t, labels: [
+                  ...(t.labels || []).filter(x => x.auto),
+                  ...allManual.filter(x => appliedIds.has(x.id)).map(x => ({ ...x, auto: false })),
+                ] });
+                sec.replaceWith(replaced);
+                t.labels = [
+                  ...(t.labels || []).filter(x => x.auto),
+                  ...allManual.filter(x => appliedIds.has(x.id)).map(x => ({ ...x, auto: false })),
+                ];
+              }
+              rerenderBody();
+            } catch (err) {
+              cb.checked = !cb.checked;
+              if (cb.checked) appliedIds.add(L.id); else appliedIds.delete(L.id);
+              alert('Erro: ' + err.message);
+            }
+          };
+          row.append(
+            cb,
+            el('span', { class: `text-xs px-2 py-0.5 rounded font-medium ${labelExpandedClass(L.color)}` }, L.name),
+            el('div', { class: 'ml-auto flex gap-1 text-xs' },
+              el('button', {
+                class: 'text-slate-500 hover:text-slate-800 px-1',
+                onClick: () => openLabelEditor(L),
+                title: 'Editar',
+              }, '✎'),
+              el('button', {
+                class: 'text-red-600 hover:text-red-800 px-1',
+                onClick: async () => {
+                  if (!confirm(`Excluir etiqueta "${L.name}"? Será removida de todos os torneios.`)) return;
+                  await api.deleteLabel(profileId, L.id);
+                  appliedIds.delete(L.id);
+                  await reload();
+                  rerenderBody();
+                },
+                title: 'Excluir',
+              }, '🗑'),
+            ),
+          );
+          return row;
+        }),
+        allManual.length === 0 && el('li', { class: 'text-xs text-slate-500 italic px-1' }, 'Nenhuma etiqueta criada ainda. Use "+ Criar nova".'),
+      ),
+    ));
+  }
+
+  function openLabelEditor(existing) {
+    const editorOverlay = el('div', { class: 'fixed inset-0 bg-black/30 z-[62]' });
+    const editorPanel = el('div', { class: 'fixed inset-0 z-[63] flex items-center justify-center p-4' });
+    const editorCard = el('div', { class: 'bg-white rounded-lg shadow-xl w-full max-w-sm p-4 space-y-3' });
+    editorPanel.appendChild(editorCard);
+    const closeEditor = () => { editorOverlay.remove(); editorPanel.remove(); };
+    editorOverlay.onclick = closeEditor;
+
+    const isEdit = !!existing;
+    const colors = ['emerald', 'lime', 'green', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'pink', 'rose', 'red', 'orange', 'amber', 'yellow', 'slate', 'gray'];
+    let selectedColor = existing?.color || 'emerald';
+
+    const nameInp = el('input', {
+      type: 'text', placeholder: 'Nome da etiqueta',
+      class: 'w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500',
+    });
+    nameInp.value = existing?.name || '';
+
+    const colorGrid = el('div', { class: 'grid grid-cols-9 gap-1.5' });
+    function drawColors() {
+      colorGrid.innerHTML = '';
+      for (const c of colors) {
+        colorGrid.appendChild(el('button', {
+          class: `h-7 rounded ${labelStripClass(c)} ${selectedColor === c ? 'ring-2 ring-offset-1 ring-slate-900' : ''}`,
+          onClick: (e) => { e.preventDefault(); selectedColor = c; drawColors(); preview.className = `text-xs px-2 py-1 rounded font-medium ${labelExpandedClass(selectedColor)}`; },
+          title: c,
+        }));
+      }
+    }
+
+    const preview = el('span', { class: `text-xs px-2 py-1 rounded font-medium ${labelExpandedClass(selectedColor)}` });
+    function updatePreview() { preview.textContent = nameInp.value || 'Pré-visualização'; }
+    nameInp.oninput = updatePreview;
+    updatePreview();
+
+    drawColors();
+
+    const errBox = el('div', { class: 'text-xs text-red-600' });
+
+    editorCard.append(
+      el('h4', { class: 'text-sm font-semibold' }, isEdit ? 'Editar etiqueta' : 'Nova etiqueta'),
+      el('label', { class: 'block' },
+        el('div', { class: 'text-xs text-slate-500 mb-1' }, 'Nome'),
+        nameInp,
+      ),
+      el('label', { class: 'block' },
+        el('div', { class: 'text-xs text-slate-500 mb-1' }, 'Cor'),
+        colorGrid,
+      ),
+      el('div', null,
+        el('div', { class: 'text-xs text-slate-500 mb-1' }, 'Pré-visualização'),
+        preview,
+      ),
+      errBox,
+      el('div', { class: 'flex justify-end gap-2 pt-2' },
+        el('button', { class: 'text-sm px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-100', onClick: closeEditor }, 'Cancelar'),
+        el('button', {
+          class: 'text-sm px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700',
+          onClick: async () => {
+            errBox.textContent = '';
+            try {
+              if (isEdit) {
+                await api.updateLabel(profileId, existing.id, { name: nameInp.value, color: selectedColor });
+              } else {
+                await api.createLabel(profileId, { name: nameInp.value, color: selectedColor });
+              }
+              closeEditor();
+              await reload();
+              rerenderBody();
+            } catch (err) {
+              errBox.textContent = err.message;
+            }
+          },
+        }, isEdit ? 'Salvar' : 'Criar'),
+      ),
+    );
+
+    document.body.appendChild(editorOverlay);
+    document.body.appendChild(editorPanel);
+    nameInp.focus();
+  }
+
+  document.body.appendChild(overlay);
+  document.body.appendChild(panel);
+  await reload();
 }
 
 // Mapeia color (Tailwind name) → classes pra strip e pra pílula expandida.
@@ -1517,6 +1759,9 @@ async function openTournament(tid) {
 
   // Modal panel: centered, wide, 2-column body on md+
   const mainColumn = el('div', { class: 'flex-1 min-w-0 px-5 py-4 space-y-4 md:overflow-y-auto' },
+      // Etiquetas (auto + manuais)
+      renderLabelsSection(t),
+
       // Aviso prominente quando o torneio foi "perdido"
       isLost && el('section', { class: 'rounded-lg bg-slate-100 border border-slate-300 p-3' },
         el('div', { class: 'text-sm font-medium text-slate-700' },
@@ -1651,13 +1896,6 @@ async function openTournament(tid) {
       el('div', { class: 'shrink-0 px-5 py-3 border-b border-slate-200' },
         el('div', { class: 'flex items-center gap-2 mb-1.5 flex-wrap' },
           statusBadge,
-          ...tournamentTiers(t).map(tier =>
-            el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium' }, tier),
-          ),
-          inscribedFinal && !t.pendingPayment && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrito'),
-          t.pendingPayment && !boletoExpired && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-amber-600 text-white font-medium' }, '💰 Não pago'),
-          boletoExpired && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-red-600 text-white font-medium' }, '❌ Boleto vencido'),
-          registrationClosed && el('span', { class: 'text-xs px-1.5 py-0.5 rounded bg-slate-500 text-white font-medium' }, '🔒 Inscrições encerradas'),
         ),
         el('h2', { class: 'text-lg font-semibold leading-snug' }, t.name),
         el('p', { class: 'text-sm text-slate-600' }, [t.city, t.state].filter(Boolean).join(' / ') || ''),

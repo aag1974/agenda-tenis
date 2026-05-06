@@ -6,7 +6,7 @@ import { deriveStatus } from './scraper.js';
 
 export const COLUMNS = [
   { id: 'inscricoes_abertas', label: 'Inscrições abertas', icon: '🌟', auto: true,  manual: true },
-  { id: 'torneios',            label: 'Torneios',            icon: '📋', auto: true,  manual: true },
+  { id: 'torneios',            label: 'Inscrições Encerradas', icon: '🔒', auto: true,  manual: true },
   { id: 'vou_jogar',           label: 'Vou jogar',           icon: '⭐', auto: false, manual: true },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',     icon: '💰', auto: true,  manual: true },
   { id: 'confirmado',          label: 'Confirmado',          icon: '✅', auto: true,  manual: true },
