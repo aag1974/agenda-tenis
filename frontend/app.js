@@ -1439,7 +1439,7 @@ async function openTournament(tid) {
   };
 
   // Modal panel: centered, wide, 2-column body on md+
-  const mainColumn = el('div', { class: 'flex-1 min-w-0 px-5 py-4 space-y-4' },
+  const mainColumn = el('div', { class: 'flex-1 min-w-0 px-5 py-4 space-y-4 md:overflow-y-auto' },
       // Aviso prominente quando o torneio foi "perdido"
       isLost && el('section', { class: 'rounded-lg bg-slate-100 border border-slate-300 p-3' },
         el('div', { class: 'text-sm font-medium text-slate-700' },
