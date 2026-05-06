@@ -185,6 +185,32 @@ const api = {
   },
   async flightUrl(profileId, tid) { return (await fetch(`/api/profiles/${profileId}/tournaments/${tid}/flight-url`)).json(); },
   async tournamentDetails(tid) { return (await fetch(`/api/tournament-details/${tid}`)).json(); },
+  async moveCard(profileId, tid, column, order) {
+    const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/column`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ column, order }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async getCardActivity(profileId, tid) { return (await fetch(`/api/profiles/${profileId}/tournaments/${tid}/activity`)).json(); },
+  async addComment(profileId, tid, text) {
+    const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/comments`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async editComment(profileId, tid, cid, text) {
+    const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/comments/${cid}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async deleteComment(profileId, tid, cid) {
+    return fetch(`/api/profiles/${profileId}/tournaments/${tid}/comments/${cid}`, { method: 'DELETE' });
+  },
   async listReceipts(profileId, tid) { return (await fetch(`/api/profiles/${profileId}/tournaments/${tid}/receipts`)).json(); },
   async uploadReceipt(profileId, tid, body) {
     const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/receipts`, {
@@ -339,6 +365,8 @@ async function pollSyncStatus() {
 function render() {
   const root = $('app');
   root.innerHTML = '';
+  // Reset kanban mode — renderKanban re-adds it when needed.
+  document.body.classList.remove('kanban-mode');
   root.appendChild(renderHeaderEl());
 
   if (!state.activeProfileId) {
@@ -357,7 +385,7 @@ function render() {
     return;
   }
 
-  root.appendChild(renderTimeline(tournaments));
+  root.appendChild(renderKanban(tournaments));
 }
 
 // ===== Timeline (single sectioned list) =====
@@ -457,6 +485,184 @@ function applyHeaderFilters(tournaments) {
     }
     return true;
   });
+}
+
+// ===== Kanban =====
+const KANBAN_COLUMNS = [
+  { id: 'inscricoes_abertas', label: 'Inscrições abertas', icon: '🌟' },
+  { id: 'torneios',            label: 'Torneios',            icon: '📋' },
+  { id: 'vou_jogar',           label: 'Vou jogar',           icon: '⭐' },
+  { id: 'pagar_inscricao',     label: 'Pagar inscrição',     icon: '💰' },
+  { id: 'confirmado',          label: 'Confirmado',          icon: '✅' },
+  { id: 'viagem_comprada',     label: 'Viagem comprada',     icon: '✈️' },
+  { id: 'historico',           label: 'Histórico',           icon: '🎾' },
+];
+const KANBAN_COLUMN_IDS = KANBAN_COLUMNS.map(c => c.id);
+
+function autoColumnFor(t) {
+  const status = t.derivedStatus || 'unknown';
+  if (status === 'past') return 'historico';
+  const givenUp = !!t.notes?.manualGiveUp;
+  const pp = givenUp ? null : t.pendingPayment;
+  const inscribed = givenUp ? false : (t.isAnnaInscribed || t.notes?.manualInscribed);
+  if (pp) return 'pagar_inscricao';
+  if (inscribed) return 'confirmado';
+  if (/Aberto|aberta/i.test(t.registrationStatus || '')) return 'inscricoes_abertas';
+  return 'torneios';
+}
+
+function effectiveColumnFor(t) {
+  const auto = autoColumnFor(t);
+  if (auto === 'historico') return 'historico';
+  const userCol = t.notes?.column;
+  if (userCol && KANBAN_COLUMN_IDS.includes(userCol)) return userCol;
+  return auto;
+}
+
+function renderKanban(allTournaments) {
+  document.body.classList.add('kanban-mode');
+  const tournaments = applyHeaderFilters(allTournaments);
+
+  // Group by column
+  const cardsByColumn = Object.fromEntries(KANBAN_COLUMN_IDS.map(c => [c, []]));
+  for (const t of tournaments) {
+    const col = effectiveColumnFor(t);
+    if (!cardsByColumn[col]) cardsByColumn[col] = [];
+    cardsByColumn[col].push(t);
+  }
+  // Sort within each column: manual cardOrder first, then by start date
+  const sortFn = (a, b) => {
+    const oa = a.notes?.cardOrder, ob = b.notes?.cardOrder;
+    if (typeof oa === 'number' && typeof ob === 'number') return oa - ob;
+    if (typeof oa === 'number') return -1;
+    if (typeof ob === 'number') return 1;
+    return (brToIso(a.startDate) || 'zzzz').localeCompare(brToIso(b.startDate) || 'zzzz');
+  };
+  for (const col of KANBAN_COLUMN_IDS) cardsByColumn[col].sort(sortFn);
+
+  const container = el('div', { id: 'kanban-board', class: 'mt-4' },
+    el('div', { class: 'flex gap-3 overflow-x-auto pb-4 px-1 -mx-1', style: 'scroll-snap-type: x proximity;' },
+      ...KANBAN_COLUMNS.map(col => renderKanbanColumn(col, cardsByColumn[col.id] || [])),
+    ),
+  );
+
+  // Wire SortableJS after render (next tick)
+  setTimeout(() => wireKanbanSortable(container), 0);
+
+  return container;
+}
+
+function renderKanbanColumn(col, cards) {
+  const list = el('div', {
+    class: 'kanban-list flex flex-col gap-2 p-2 min-h-[60px]',
+    'data-column': col.id,
+  });
+  for (const t of cards) list.appendChild(renderKanbanCard(t));
+
+  return el('div', {
+    class: 'kanban-col rounded-lg shrink-0 w-72 sm:w-80 flex flex-col text-slate-100',
+    style: 'scroll-snap-align: start;',
+  },
+    el('div', { class: 'px-3 py-2 flex items-center justify-between gap-2 border-b border-white/10' },
+      el('div', { class: 'flex items-center gap-2 font-medium text-sm' },
+        el('span', { class: 'text-base' }, col.icon),
+        el('span', null, col.label),
+      ),
+      el('span', { class: 'text-xs text-white/60' }, String(cards.length)),
+    ),
+    list,
+  );
+}
+
+function renderKanbanCard(t) {
+  const selected = !!t.notes?.selected;
+  const manualInscribed = !!t.notes?.manualInscribed;
+  const givenUp = !!t.notes?.manualGiveUp;
+  const pp = givenUp ? null : t.pendingPayment;
+  const inscribed = givenUp ? false : (t.isAnnaInscribed || manualInscribed);
+  const isPast = t.derivedStatus === 'past';
+  const boletoExpired = pp && isBoletoExpired(t);
+  const isNew = isNewlyAdded(t);
+  const tiers = tournamentTiers(t);
+  const cityState = [t.city, t.state].filter(Boolean).join(' / ');
+  const photoCount = (t.notes?.receiptCount || 0); // we don't always have this — placeholder
+
+  // Tarjas coloridas no topo (Trello-style) — uma cor por tier
+  const tierColors = ['bg-emerald-500', 'bg-sky-500', 'bg-violet-500', 'bg-rose-500', 'bg-amber-500'];
+  const stripes = tiers.length
+    ? el('div', { class: 'flex gap-1 mb-1.5' },
+        ...tiers.slice(0, 5).map((_, i) => el('span', {
+          class: `h-1.5 w-8 rounded-full ${tierColors[i % tierColors.length]}`,
+        })))
+    : null;
+
+  return el('article', {
+    class: 'kanban-card bg-white text-slate-900 rounded-md p-2.5 shadow-sm cursor-pointer hover:shadow-md',
+    'data-tid': t.id,
+    onClick: () => openTournament(t.id),
+  },
+    stripes,
+
+    // Linha 1: badges de status (curtos)
+    el('div', { class: 'flex items-center gap-1.5 flex-wrap text-[11px] mb-1' },
+      isNew && el('span', { class: 'text-sm leading-none', title: 'Adicionado recentemente' }, '🆕'),
+      pp && !boletoExpired && el('span', { class: 'px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium' }, '💰 ' + (pp.dueDate || '')),
+      boletoExpired && el('span', { class: 'px-1.5 py-0.5 rounded bg-red-600 text-white font-medium' }, '❌ vencido'),
+      inscribed && !pp && el('span', { class: 'px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrito'),
+      !inscribed && !pp && !isPast && /encerrad/i.test(t.registrationStatus || '') && el('span', { class: 'px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-medium' }, '🔒'),
+      ...tiers.slice(0, 3).map(tier =>
+        el('span', { class: 'px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium' }, tier),
+      ),
+    ),
+
+    // Linha 2: nome
+    el('h3', { class: 'text-sm font-medium leading-snug mb-0.5 line-clamp-2' }, t.name || '(sem nome)'),
+
+    // Linha 3: cidade/UF + datas
+    el('div', { class: 'text-xs text-slate-600 flex items-center justify-between gap-2' },
+      el('span', { class: 'truncate' }, cityState || '—'),
+      el('span', { class: 'shrink-0 text-slate-500' }, t.startDate ? t.startDate.slice(0, 5) : ''),
+    ),
+
+    // Linha 4: relativo + estrela
+    el('div', { class: 'mt-1.5 flex items-center justify-between gap-2 text-xs text-slate-500' },
+      el('span', { class: 'truncate' }, relativeDateLabel(t)),
+      el('button', {
+        class: `text-base leading-none ${selected ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500'}`,
+        title: selected ? 'Remover do calendário' : 'Adicionar ao calendário',
+        onClick: (e) => { e.stopPropagation(); toggleSelected(t); },
+      }, selected ? '★' : '☆'),
+    ),
+  );
+}
+
+function wireKanbanSortable(container) {
+  if (typeof Sortable === 'undefined') return;
+  const lists = container.querySelectorAll('.kanban-list');
+  for (const list of lists) {
+    Sortable.create(list, {
+      group: 'kanban',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onEnd: async (evt) => {
+        const tid = evt.item.dataset.tid;
+        const newColumn = evt.to.dataset.column;
+        const newIndex = evt.newIndex;
+        if (!tid || !newColumn) return;
+        const t = state.data?.tournaments?.find(x => x.id === tid);
+        if (!t) return;
+        // Optimistic: update local notes
+        t.notes = { ...(t.notes || {}), column: newColumn, cardOrder: newIndex };
+        try {
+          await api.moveCard(state.activeProfileId, tid, newColumn, newIndex);
+        } catch (err) {
+          alert('Erro ao mover: ' + err.message);
+          render(); // revert by re-rendering from server state next refresh
+        }
+      },
+    });
+  }
 }
 
 function renderTimeline(allTournaments) {
