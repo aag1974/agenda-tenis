@@ -185,6 +185,26 @@ const api = {
   },
   async flightUrl(profileId, tid) { return (await fetch(`/api/profiles/${profileId}/tournaments/${tid}/flight-url`)).json(); },
   async tournamentDetails(tid) { return (await fetch(`/api/tournament-details/${tid}`)).json(); },
+  async listReceipts(profileId, tid) { return (await fetch(`/api/profiles/${profileId}/tournaments/${tid}/receipts`)).json(); },
+  async uploadReceipt(profileId, tid, body) {
+    const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/receipts`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async updateReceiptCategory(profileId, tid, rid, category) {
+    const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/receipts/${rid}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async deleteReceipt(profileId, tid, rid) {
+    const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/receipts/${rid}`, { method: 'DELETE' });
+    if (!r.ok && r.status !== 204) throw new Error((await r.json()).error || 'Erro');
+  },
+  async getQuota(profileId) { return (await fetch(`/api/profiles/${profileId}/quota`)).json(); },
 };
 
 // ===== Init =====
@@ -1016,30 +1036,250 @@ function receiptsNoteName(t) {
   return `Tenis-Anna-${monthYear}-${slugCity}`.replace(/-+/g, '-').replace(/-$/, '');
 }
 
+// ===== Comprovantes — galeria por torneio com upload, categoria e zip =====
+const RECEIPT_CATEGORY_META = {
+  food:         { icon: '🍽️', label: 'Alimentação' },
+  transport:    { icon: '🚕', label: 'Transporte' },
+  lodging:      { icon: '🏨', label: 'Hospedagem' },
+  registration: { icon: '💰', label: 'Inscrição' },
+  other:        { icon: '📋', label: 'Outros' },
+};
+const RECEIPT_CATEGORY_ORDER = ['registration', 'lodging', 'transport', 'food', 'other'];
+
+async function compressImage(file, maxWidth = 1600, quality = 0.8) {
+  // createImageBitmap respects EXIF orientation on Safari 14+
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(async () => {
+    // Fallback for older browsers
+    const url = URL.createObjectURL(file);
+    try { const img = new Image(); img.src = url; await img.decode(); return img; }
+    finally { URL.revokeObjectURL(url); }
+  });
+  let w = bitmap.width, h = bitmap.height;
+  if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Falha na compressão')), 'image/jpeg', quality);
+  });
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
 function receiptsBlock(t) {
-  const noteName = receiptsNoteName(t);
-  return el('section', null,
-    el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '📂 Comprovantes do torneio'),
-    el('div', { class: 'rounded border border-slate-200 bg-slate-50 p-3 space-y-2' },
-      el('p', { class: 'text-xs text-slate-600' },
-        'Crie uma nota no app Notas do iPhone com este nome. Lá você usa o scanner (segundo botão da barra inferior do Notas) pra capturar os comprovantes, e pode juntar suas observações do torneio na mesma nota.',
-      ),
-      el('div', { class: 'flex items-center gap-2' },
-        el('code', { class: 'flex-1 text-sm font-mono bg-white border border-slate-300 rounded px-2 py-1.5 break-all' }, noteName),
-        el('button', {
-          class: 'text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-1.5 rounded',
-          onClick: async (e) => {
-            e.stopPropagation();
-            try { await navigator.clipboard.writeText(noteName); e.target.textContent = '✓'; setTimeout(() => e.target.textContent = '📋', 1200); }
-            catch { alert('Falha ao copiar — selecione e copie manualmente'); }
-          },
-        }, '📋'),
-      ),
-      el('p', { class: 'text-xs text-slate-500 italic' },
-        'Dica: prefixe cada scan com o tipo (ex.: "Aliment-…", "Transp-…") pra agrupar. Pra prestação de contas, exporta a nota inteira como PDF.',
-      ),
+  const profileId = state.activeProfileId;
+  const wrapper = el('section', null,
+    el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '📂 Comprovantes'),
+    el('div', { class: 'rounded border border-slate-200 bg-white p-3 space-y-3', id: `receipts-${t.id}` },
+      el('div', { class: 'text-xs text-slate-500' }, 'Carregando...'),
     ),
   );
+
+  // Async load + render
+  (async () => {
+    const container = wrapper.querySelector(`#receipts-${t.id}`);
+    let data;
+    try {
+      data = await api.listReceipts(profileId, t.id);
+    } catch (err) {
+      container.innerHTML = '';
+      container.appendChild(el('div', { class: 'text-xs text-red-600' }, 'Erro ao carregar: ' + err.message));
+      return;
+    }
+    renderReceiptsGallery(container, t, data);
+  })();
+
+  return wrapper;
+}
+
+function renderReceiptsGallery(container, t, data) {
+  container.innerHTML = '';
+  const profileId = state.activeProfileId;
+  const receipts = data.receipts || [];
+  const grouped = new Map();
+  for (const cat of RECEIPT_CATEGORY_ORDER) grouped.set(cat, []);
+  for (const r of receipts) {
+    if (!grouped.has(r.category)) grouped.set(r.category, []);
+    grouped.get(r.category).push(r);
+  }
+
+  // Upload row
+  const fileCamera = el('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'hidden' });
+  const fileGallery = el('input', { type: 'file', accept: 'image/*', class: 'hidden' });
+  fileCamera.onchange = (e) => handleUpload(e.target.files?.[0]);
+  fileGallery.onchange = (e) => handleUpload(e.target.files?.[0]);
+
+  async function handleUpload(file) {
+    if (!file) return;
+    const category = await pickCategory();
+    if (!category) return;
+    const status = el('div', { class: 'text-xs text-slate-500 mt-1' }, '🔄 Comprimindo...');
+    container.appendChild(status);
+    try {
+      const blob = await compressImage(file);
+      status.textContent = '⬆ Enviando...';
+      const dataUrl = await blobToDataUrl(blob);
+      await api.uploadReceipt(profileId, t.id, { category, dataUrl, originalName: file.name });
+      // Reload
+      const fresh = await api.listReceipts(profileId, t.id);
+      renderReceiptsGallery(container, t, fresh);
+    } catch (err) {
+      status.textContent = '⚠ Erro: ' + err.message;
+      status.className = 'text-xs text-red-600 mt-1';
+      setTimeout(() => status.remove(), 5000);
+    }
+    fileCamera.value = '';
+    fileGallery.value = '';
+  }
+
+  const buttonsRow = el('div', { class: 'flex flex-wrap gap-2' },
+    el('button', {
+      class: 'text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded',
+      onClick: () => fileCamera.click(),
+    }, '📸 Tirar foto'),
+    el('button', {
+      class: 'text-sm bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded',
+      onClick: () => fileGallery.click(),
+    }, '📁 Escolher do celular'),
+    receipts.length > 0 && el('a', {
+      href: `/api/profiles/${profileId}/tournaments/${t.id}/receipts.zip`,
+      download: `comprovantes-${(t.name || 'torneio').replace(/[^\w]+/g, '-').slice(0, 40)}.zip`,
+      class: 'ml-auto text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded border border-slate-300',
+    }, '📤 Exportar zip'),
+    fileCamera, fileGallery,
+  );
+  container.appendChild(buttonsRow);
+
+  // Cleanup hint when applicable
+  if (typeof data.daysUntilCleanup === 'number' && data.daysUntilCleanup >= 0 && data.daysUntilCleanup <= 14 && receipts.length > 0) {
+    container.appendChild(el('div', { class: 'text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2' },
+      `📦 Comprovantes serão arquivados em ${data.daysUntilCleanup} dia${data.daysUntilCleanup === 1 ? '' : 's'}. Exporte o zip antes se quiser guardar.`,
+    ));
+  }
+
+  if (receipts.length === 0) {
+    container.appendChild(el('p', { class: 'text-xs text-slate-500 italic' }, 'Nenhum comprovante. Use os botões acima pra adicionar.'));
+    return;
+  }
+
+  // Grouped gallery
+  for (const [cat, items] of grouped) {
+    if (!items.length) continue;
+    const meta = RECEIPT_CATEGORY_META[cat] || { icon: '📋', label: cat };
+    const grid = el('div', { class: 'grid grid-cols-3 sm:grid-cols-4 gap-2' });
+    for (const r of items) {
+      grid.appendChild(el('button', {
+        class: 'relative group aspect-square overflow-hidden rounded border border-slate-200 hover:border-emerald-400',
+        onClick: () => openReceiptViewer(t, r, items),
+      },
+        el('img', { src: r.viewUrl, alt: '', class: 'w-full h-full object-cover', loading: 'lazy' }),
+        el('div', { class: 'absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1 py-0.5 truncate' }, meta.icon + ' ' + meta.label.slice(0, 3)),
+      ));
+    }
+    container.appendChild(el('div', { class: 'space-y-1' },
+      el('div', { class: 'text-xs font-medium text-slate-700' }, `${meta.icon} ${meta.label} (${items.length})`),
+      grid,
+    ));
+  }
+}
+
+function pickCategory() {
+  return new Promise((resolve) => {
+    const root = document.getElementById('modal-root');
+    const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-[60]' });
+    const panel = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center z-[61] p-4' },
+      el('div', { class: 'bg-white rounded-lg shadow-xl w-full max-w-sm sm:mx-auto p-4' },
+        el('h3', { class: 'text-base font-semibold mb-3' }, 'Categoria do comprovante'),
+        el('div', { class: 'grid grid-cols-1 gap-2' },
+          ...RECEIPT_CATEGORY_ORDER.map(cat => {
+            const m = RECEIPT_CATEGORY_META[cat];
+            return el('button', {
+              class: 'w-full text-left bg-white border border-slate-300 hover:bg-slate-50 px-4 py-3 rounded text-sm flex items-center gap-3',
+              onClick: () => { cleanup(); resolve(cat); },
+            }, el('span', { class: 'text-xl' }, m.icon), el('span', null, m.label));
+          }),
+          el('button', {
+            class: 'w-full text-center text-sm text-slate-500 hover:text-slate-800 underline mt-2',
+            onClick: () => { cleanup(); resolve(null); },
+          }, 'Cancelar'),
+        ),
+      ),
+    );
+    function cleanup() { overlay.remove(); panel.remove(); }
+    overlay.onclick = () => { cleanup(); resolve(null); };
+    root.appendChild(overlay);
+    root.appendChild(panel);
+  });
+}
+
+function openReceiptViewer(t, current, all) {
+  const profileId = state.activeProfileId;
+  const root = document.getElementById('modal-root');
+  let idx = all.findIndex(r => r.id === current.id);
+  if (idx < 0) idx = 0;
+
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/90 z-[60] flex flex-col' });
+  const img = el('img', { class: 'flex-1 min-h-0 max-w-full max-h-full object-contain' });
+  const meta = el('div', { class: 'text-white text-sm px-4 py-2 flex items-center justify-between gap-3' });
+
+  function show() {
+    const r = all[idx];
+    img.src = r.viewUrl;
+    const m = RECEIPT_CATEGORY_META[r.category] || { icon: '📋', label: r.category };
+    meta.innerHTML = '';
+    meta.append(
+      el('div', { class: 'flex items-center gap-2 truncate' },
+        el('span', null, `${idx + 1} / ${all.length}`),
+        el('span', { class: 'text-slate-300' }, '·'),
+        el('span', null, `${m.icon} ${m.label}`),
+      ),
+      el('div', { class: 'flex items-center gap-2 shrink-0' },
+        el('button', { class: 'text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded', onClick: async () => {
+          const cat = await pickCategory();
+          if (!cat || cat === r.category) return;
+          await api.updateReceiptCategory(profileId, t.id, r.id, cat);
+          all[idx].category = cat;
+          show();
+        } }, '📂 Categoria'),
+        el('button', { class: 'text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded', onClick: async () => {
+          if (!confirm('Excluir este comprovante?')) return;
+          await api.deleteReceipt(profileId, t.id, r.id);
+          all.splice(idx, 1);
+          if (all.length === 0) { close(); reloadGallery(); return; }
+          if (idx >= all.length) idx = all.length - 1;
+          show();
+          reloadGallery();
+        } }, '🗑️'),
+        el('button', { class: 'text-2xl leading-none px-2', onClick: () => close() }, '×'),
+      ),
+    );
+  }
+  function reloadGallery() {
+    const container = document.getElementById(`receipts-${t.id}`);
+    if (container) {
+      api.listReceipts(profileId, t.id).then(d => renderReceiptsGallery(container, t, d)).catch(() => {});
+    }
+  }
+  function close() { overlay.remove(); }
+
+  overlay.append(meta, img);
+  // Tap left/right halves to navigate
+  img.onclick = (e) => {
+    const rect = img.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < rect.width / 2 && idx > 0) { idx--; show(); }
+    else if (x >= rect.width / 2 && idx < all.length - 1) { idx++; show(); }
+  };
+  show();
+  root.appendChild(overlay);
 }
 
 function tournamentTiers(t) {

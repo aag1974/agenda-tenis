@@ -3,6 +3,7 @@ import {
   listProfiles, getProfile, getProfileCredentials, getSyncedData, saveSyncedData,
   updateProfile, getNotes, updateTournamentNotes,
 } from './storage.js';
+import { cleanupExpiredReceipts } from './receipts.js';
 
 const inFlight = new Map(); // profileId -> Promise
 const status = new Map();   // profileId -> { state, startedAt, finishedAt, error }
@@ -151,11 +152,35 @@ async function runAutoSyncTick() {
   }
 }
 
+// Receipts cleanup — runs once a day, deletes receipts of tournaments
+// whose endDate + CLEANUP_DAYS_AFTER_END is past.
+function runReceiptsCleanupTick() {
+  const profiles = listProfiles();
+  for (const p of profiles) {
+    const synced = getSyncedData(p.id);
+    const tournaments = synced?.tournaments || [];
+    try {
+      const removed = cleanupExpiredReceipts(p.id, tournaments);
+      if (removed.length > 0) {
+        console.log(`[receipts-cleanup] ${p.athleteName || p.id}: ${removed.length} torneios arquivados`);
+      }
+    } catch (err) {
+      console.error(`[receipts-cleanup] erro ${p.id}:`, err.message);
+    }
+  }
+}
+
 export function startAutoSync() {
   // Defer the first tick by 5 minutes after boot so server has time to settle.
   setTimeout(() => {
     runAutoSyncTick();
     setInterval(runAutoSyncTick, SYNC_INTERVAL_MS);
   }, 5 * 60 * 1000);
+  // Receipts cleanup runs once a day, first run 10 min after boot.
+  setTimeout(() => {
+    runReceiptsCleanupTick();
+    setInterval(runReceiptsCleanupTick, 24 * 60 * 60 * 1000);
+  }, 10 * 60 * 1000);
   console.log(`[auto-sync] agendado a cada ${SYNC_INTERVAL_MS / 3600000}h (primeiro tick em 5 min)`);
+  console.log(`[receipts-cleanup] agendado a cada 24h (primeiro tick em 10 min)`);
 }

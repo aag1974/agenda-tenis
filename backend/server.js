@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import os from 'node:os';
+import archiver from 'archiver';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
@@ -8,6 +9,10 @@ import {
   getSyncedData, getNotes, updateTournamentNotes,
   ensureCalendarToken, findProfileByCalendarToken, claimOrphanProfiles,
 } from './storage.js';
+import {
+  listReceipts, addReceipt, getReceiptFile, updateReceiptCategory, deleteReceipt,
+  getQuotaInfo, RECEIPT_CATEGORIES, daysUntilCleanup, CLEANUP_DAYS_AFTER_END,
+} from './receipts.js';
 import { syncProfile, getSyncStatus, startAutoSync } from './sync-manager.js';
 import { deriveStatus, fetchTournamentDetails } from './scraper.js';
 import {
@@ -17,7 +22,8 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(express.json());
+// JSON limit raised so receipt uploads (image as base64 data URL) fit
+app.use(express.json({ limit: '5mb' }));
 app.use(authMiddleware);
 
 const COOKIE_OPTIONS = (req) => {
@@ -426,6 +432,92 @@ function buildIcsFeed(tournaments, profile) {
   lines.push('END:VCALENDAR');
   return lines.filter(Boolean).join('\r\n');
 }
+
+// ===== Comprovantes =====
+app.get('/api/receipt-categories', (req, res) => {
+  res.json({ categories: RECEIPT_CATEGORIES });
+});
+
+app.get('/api/profiles/:id/quota', requireAuth, ensureOwnedProfile, (req, res) => {
+  res.json(getQuotaInfo(req.params.id));
+});
+
+app.get('/api/profiles/:id/tournaments/:tid/receipts', requireAuth, ensureOwnedProfile, (req, res) => {
+  const list = listReceipts(req.params.id, req.params.tid);
+  const data = getSyncedData(req.params.id);
+  const t = data?.tournaments?.find(x => x.id === req.params.tid);
+  res.json({
+    receipts: list.map(r => ({ ...r, viewUrl: `/api/profiles/${req.params.id}/tournaments/${req.params.tid}/receipts/${r.id}/file` })),
+    daysUntilCleanup: t ? daysUntilCleanup(t) : null,
+    cleanupDays: CLEANUP_DAYS_AFTER_END,
+  });
+});
+
+app.post('/api/profiles/:id/tournaments/:tid/receipts', requireAuth, ensureOwnedProfile, (req, res) => {
+  const { category, dataUrl, originalName } = req.body || {};
+  try {
+    const entry = addReceipt(req.params.id, req.params.tid, { category, dataUrl, originalName });
+    res.status(201).json({
+      ...entry,
+      viewUrl: `/api/profiles/${req.params.id}/tournaments/${req.params.tid}/receipts/${entry.id}/file`,
+      quota: getQuotaInfo(req.params.id),
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/profiles/:id/tournaments/:tid/receipts/:rid/file', requireAuth, ensureOwnedProfile, (req, res) => {
+  const found = getReceiptFile(req.params.id, req.params.tid, req.params.rid);
+  if (!found) return res.status(404).json({ error: 'Comprovante não encontrado' });
+  res.setHeader('Content-Type', found.entry.mime);
+  res.setHeader('Cache-Control', 'private, max-age=86400');
+  res.sendFile(found.filePath);
+});
+
+app.patch('/api/profiles/:id/tournaments/:tid/receipts/:rid', requireAuth, ensureOwnedProfile, (req, res) => {
+  try {
+    const entry = updateReceiptCategory(req.params.id, req.params.tid, req.params.rid, req.body?.category);
+    if (!entry) return res.status(404).json({ error: 'Comprovante não encontrado' });
+    res.json(entry);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/profiles/:id/tournaments/:tid/receipts/:rid', requireAuth, ensureOwnedProfile, (req, res) => {
+  const ok = deleteReceipt(req.params.id, req.params.tid, req.params.rid);
+  if (!ok) return res.status(404).json({ error: 'Comprovante não encontrado' });
+  res.status(204).end();
+});
+
+app.get('/api/profiles/:id/tournaments/:tid/receipts.zip', requireAuth, ensureOwnedProfile, (req, res) => {
+  const list = listReceipts(req.params.id, req.params.tid);
+  if (!list.length) return res.status(404).json({ error: 'Sem comprovantes' });
+  const data = getSyncedData(req.params.id);
+  const t = data?.tournaments?.find(x => x.id === req.params.tid);
+  const safeName = (t?.name || 'torneio').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="comprovantes-${safeName}.zip"`);
+
+  const archive = archiver('zip', { zlib: { level: 6 } });
+  archive.on('error', (err) => res.status(500).end(err.message));
+  archive.pipe(res);
+
+  const categoryLabels = {
+    food: 'Alimentacao', transport: 'Transporte', lodging: 'Hospedagem',
+    registration: 'Inscricao', other: 'Outros',
+  };
+  for (const r of list) {
+    const found = getReceiptFile(req.params.id, req.params.tid, r.id);
+    if (!found) continue;
+    const ext = r.filename.split('.').pop();
+    const folder = categoryLabels[r.category] || 'Outros';
+    archive.file(found.filePath, { name: `${folder}/${r.id}.${ext}` });
+  }
+  archive.finalize();
+});
 
 app.post('/api/shutdown', (req, res) => {
   res.json({ status: 'shutting-down' });
