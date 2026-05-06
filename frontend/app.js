@@ -112,8 +112,21 @@ function googleCalendarUrl(reminder) {
 }
 function brToIso(s) {
   if (!s) return null;
-  const [d, m, y] = s.split('/');
-  return `${y}-${m}-${d}`;
+  const parts = s.split('/');
+  if (parts.length < 3) return null;
+  const [d, m, y] = parts;
+  if (!d || !m || !y || y.length !== 4) return null;
+  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+}
+function startYearOf(t) {
+  const iso = brToIso(t.startDate);
+  return iso ? Number(iso.slice(0, 4)) : null;
+}
+function formatCardDate(t) {
+  if (!t.startDate) return '';
+  const y = startYearOf(t);
+  const currentYear = new Date().getFullYear();
+  return y && y !== currentYear ? t.startDate : t.startDate.slice(0, 5);
 }
 const STATUS_LABELS = {
   upcoming: 'Futuro',
@@ -150,6 +163,10 @@ const state = {
     const old = localStorage.getItem('filterTier');
     if (old && old !== 'all') return [old];
     return [];
+  })(),
+  filterYears: (() => {
+    try { const v = JSON.parse(localStorage.getItem('filterYears') || '[]'); return Array.isArray(v) ? v.map(Number) : []; }
+    catch { return []; }
   })(),
   columnSort: (() => {
     try { return JSON.parse(localStorage.getItem('columnSort') || '{}'); }
@@ -829,6 +846,10 @@ function applyHeaderFilters(tournaments) {
       const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
       if (!tiers.some(x => f.filterTiers.includes(x))) return false;
     }
+    if (f.filterYears.length) {
+      const y = startYearOf(t);
+      if (!y || !f.filterYears.includes(y)) return false;
+    }
     if (terms.length) {
       const haystack = [
         t.name, t.city, t.state,
@@ -1045,7 +1066,7 @@ function renderKanbanCard(t) {
 
     el('div', { class: 'text-xs text-slate-600 flex items-center justify-between gap-2' },
       el('span', { class: 'truncate' }, cityState || '—'),
-      el('span', { class: 'shrink-0 text-slate-500' }, t.startDate ? t.startDate.slice(0, 5) : ''),
+      el('span', { class: 'shrink-0 text-slate-500' }, formatCardDate(t)),
     ),
 
     el('div', { class: 'mt-1.5 flex items-center justify-between gap-2' },
@@ -1586,6 +1607,7 @@ function toggleGearMenu() {
     for (const tier of (t.tiers && t.tiers.length ? t.tiers : (t.tier ? [t.tier] : []))) tiersInData.add(tier);
   }
   const tierOptions = TIER_ORDER.filter(x => tiersInData.has(x));
+  const yearOptions = [...new Set(tournaments.map(t => startYearOf(t)).filter(Boolean))].sort();
 
   const pillRow = (label, options, isSelected, onTogglePill, onClearAll) => {
     const allActive = !options.some(isSelected);
@@ -1601,6 +1623,29 @@ function toggleGearMenu() {
       ),
     );
   };
+
+  const yearPillRow = yearOptions.length > 1 && pillRow(
+    'Ano',
+    yearOptions.map(String),
+    (y) => state.filterYears.includes(Number(y)),
+    (y) => {
+      const yn = Number(y);
+      const idx = state.filterYears.indexOf(yn);
+      if (idx >= 0) state.filterYears.splice(idx, 1);
+      else state.filterYears.push(yn);
+      localStorage.setItem('filterYears', JSON.stringify(state.filterYears));
+      rerenderBody();
+      const oldMenu = $('gear-menu');
+      if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
+    },
+    () => {
+      state.filterYears = [];
+      localStorage.setItem('filterYears', '[]');
+      rerenderBody();
+      const oldMenu = $('gear-menu');
+      if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
+    },
+  );
 
   const tierPillRow = pillRow(
     'Chave',
@@ -1717,6 +1762,7 @@ function toggleGearMenu() {
         if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
       },
     ),
+    profile && yearPillRow,
     profile && tierPillRow,
     accountActions.length > 0 && el('div', { class: 'border-t border-slate-200 py-1' },
       ...accountActions.map(it => el('button', {
