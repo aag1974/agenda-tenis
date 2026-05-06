@@ -248,6 +248,14 @@ const api = {
   },
   async deleteLabel(profileId, lid) { return fetch(`/api/profiles/${profileId}/labels/${lid}`, { method: 'DELETE' }); },
   async getLabelColors() { return (await fetch('/api/label-colors')).json(); },
+  async clearCardOrder(profileId, tids) {
+    const r = await fetch(`/api/profiles/${profileId}/cards/clear-order`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tids }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
   async moveCard(profileId, tid, column, order, siblings, sourceColumn, sourceSiblings) {
     const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/column`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -971,10 +979,17 @@ function renderKanbanColumn(col, cards) {
         el('button', {
           class: 'text-xs text-white/60 hover:text-white px-1 cursor-pointer',
           title: sortTitle,
-          onClick: (e) => {
+          onClick: async (e) => {
             e.stopPropagation();
             state.columnSort[col.id] = sortDir === 'desc' ? 'asc' : 'desc';
             localStorage.setItem('columnSort', JSON.stringify(state.columnSort));
+            // Limpa cardOrder dos cards da coluna pra que o sort por data
+            // volte a ter efeito (drag-drop atribui cardOrder a todos os irmãos).
+            const tids = cards.map(t => t.id);
+            if (tids.length) {
+              cards.forEach(t => { if (t.notes) t.notes.cardOrder = null; });
+              try { await api.clearCardOrder(state.activeProfileId, tids); } catch {}
+            }
             rerenderBody();
           },
         }, sortIcon),

@@ -604,6 +604,18 @@ app.get('/api/profiles/:id/board', requireAuth, ensureOwnedProfile, (req, res) =
   });
 });
 
+// Limpa cardOrder de uma lista de torneios (usado quando o usuário toca no
+// toggle asc/desc de uma coluna — reseta a ordem manual pra que o sort por data
+// volte a funcionar).
+app.post('/api/profiles/:id/cards/clear-order', requireAuth, ensureOwnedProfile, (req, res) => {
+  const { tids } = req.body || {};
+  if (!Array.isArray(tids)) return res.status(400).json({ error: 'tids deve ser array' });
+  for (const tid of tids) {
+    if (typeof tid === 'string') updateTournamentNotes(req.params.id, tid, { cardOrder: null });
+  }
+  res.json({ ok: true, cleared: tids.length });
+});
+
 app.patch('/api/profiles/:id/tournaments/:tid/column', requireAuth, ensureOwnedProfile, (req, res) => {
   const { column, order, siblings, sourceSiblings } = req.body || {};
   if (!COLUMN_IDS.includes(column)) {
