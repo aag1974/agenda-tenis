@@ -560,57 +560,51 @@ function renderKanbanColumn(col, cards) {
   );
 }
 
+// Estado UI por card: tarja expandida (mostra texto) ou colapsada (só a barra).
+const expandedLabelCards = new Set();
+
 function renderKanbanCard(t) {
   const selected = !!t.notes?.selected;
-  const manualInscribed = !!t.notes?.manualInscribed;
-  const givenUp = !!t.notes?.manualGiveUp;
-  const pp = givenUp ? null : t.pendingPayment;
-  const inscribed = givenUp ? false : (t.isAnnaInscribed || manualInscribed);
-  const isPast = t.derivedStatus === 'past';
-  const boletoExpired = pp && isBoletoExpired(t);
-  const isNew = isNewlyAdded(t);
-  const tiers = tournamentTiers(t);
   const cityState = [t.city, t.state].filter(Boolean).join(' / ');
-  const photoCount = (t.notes?.receiptCount || 0); // we don't always have this — placeholder
+  const labels = t.labels || [];
+  const isExpanded = expandedLabelCards.has(t.id);
 
-  // Tarjas coloridas no topo (Trello-style) — uma cor por tier
-  const tierColors = ['bg-emerald-500', 'bg-sky-500', 'bg-violet-500', 'bg-rose-500', 'bg-amber-500'];
-  const stripes = tiers.length
-    ? el('div', { class: 'flex gap-1 mb-1.5' },
-        ...tiers.slice(0, 5).map((_, i) => el('span', {
-          class: `h-1.5 w-8 rounded-full ${tierColors[i % tierColors.length]}`,
-        })))
-    : null;
+  const labelsRow = labels.length > 0 && (isExpanded
+    // Modo expandido: pílulas com nome
+    ? el('div', { class: 'flex flex-wrap gap-1 mb-1.5' },
+        ...labels.map(L => el('span', {
+          class: `text-[11px] px-1.5 py-0.5 rounded font-medium ${labelExpandedClass(L.color)}`,
+          title: L.auto ? `${L.name} (automática)` : L.name,
+        }, L.name)),
+      )
+    // Modo colapsado: só tarjinhas
+    : el('div', { class: 'flex flex-wrap gap-1 mb-1.5' },
+        ...labels.map(L => el('span', {
+          class: `h-1.5 w-8 rounded-full ${labelStripClass(L.color)}`,
+          title: L.name,
+        }))));
+
+  const onLabelClick = (e) => {
+    e.stopPropagation();
+    if (expandedLabelCards.has(t.id)) expandedLabelCards.delete(t.id);
+    else expandedLabelCards.add(t.id);
+    rerenderBody();
+  };
 
   return el('article', {
     class: 'kanban-card bg-white text-slate-900 rounded-md p-2.5 shadow-sm cursor-pointer hover:shadow-md',
     'data-tid': t.id,
     onClick: () => openTournament(t.id),
   },
-    stripes,
+    labelsRow && el('div', { onClick: onLabelClick, title: 'Click pra expandir/colapsar etiquetas' }, labelsRow),
 
-    // Linha 1: badges de status (curtos)
-    el('div', { class: 'flex items-center gap-1.5 flex-wrap text-[11px] mb-1' },
-      isNew && el('span', { class: 'text-sm leading-none', title: 'Adicionado recentemente' }, '🆕'),
-      pp && !boletoExpired && el('span', { class: 'px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium' }, '💰 ' + (pp.dueDate || '')),
-      boletoExpired && el('span', { class: 'px-1.5 py-0.5 rounded bg-red-600 text-white font-medium' }, '❌ vencido'),
-      inscribed && !pp && el('span', { class: 'px-1.5 py-0.5 rounded bg-emerald-600 text-white font-medium' }, '✓ inscrito'),
-      !inscribed && !pp && !isPast && /encerrad/i.test(t.registrationStatus || '') && el('span', { class: 'px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-medium' }, '🔒'),
-      ...tiers.slice(0, 3).map(tier =>
-        el('span', { class: 'px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium' }, tier),
-      ),
-    ),
-
-    // Linha 2: nome
     el('h3', { class: 'text-sm font-medium leading-snug mb-0.5 line-clamp-2' }, t.name || '(sem nome)'),
 
-    // Linha 3: cidade/UF + datas
     el('div', { class: 'text-xs text-slate-600 flex items-center justify-between gap-2' },
       el('span', { class: 'truncate' }, cityState || '—'),
       el('span', { class: 'shrink-0 text-slate-500' }, t.startDate ? t.startDate.slice(0, 5) : ''),
     ),
 
-    // Linha 4: relativo + estrela
     el('div', { class: 'mt-1.5 flex items-center justify-between gap-2 text-xs text-slate-500' },
       el('span', { class: 'truncate' }, relativeDateLabel(t)),
       el('button', {
@@ -620,6 +614,35 @@ function renderKanbanCard(t) {
       }, selected ? '★' : '☆'),
     ),
   );
+}
+
+// Mapeia color (Tailwind name) → classes pra strip e pra pílula expandida.
+// Tailwind precisa das classes literais no source pra detectar; lista todas.
+function labelStripClass(color) {
+  const map = {
+    emerald: 'bg-emerald-500', lime: 'bg-lime-500', green: 'bg-green-500',
+    teal: 'bg-teal-500', cyan: 'bg-cyan-500', sky: 'bg-sky-500',
+    blue: 'bg-blue-500', indigo: 'bg-indigo-500', violet: 'bg-violet-500',
+    purple: 'bg-purple-500', pink: 'bg-pink-500', rose: 'bg-rose-500',
+    red: 'bg-red-500', orange: 'bg-orange-500', amber: 'bg-amber-500',
+    yellow: 'bg-yellow-500', slate: 'bg-slate-500', gray: 'bg-gray-500',
+  };
+  return map[color] || 'bg-slate-400';
+}
+
+function labelExpandedClass(color) {
+  const map = {
+    emerald: 'bg-emerald-100 text-emerald-800', lime: 'bg-lime-100 text-lime-800',
+    green: 'bg-green-100 text-green-800', teal: 'bg-teal-100 text-teal-800',
+    cyan: 'bg-cyan-100 text-cyan-800', sky: 'bg-sky-100 text-sky-800',
+    blue: 'bg-blue-100 text-blue-800', indigo: 'bg-indigo-100 text-indigo-800',
+    violet: 'bg-violet-100 text-violet-800', purple: 'bg-purple-100 text-purple-800',
+    pink: 'bg-pink-100 text-pink-800', rose: 'bg-rose-100 text-rose-800',
+    red: 'bg-red-100 text-red-800', orange: 'bg-orange-100 text-orange-800',
+    amber: 'bg-amber-100 text-amber-800', yellow: 'bg-yellow-100 text-yellow-800',
+    slate: 'bg-slate-200 text-slate-800', gray: 'bg-gray-200 text-gray-800',
+  };
+  return map[color] || 'bg-slate-100 text-slate-700';
 }
 
 function wireKanbanSortable(container) {

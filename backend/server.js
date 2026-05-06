@@ -15,6 +15,10 @@ import {
   listReceipts, addReceipt, getReceiptFile, updateReceiptCategory, deleteReceipt,
   getQuotaInfo, RECEIPT_CATEGORIES, daysUntilCleanup, CLEANUP_DAYS_AFTER_END,
 } from './receipts.js';
+import {
+  ensureDefaultLabels, listManualLabels, createManualLabel, updateManualLabel,
+  deleteManualLabel, deriveAutoLabels, resolveManualLabels, LABEL_COLORS,
+} from './labels.js';
 import { syncProfile, getSyncStatus, startAutoSync } from './sync-manager.js';
 import { deriveStatus, fetchTournamentDetails } from './scraper.js';
 import {
@@ -126,15 +130,19 @@ app.get('/api/profiles/:id/tournaments', requireAuth, ensureOwnedProfile, (req, 
   const p = getProfile(req.params.id);
   if (!p) return res.status(404).json({ error: 'Perfil não encontrado' });
 
+  ensureDefaultLabels(req.params.id);
   const data = getSyncedData(req.params.id);
   const notes = getNotes(req.params.id);
 
   const today = new Date();
-  const tournaments = (data?.tournaments || []).map(t => ({
-    ...t,
-    derivedStatus: deriveStatus(t, today),
-    notes: notes[t.id] || null,
-  }));
+  const tournaments = (data?.tournaments || []).map(t => {
+    const n = notes[t.id] || null;
+    const ts = { ...t, derivedStatus: deriveStatus(t, today), notes: n };
+    const autoLabels = deriveAutoLabels(ts, n || {});
+    const manualLabels = resolveManualLabels(req.params.id, (n && n.labelIds) || []);
+    ts.labels = [...autoLabels, ...manualLabels];
+    return ts;
+  });
 
   res.json({
     athlete: data?.athlete || { name: p.athleteName },
@@ -441,17 +449,21 @@ app.get('/api/board/columns', (req, res) => {
 });
 
 app.get('/api/profiles/:id/board', requireAuth, ensureOwnedProfile, (req, res) => {
+  ensureDefaultLabels(req.params.id);
   const data = getSyncedData(req.params.id);
   const notes = getNotes(req.params.id);
   const tournaments = (data?.tournaments || []).map(t => {
     const n = notes[t.id] || {};
     const autoCol = computeAutoColumn(t, n);
     const col = effectiveColumn(t, n);
+    const autoLabels = deriveAutoLabels(t, n);
+    const manualLabels = resolveManualLabels(req.params.id, n.labelIds || []);
     return {
       ...t,
       notes: n,
       autoColumn: autoCol,
       column: col,
+      labels: [...autoLabels, ...manualLabels],
     };
   });
 
@@ -526,6 +538,43 @@ app.patch('/api/profiles/:id/tournaments/:tid/comments/:cid', requireAuth, ensur
 app.delete('/api/profiles/:id/tournaments/:tid/comments/:cid', requireAuth, ensureOwnedProfile, (req, res) => {
   const ok = deleteCardComment(req.params.id, req.params.tid, req.params.cid);
   if (!ok) return res.status(404).json({ error: 'Comentário não encontrado' });
+  res.status(204).end();
+});
+
+// ===== Etiquetas (labels) =====
+app.get('/api/label-colors', (req, res) => {
+  res.json({ colors: LABEL_COLORS });
+});
+
+// Lista etiquetas manuais do perfil (semeando padrão se vazio)
+app.get('/api/profiles/:id/labels', requireAuth, ensureOwnedProfile, (req, res) => {
+  ensureDefaultLabels(req.params.id);
+  res.json({ labels: listManualLabels(req.params.id) });
+});
+
+app.post('/api/profiles/:id/labels', requireAuth, ensureOwnedProfile, (req, res) => {
+  try {
+    const entry = createManualLabel(req.params.id, req.body || {});
+    res.status(201).json(entry);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.patch('/api/profiles/:id/labels/:lid', requireAuth, ensureOwnedProfile, (req, res) => {
+  try {
+    const entry = updateManualLabel(req.params.id, req.params.lid, req.body || {});
+    if (!entry) return res.status(404).json({ error: 'Etiqueta não encontrada' });
+    res.json(entry);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/profiles/:id/labels/:lid', requireAuth, ensureOwnedProfile, (req, res) => {
+  const ok = deleteManualLabel(req.params.id, req.params.lid);
+  if (!ok) return res.status(404).json({ error: 'Etiqueta não encontrada' });
+  // (manuais ficam órfãs nas notas — resolveManualLabels filtra automaticamente)
   res.status(204).end();
 });
 
