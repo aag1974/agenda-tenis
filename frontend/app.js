@@ -1878,9 +1878,6 @@ async function openTournament(tid) {
       )
     : null;
 
-  const status = t.derivedStatus || 'unknown';
-  const statusBadge = el('span', { class: `inline-block px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[status]}` }, STATUS_LABELS[status]);
-
   const starBtn = el('button', { class: 'text-2xl leading-none transition-colors' }, '');
   const updateStar = () => {
     const sel = !!t.notes?.selected;
@@ -2058,9 +2055,6 @@ async function openTournament(tid) {
       ),
       // Title block
       el('div', { class: 'shrink-0 px-5 py-3 border-b border-slate-200' },
-        el('div', { class: 'flex items-center gap-2 mb-1.5 flex-wrap' },
-          statusBadge,
-        ),
         el('div', { class: 'flex items-start gap-3' },
           el('h2', { class: 'text-lg font-semibold leading-snug flex-1 min-w-0' }, t.name),
           t.url && el('a', {
