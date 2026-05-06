@@ -715,12 +715,10 @@ function renderKanbanCard(t) {
       el('span', { class: 'shrink-0 text-slate-500' }, t.startDate ? t.startDate.slice(0, 5) : ''),
     ),
 
-    cardMetaRow(t),
-
-    el('div', { class: 'mt-1.5 flex items-center justify-between gap-2 text-xs text-slate-500' },
-      el('span', { class: 'truncate' }, relativeDateLabel(t)),
+    el('div', { class: 'mt-1.5 flex items-center justify-between gap-2' },
+      cardMetaRow(t) || el('span'),
       el('button', {
-        class: `text-base leading-none ${selected ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500'}`,
+        class: `text-base leading-none shrink-0 ${selected ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500'}`,
         title: selected ? 'Remover do calendário' : 'Adicionar ao calendário',
         onClick: (e) => { e.stopPropagation(); toggleSelected(t); },
       }, selected ? '★' : '☆'),
@@ -745,7 +743,7 @@ function cardMetaRow(t) {
     items.push(el('span', { class: `inline-flex items-center gap-0.5 ${cls}`, title: 'Dias até o início' }, '⏳', label));
   }
   if (!items.length) return null;
-  return el('div', { class: 'mt-1.5 flex items-center gap-2 text-[11px] text-slate-500' }, ...items);
+  return el('div', { class: 'flex items-center gap-2 text-[11px] text-slate-500' }, ...items);
 }
 
 function daysUntilStart(t) {
