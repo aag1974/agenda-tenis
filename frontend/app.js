@@ -637,7 +637,7 @@ function renderKanbanCard(t) {
 function renderLabelsSection(t) {
   const labels = t.labels || [];
   const wrapper = el('section', { id: `labels-${t.id}` },
-    el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '🏷️ Etiquetas'),
+    el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '🏷️ Etiquetas'),
     el('div', { class: 'flex flex-wrap gap-1.5 items-center' },
       ...labels.map(L => el('span', {
         class: `text-xs px-2 py-1 rounded font-medium inline-flex items-center gap-1 ${labelExpandedClass(L.color)}`,
@@ -1147,7 +1147,23 @@ function rerenderBody() {
   const tournaments = state.data?.tournaments || [];
   const oldKanban = $('kanban-board');
   if (oldKanban) {
-    oldKanban.replaceWith(renderKanban(tournaments));
+    // Preserva scroll horizontal das colunas + scroll vertical dentro de cada lista
+    const colRow = oldKanban.querySelector('.overflow-x-auto');
+    const savedColScroll = colRow ? colRow.scrollLeft : 0;
+    const savedListScrolls = new Map();
+    for (const list of oldKanban.querySelectorAll('.kanban-list')) {
+      savedListScrolls.set(list.dataset.column, list.scrollTop);
+    }
+    const newKanban = renderKanban(tournaments);
+    oldKanban.replaceWith(newKanban);
+    requestAnimationFrame(() => {
+      const newColRow = newKanban.querySelector('.overflow-x-auto');
+      if (newColRow) newColRow.scrollLeft = savedColScroll;
+      for (const list of newKanban.querySelectorAll('.kanban-list')) {
+        const saved = savedListScrolls.get(list.dataset.column);
+        if (saved) list.scrollTop = saved;
+      }
+    });
     return;
   }
   render();
@@ -1452,7 +1468,7 @@ function blobToDataUrl(blob) {
 function receiptsBlock(t) {
   const profileId = state.activeProfileId;
   const wrapper = el('section', null,
-    el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '📂 Comprovantes'),
+    el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '📂 Comprovantes'),
     el('div', { class: 'rounded border border-slate-200 bg-white p-3 space-y-3', id: `receipts-${t.id}` },
       el('div', { class: 'text-xs text-slate-500' }, 'Carregando...'),
     ),
@@ -1809,18 +1825,18 @@ async function openTournament(tid) {
       })(),
 
       el('section', null,
-        el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, 'Datas'),
+        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Datas'),
         el('p', { class: 'text-sm' }, `${t.startDate || '—'} a ${t.endDate || '—'}`),
         merged.cancelDeadline && el('p', { class: 'text-xs text-slate-500 mt-0.5' }, `Cancelamento até ${merged.cancelDeadline}`),
       ),
 
       flightInfo && flightInfo.sameCity && el('section', null,
-        el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '🏠 Deslocamento'),
+        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '🏠 Deslocamento'),
         el('p', { class: 'text-sm text-slate-700' }, `Torneio na mesma cidade do atleta (${flightInfo.origin}) — sem voo.`),
       ),
 
       flightInfo && !flightInfo.error && !flightInfo.sameCity && flightInfo.arrival && flightInfo.ret && el('section', null,
-        el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '✈ Passagens'),
+        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '✈ Passagens'),
         el('p', { class: 'text-sm mb-2' }, `${flightInfo.origin} → ${flightInfo.dest}  ·  ida ${flightInfo.arrival}, volta ${flightInfo.ret}`),
         el('div', { class: 'flex flex-wrap gap-2' },
           ...(flightInfo.links || []).map(l => el('a', {
@@ -1833,12 +1849,12 @@ async function openTournament(tid) {
       ),
 
       flightInfo?.error && el('section', null,
-        el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '✈ Passagens'),
+        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '✈ Passagens'),
         el('p', { class: 'text-xs text-slate-500' }, 'Não foi possível gerar link de busca (cidade sem aeroporto cadastrado).'),
       ),
 
       showTravelTools && merged.hotels?.length > 0 && !flightInfo?.sameCity && el('section', null,
-        el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, `🏨 Hotéis oficiais (${merged.hotels.length})`),
+        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, `🏨 Hotéis oficiais (${merged.hotels.length})`),
         el('ul', { class: 'space-y-2' },
           ...merged.hotels.map(h => el('li', { class: 'text-sm border border-slate-200 rounded p-2' },
             el('div', { class: 'font-medium' }, h.name),
@@ -1850,7 +1866,7 @@ async function openTournament(tid) {
       ),
 
       showTravelTools && merged.venues?.length > 0 && el('section', null,
-        el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '📍 Locais dos jogos'),
+        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '📍 Locais dos jogos'),
         el('ul', { class: 'space-y-2' },
           ...merged.venues.map(v => el('li', { class: 'text-sm border border-slate-200 rounded p-2' },
             el('div', { class: 'font-medium' }, v.name),
@@ -1863,7 +1879,7 @@ async function openTournament(tid) {
       observationsBlock,
 
       el('section', null,
-        el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, 'Anotações'),
+        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Anotações'),
         renderNotesForm(t.id, notes),
       ),
 
@@ -1881,7 +1897,7 @@ async function openTournament(tid) {
   const activityPanel = renderActivityPanel(t);
 
   const panel = el('div', { class: 'fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 pointer-events-none' },
-    el('div', { class: 'pointer-events-auto bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden' },
+    el('div', { class: 'pointer-events-auto bg-white text-slate-900 rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden' },
       // Header bar (dark navy like the kanban background)
       el('div', { class: 'shrink-0 bg-[#0e3a4d] text-white px-4 sm:px-5 py-3 flex items-center justify-between gap-3' },
         el('div', { class: 'flex items-center gap-2 flex-wrap min-w-0' },
@@ -1936,7 +1952,7 @@ function renderChecklist(t) {
   };
 
   const wrapper = el('section', null,
-    el('h3', { class: 'text-xs font-medium uppercase tracking-wide text-slate-500 mb-2' }, '✅ Checklist'),
+    el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '✅ Checklist'),
   );
   const list = el('ul', { class: 'space-y-1.5' });
   for (const item of CHECKLIST_ITEMS) {
