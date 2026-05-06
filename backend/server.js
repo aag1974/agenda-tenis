@@ -138,9 +138,11 @@ app.get('/api/invite/:token', (req, res) => {
   res.json({
     token: inv.token,
     inviterEmail: inviter?.email || null,
+    householdId: inv.householdId,
     label: inv.label,
     createdAt: inv.createdAt,
     expiresAt: inv.expiresAt,
+    alreadyMember: req.householdId === inv.householdId,
   });
 });
 

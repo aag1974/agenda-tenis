@@ -315,25 +315,30 @@ async function init() {
 
   if (urlInviteToken) {
     state.pendingInviteToken = urlInviteToken;
+    let info = null;
+    try { info = await api.getInvite(urlInviteToken); }
+    catch (e) { state.pendingInviteError = e.message; }
+    state.pendingInviteInfo = info;
+
     if (!state.user) {
-      try {
-        const info = await api.getInvite(urlInviteToken);
-        state.pendingInviteInfo = info;
-      } catch {}
       renderAuth();
       return;
     }
-    // Já logado — aceita imediatamente
-    try {
-      await api.acceptInvite(urlInviteToken);
-      const refreshed = await api.me();
-      state.user.householdId = refreshed.householdId;
-      state.user.members = refreshed.members || [];
+
+    // Logado: três casos
+    if (info?.alreadyMember) {
+      // Já é membro dessa household — limpa URL e segue
       window.history.replaceState({}, '', '/');
       state.pendingInviteToken = null;
-      alert('Convite aceito! Você agora vê os atletas dessa família.');
-    } catch (err) {
-      alert('Erro ao aceitar convite: ' + err.message);
+      state.pendingInviteInfo = null;
+    } else if (info) {
+      // Logado em outra conta — pergunta antes de aceitar
+      renderInviteChoice(info);
+      return;
+    } else if (state.pendingInviteError) {
+      alert('Convite inválido: ' + state.pendingInviteError);
+      window.history.replaceState({}, '', '/');
+      state.pendingInviteToken = null;
     }
   }
 
@@ -477,6 +482,65 @@ function renderAuth() {
     inputs.email.focus();
   };
   draw();
+}
+
+function renderInviteChoice(info) {
+  document.body.classList.remove('kanban-mode');
+  document.body.classList.add('auth-mode');
+  const root = $('app');
+  root.innerHTML = '';
+
+  const accept = async () => {
+    try {
+      await api.acceptInvite(info.token);
+      const refreshed = await api.me();
+      state.user.householdId = refreshed.householdId;
+      state.user.members = refreshed.members || [];
+      window.history.replaceState({}, '', '/');
+      state.pendingInviteToken = null;
+      state.pendingInviteInfo = null;
+      await init();
+    } catch (err) { alert('Erro: ' + err.message); }
+  };
+
+  const switchAccount = async () => {
+    // Mantém o token no URL pra que o próximo init() rode o fluxo de auth com banner
+    await api.logout();
+    state.user = null;
+    state.profiles = [];
+    state.activeProfileId = null;
+    state.data = null;
+    localStorage.removeItem('activeProfileId');
+    init();
+  };
+
+  const card = el('div', { class: 'w-full max-w-md bg-slate-900/40 backdrop-blur-md border border-white/15 rounded-2xl shadow-2xl p-7 space-y-5 text-white' },
+    el('div', null,
+      el('h2', { class: 'text-xl font-semibold mb-1' }, '🎾 Convite recebido'),
+      el('p', { class: 'text-sm text-white/70' },
+        info.inviterEmail ? `${info.inviterEmail} compartilhou os atletas com você.` : 'Você foi convidado a entrar numa família.',
+      ),
+    ),
+    el('div', { class: 'rounded-lg bg-white/5 border border-white/10 p-3 text-sm' },
+      el('div', { class: 'text-xs uppercase tracking-wide text-white/50 mb-1' }, 'Você está logado como'),
+      el('div', { class: 'font-medium' }, state.user.email),
+    ),
+    el('div', { class: 'flex flex-col gap-2' },
+      el('button', {
+        class: 'w-full rounded-lg bg-cyan-500 hover:bg-cyan-400 text-white font-semibold text-sm px-4 py-2.5',
+        onClick: accept,
+      }, 'Aceitar com esta conta'),
+      el('button', {
+        class: 'w-full rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2.5 border border-white/20',
+        onClick: switchAccount,
+      }, 'Sair e usar outra conta'),
+    ),
+    el('p', { class: 'text-[11px] text-white/50 text-center' },
+      'Ao aceitar, seus atletas atuais (se houver) também passam a ser vistos pelos outros membros.',
+    ),
+  );
+
+  root.appendChild(el('div', { class: 'min-h-screen flex items-center justify-center px-4 py-8' }, card));
 }
 
 async function openInviteModal() {
