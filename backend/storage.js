@@ -2,6 +2,10 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, createCipheriv, createDecipheriv, scryptSync } from 'node:crypto';
+import { COLUMNS } from './board.js';
+
+const COLUMN_LABEL_BY_ID = Object.fromEntries(COLUMNS.map(c => [c.id, c.label]));
+const labelOfColumn = (id) => COLUMN_LABEL_BY_ID[id] || id;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = join(__dirname, '..', 'data');
@@ -194,7 +198,7 @@ export function setCardColumn(profileId, tournamentId, column, { addActivity = t
     note.activity.push({
       id: newId(),
       type: 'column_change',
-      message: `Movido para "${column}"${previousColumn ? ` (de "${previousColumn}")` : ''}`,
+      message: `Movido para "${labelOfColumn(column)}"${previousColumn ? ` (de "${labelOfColumn(previousColumn)}")` : ''}`,
       createdAt: new Date().toISOString(),
       auto: false,
     });

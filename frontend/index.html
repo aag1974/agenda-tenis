@@ -61,6 +61,27 @@
     body.kanban-mode #header-bar select { background: rgba(255,255,255,0.08); color: #f1f5f9; }
     body.kanban-mode #header-bar select option { color: #0f172a; }
     .kanban-col { background: var(--ti-navy); }
+
+    /* Auth mode — login/signup screen with branded gradient */
+    body.auth-mode {
+      background: linear-gradient(135deg, var(--ti-navy-dark) 0%, var(--ti-navy) 50%, var(--ti-board-bg) 100%) !important;
+      color: #f1f5f9;
+      min-height: 100vh; min-height: 100dvh;
+    }
+    body.auth-mode #app {
+      max-width: 100vw; padding: 0;
+    }
+    /* Decorative tennis balls flutuando ao fundo */
+    body.auth-mode::before, body.auth-mode::after {
+      content: '🎾';
+      position: fixed;
+      font-size: 12rem;
+      opacity: 0.05;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body.auth-mode::before { top: -2rem; left: -2rem; transform: rotate(-15deg); }
+    body.auth-mode::after { bottom: -2rem; right: -2rem; transform: rotate(20deg); }
     .kanban-card { transition: transform 0.05s ease, box-shadow 0.05s ease; }
     .kanban-card:active { transform: scale(0.98); }
     .kanban-card .line-clamp-2 {
@@ -69,6 +90,21 @@
     }
     .sortable-ghost { opacity: 0.4; }
     .sortable-chosen { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+    /* Scrollbars invisíveis em todo o app — todo mundo sabe que rola */
+    html, body, .kanban-list, .overflow-y-auto, .overflow-x-auto, .overflow-auto {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar,
+    .kanban-list::-webkit-scrollbar,
+    .overflow-y-auto::-webkit-scrollbar,
+    .overflow-x-auto::-webkit-scrollbar,
+    .overflow-auto::-webkit-scrollbar {
+      width: 0; height: 0;
+      background: transparent;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-x-hidden">

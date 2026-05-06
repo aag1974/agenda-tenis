@@ -288,6 +288,8 @@ async function init() {
 }
 
 function renderAuth() {
+  document.body.classList.remove('kanban-mode');
+  document.body.classList.add('auth-mode');
   const root = $('app');
   root.innerHTML = '';
 
@@ -297,64 +299,99 @@ function renderAuth() {
   const draw = () => {
     root.innerHTML = '';
     const inputs = {};
-    const field = (key, label, type, placeholder) => {
-      const inp = el('input', { type, placeholder, class: 'w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500' });
+    const field = (key, label, type, placeholder, icon) => {
+      const inp = el('input', {
+        type, placeholder,
+        class: 'w-full bg-white/95 border border-white/30 text-slate-900 rounded-lg pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
+      });
       inputs[key] = inp;
       return el('label', { class: 'block' },
-        el('span', { class: 'block text-xs text-slate-500 mb-1' }, label),
-        inp,
+        el('div', { class: 'block text-xs text-white/80 mb-1.5 font-medium' }, label),
+        el('div', { class: 'relative' },
+          el('span', { class: 'absolute left-3 top-1/2 -translate-y-1/2 text-base text-slate-400 pointer-events-none' }, icon),
+          inp,
+        ),
       );
     };
-    const errorBox = el('div', { class: 'text-sm text-red-600' });
+    const errorBox = el('div', { class: 'text-sm text-red-200 bg-red-900/40 border border-red-400/30 rounded px-3 py-2', style: 'display:none' });
+    const showError = (msg) => { errorBox.textContent = msg; errorBox.style.display = 'block'; };
 
     const submit = async () => {
-      errorBox.textContent = '';
+      errorBox.style.display = 'none';
       const email = inputs.email.value.trim();
       const password = inputs.password.value;
-      if (!email || !password) { errorBox.textContent = 'Email e senha são obrigatórios'; return; }
+      if (!email || !password) { showError('Email e senha são obrigatórios'); return; }
+      submitBtn.disabled = true;
+      submitBtn.textContent = mode === 'signup' ? 'Criando…' : 'Entrando…';
       try {
         if (mode === 'signup') await api.signup(email, password);
         else await api.login(email, password);
         await init();
-      } catch (e) { errorBox.textContent = e.message; }
+      } catch (e) {
+        showError(e.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = mode === 'signup' ? 'Criar conta' : 'Entrar';
+      }
     };
 
-    root.appendChild(el('div', { class: 'max-w-md mx-auto mt-12' },
-      el('div', { class: 'flex items-center gap-3 mb-6' },
-        el('span', { class: 'text-3xl' }, '🎾'),
-        el('h1', { class: 'text-2xl font-semibold' }, 'Agenda Tênis Integrado'),
+    const submitBtn = el('button', {
+      class: 'w-full rounded-lg bg-cyan-500 hover:bg-cyan-400 text-white font-semibold text-sm px-4 py-2.5 transition-colors disabled:opacity-60',
+      onClick: submit,
+    }, mode === 'signup' ? 'Criar conta' : 'Entrar');
+
+    // Enter no input dispara submit
+    const onEnter = (e) => { if (e.key === 'Enter') submit(); };
+
+    const card = el('div', { class: 'w-full max-w-sm bg-slate-900/40 backdrop-blur-md border border-white/15 rounded-2xl shadow-2xl p-7 space-y-5' },
+      el('div', { class: 'space-y-1' },
+        el('h2', { class: 'text-xl font-semibold text-white' }, mode === 'signup' ? 'Criar conta' : 'Entrar'),
+        el('p', { class: 'text-xs text-white/60' },
+          isFirstUser && mode === 'signup'
+            ? 'Primeira instalação — esta conta vira a "dona" do app.'
+            : (mode === 'signup' ? 'Crie sua conta pra começar.' : 'Bem-vindo de volta.'),
+        ),
       ),
 
-      el('div', { class: 'bg-white rounded-lg border border-slate-200 p-6 space-y-4' },
-        el('h2', { class: 'text-lg font-semibold' }, mode === 'signup' ? 'Criar conta' : 'Entrar'),
+      field('email', 'Email', 'email', 'voce@email.com', '✉'),
+      field('password', mode === 'signup' ? 'Senha (mín. 6 caracteres)' : 'Senha', 'password', '••••••••', '🔒'),
 
-        isFirstUser && mode === 'signup' && el('p', { class: 'text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-2' },
-          'Primeira instalação detectada. Esta conta será associada a perfis existentes.'
-        ),
+      errorBox,
 
-        field('email', 'Email', 'email', 'voce@email.com'),
-        field('password', mode === 'signup' ? 'Senha (mínimo 6 caracteres)' : 'Senha', 'password', '••••••••'),
+      submitBtn,
 
-        errorBox,
-
+      !isFirstUser && el('div', { class: 'text-center text-xs text-white/70' },
+        mode === 'signup' ? 'Já tem conta? ' : 'Ainda não tem conta? ',
         el('button', {
-          class: 'w-full rounded bg-emerald-600 text-white text-sm px-4 py-2 hover:bg-emerald-700',
-          onClick: submit,
-        }, mode === 'signup' ? 'Criar conta' : 'Entrar'),
+          class: 'text-cyan-300 hover:text-cyan-200 underline-offset-2 hover:underline font-medium',
+          onClick: () => { mode = mode === 'signup' ? 'login' : 'signup'; draw(); },
+        }, mode === 'signup' ? 'Entrar' : 'Criar conta'),
+      ),
+    );
 
-        !isFirstUser && el('div', { class: 'text-center text-sm text-slate-500' },
-          mode === 'signup' ? 'Já tem conta? ' : 'Não tem conta? ',
-          el('button', {
-            class: 'text-emerald-700 hover:underline',
-            onClick: () => { mode = mode === 'signup' ? 'login' : 'signup'; draw(); },
-          }, mode === 'signup' ? 'Entrar' : 'Criar conta'),
+    inputs.email.addEventListener('keydown', onEnter);
+    inputs.password.addEventListener('keydown', onEnter);
+
+    root.appendChild(el('div', { class: 'min-h-screen flex flex-col items-center justify-center px-4 py-8' },
+      // Logo + tagline
+      el('div', { class: 'mb-8 text-center select-none' },
+        el('div', { class: 'inline-flex items-center gap-3 mb-2' },
+          el('span', { class: 'text-4xl' }, '🎾'),
+          el('span', { class: 'text-3xl font-bold tracking-tight' },
+            el('span', { class: 'text-white' }, 'Tennis'),
+            el('span', { class: 'text-cyan-300 ml-1' }, 'Flow'),
+          ),
+        ),
+        el('p', { class: 'text-sm text-white/70 mt-1' },
+          'Organize a agenda de torneios da família atleta',
         ),
       ),
-
-      el('p', { class: 'mt-4 text-xs text-slate-500 text-center' },
-        'Senhas armazenadas com criptografia. Suas credenciais do Tênis Integrado ficam isoladas por usuário.'
+      card,
+      el('p', { class: 'mt-6 text-[11px] text-white/50 text-center max-w-xs' },
+        '🔒 Senhas criptografadas. Credenciais do Tênis Integrado isoladas por usuário.',
       ),
     ));
+
+    inputs.email.focus();
   };
   draw();
 }
@@ -396,8 +433,8 @@ async function pollSyncStatus() {
 function render() {
   const root = $('app');
   root.innerHTML = '';
-  // Reset kanban mode — renderKanban re-adds it when needed.
-  document.body.classList.remove('kanban-mode');
+  // Reset modes — renderKanban / renderAuth re-adicionam quando precisam
+  document.body.classList.remove('kanban-mode', 'auth-mode');
   root.appendChild(renderHeaderEl());
 
   if (!state.activeProfileId) {
@@ -585,7 +622,7 @@ function renderKanban(allTournaments) {
 
 function renderKanbanColumn(col, cards) {
   const list = el('div', {
-    class: 'kanban-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-2 pb-6',
+    class: 'kanban-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-2 pb-10',
     'data-column': col.id,
   });
   for (const t of cards) list.appendChild(renderKanbanCard(t));
@@ -1064,20 +1101,61 @@ function showSyncStatus() {
     const d = new Date(iso);
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
+
+  let dot, title, detail;
   if (ss?.state === 'running') {
-    alert('🟡 Sincronizando agora…');
+    dot = 'bg-amber-400';
+    title = 'Sincronizando agora…';
+    detail = 'Aguarde — buscando dados atualizados no Tênis Integrado.';
+    openSyncModal({ dot, title, detail, runningOnly: true });
     return;
   }
-  let header;
   if (ss?.state === 'error') {
-    header = `🔴 Última sincronização falhou\n\nErro: ${ss.error || 'desconhecido'}` +
-             (lastSync ? `\n\nÚltima OK: ${fmtBR(lastSync)}` : '');
+    dot = 'bg-rose-500';
+    title = 'Última sincronização falhou';
+    detail = `Erro: ${ss.error || 'desconhecido'}` + (lastSync ? `\nÚltima OK: ${fmtBR(lastSync)}` : '');
   } else if (lastSync) {
-    header = `🟢 Sincronizado em\n${fmtBR(lastSync)}`;
+    dot = 'bg-emerald-500';
+    title = 'Sincronizado';
+    detail = fmtBR(lastSync);
   } else {
-    header = '⚫ Ainda não sincronizou.';
+    dot = 'bg-slate-400';
+    title = 'Ainda não sincronizou';
+    detail = 'Clique abaixo pra puxar os torneios pela primeira vez.';
   }
-  if (confirm(`${header}\n\nSincronizar agora?`)) syncNow();
+  openSyncModal({ dot, title, detail });
+}
+
+function openSyncModal({ dot, title, detail, runningOnly = false }) {
+  const root = $('modal-root');
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden',
+  },
+    el('div', { class: 'bg-[#0e3a4d] text-white px-5 py-3 flex items-center gap-2' },
+      el('span', { class: `inline-block w-3 h-3 rounded-full ${dot}` }),
+      el('span', { class: 'font-medium' }, 'Sincronização'),
+    ),
+    el('div', { class: 'px-5 py-4' },
+      el('h3', { class: 'text-base font-semibold text-slate-900' }, title),
+      detail && el('p', { class: 'text-sm text-slate-600 mt-1 whitespace-pre-line' }, detail),
+    ),
+    el('div', { class: 'px-5 pb-4 flex justify-end gap-2' },
+      el('button', {
+        type: 'button',
+        class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-100',
+        onClick: close,
+      }, runningOnly ? 'Fechar' : 'Cancelar'),
+      !runningOnly && el('button', {
+        type: 'button',
+        class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
+        onClick: () => { close(); syncNow(); },
+      }, 'Sincronizar agora'),
+    ),
+  );
+  root.appendChild(overlay);
+  root.appendChild(card);
 }
 
 function toggleGearMenu() {
@@ -1333,7 +1411,7 @@ function openAthleteCard() {
 
   // Modal frame
   const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-40', onClick: close });
-  const content = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 max-h-[90vh] overflow-y-auto bg-white sm:rounded-2xl rounded-t-2xl z-50 max-w-xl w-full p-5 shadow-xl' },
+  const content = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 max-h-[90vh] overflow-y-auto bg-white text-slate-900 sm:rounded-2xl rounded-t-2xl z-50 max-w-xl w-full p-5 shadow-xl' },
     el('div', { class: 'flex items-center justify-between mb-3' },
       el('h2', { class: 'text-lg font-semibold' }, '👤 Sobre o atleta'),
       el('button', { class: 'text-slate-400 hover:text-slate-700 text-2xl leading-none px-2', onClick: close }, '×'),
@@ -1351,7 +1429,7 @@ function openCalendarSetup() {
   root.innerHTML = '';
   const close = () => { root.innerHTML = ''; };
   const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-40', onClick: close });
-  const content = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 max-h-[90vh] overflow-y-auto bg-white sm:rounded-2xl rounded-t-2xl z-50 max-w-xl w-full p-5 shadow-xl' },
+  const content = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 max-h-[90vh] overflow-y-auto bg-white text-slate-900 sm:rounded-2xl rounded-t-2xl z-50 max-w-xl w-full p-5 shadow-xl' },
     el('div', { class: 'flex items-center justify-between mb-3' },
       el('h2', { class: 'text-lg font-semibold' }, '📅 Conectar com calendário'),
       el('button', { class: 'text-slate-400 hover:text-slate-700 text-2xl leading-none px-2', onClick: close }, '×'),
@@ -1958,10 +2036,6 @@ async function openTournament(tid) {
       renderChecklist(t),
 
       receiptsBlock(t),
-
-      !isFuture && t.url && el('div', { class: 'pt-4 border-t border-slate-200 flex gap-3' },
-        el('a', { href: t.url, target: '_blank', rel: 'noopener', class: 'text-sm text-slate-600 hover:underline' }, 'Ver no Tênis Integrado ↗'),
-      ),
   );
 
   // Activity panel (right sidebar on md+, stacked below on mobile)
@@ -1984,7 +2058,14 @@ async function openTournament(tid) {
         el('div', { class: 'flex items-center gap-2 mb-1.5 flex-wrap' },
           statusBadge,
         ),
-        el('h2', { class: 'text-lg font-semibold leading-snug' }, t.name),
+        el('div', { class: 'flex items-start gap-3' },
+          el('h2', { class: 'text-lg font-semibold leading-snug flex-1 min-w-0' }, t.name),
+          t.url && el('a', {
+            href: t.url, target: '_blank', rel: 'noopener',
+            class: 'shrink-0 text-xs text-slate-600 hover:text-slate-900 hover:underline whitespace-nowrap mt-1',
+            title: 'Abrir no Tênis Integrado',
+          }, 'Ver no Tênis Integrado ↗'),
+        ),
         el('p', { class: 'text-sm text-slate-600' }, [t.city, t.state].filter(Boolean).join(' / ') || ''),
       ),
       // Body: 2-column on md+, stacked on small
