@@ -466,8 +466,11 @@ function renderAuth() {
         ),
       ),
       card,
-      el('p', { class: 'mt-6 text-[11px] text-white/50 text-center max-w-xs' },
-        '🔒 Senhas criptografadas. Credenciais do Tênis Integrado isoladas por usuário.',
+      el('div', { class: 'mt-6 text-[11px] text-white/50 text-center max-w-sm space-y-1' },
+        el('p', null, 'Desenvolvido por Alexandre Garcia · ',
+          el('a', { href: 'mailto:alexopiniao@gmail.com', class: 'text-white/70 hover:text-white underline-offset-2 hover:underline' }, 'alexopiniao@gmail.com'),
+        ),
+        el('p', null, 'Sem vínculo com o Tênis Integrado. Sugestões são bem-vindas.'),
       ),
     ));
 
