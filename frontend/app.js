@@ -161,6 +161,12 @@ const state = {
       return Array.isArray(v) ? v : null;
     } catch { return null; }
   })(),
+  columnLabels: (() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('columnLabels') || '{}');
+      return v && typeof v === 'object' ? v : {};
+    } catch { return {}; }
+  })(),
 };
 
 const api = {
@@ -175,6 +181,11 @@ const api = {
   },
   async revokeInvite(token) {
     return fetch('/api/household/invites/' + token, { method: 'DELETE' });
+  },
+  async removeMember(userId) {
+    const r = await fetch('/api/household/members/' + userId, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
   },
   async getInvite(token) {
     const r = await fetch('/api/invite/' + token);
@@ -511,13 +522,26 @@ async function openInviteModal() {
     const meRes = await api.me();
     state.user.members = meRes.members || [];
     if (state.user.members.length > 1) {
+      const isFounder = !!state.user.members.find(m => m.id === state.user.id && m.isFounder);
       body.appendChild(el('div', { class: 'pt-3 border-t border-slate-200' },
         el('h4', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2' }, 'Membros atuais'),
         el('ul', { class: 'space-y-1' },
-          ...state.user.members.map(m => el('li', { class: 'flex items-center gap-2 text-sm' },
+          ...state.user.members.map(m => el('li', { class: 'flex items-center gap-2 text-sm py-1' },
             el('span', { class: 'w-7 h-7 rounded-full bg-cyan-600 text-white text-[10px] font-semibold flex items-center justify-center shrink-0' }, userInitials(m.email || m.name)),
-            el('span', { class: 'truncate' }, m.email || m.name || 'membro'),
-            m.id === state.user.id && el('span', { class: 'text-xs text-slate-400' }, '(você)'),
+            el('span', { class: 'truncate flex-1' }, m.email || m.name || 'membro'),
+            m.id === state.user.id && el('span', { class: 'text-xs text-slate-400' }, 'você'),
+            m.isFounder && m.id !== state.user.id && el('span', { class: 'text-xs text-slate-400' }, 'dono'),
+            isFounder && !m.isFounder && el('button', {
+              class: 'text-xs text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded',
+              title: 'Remover acesso',
+              onClick: async () => {
+                if (!confirm(`Remover ${m.email} da família?\n\nEla perde acesso aos atletas. Os atletas que ela criou aqui permanecem.`)) return;
+                try {
+                  await api.removeMember(m.id);
+                  await renderBody();
+                } catch (err) { alert('Erro: ' + err.message); }
+              },
+            }, 'Remover'),
           )),
         ),
       ));
@@ -811,6 +835,31 @@ function renderKanban(allTournaments) {
   return container;
 }
 
+function renderEditableColumnLabel(col) {
+  const current = state.columnLabels[col.id] || col.label;
+  const span = el('span', {
+    class: 'truncate cursor-text px-1 -mx-1 rounded hover:bg-white/10 outline-none',
+    contenteditable: 'true',
+    spellcheck: 'false',
+    title: 'Clique pra renomear',
+  }, current);
+  // Impede que o drag da coluna inicie quando o usuário clica pra editar
+  span.addEventListener('mousedown', (e) => e.stopPropagation());
+  span.addEventListener('click', (e) => e.stopPropagation());
+  span.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); span.blur(); }
+    if (e.key === 'Escape') { span.textContent = current; span.blur(); }
+  });
+  span.addEventListener('blur', () => {
+    const next = span.textContent.trim();
+    if (!next || next === current) { span.textContent = current; return; }
+    if (next === col.label) delete state.columnLabels[col.id];
+    else state.columnLabels[col.id] = next.slice(0, 40);
+    localStorage.setItem('columnLabels', JSON.stringify(state.columnLabels));
+  });
+  return span;
+}
+
 function renderKanbanColumn(col, cards) {
   const list = el('div', {
     class: 'kanban-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-2',
@@ -831,9 +880,9 @@ function renderKanbanColumn(col, cards) {
   },
     // Header da coluna — fixo no topo, serve de handle pra drag-drop
     el('div', { class: 'kanban-col-header shrink-0 px-3 py-2 flex items-center justify-between gap-2 border-b border-white/10 cursor-grab hover:bg-white/5' },
-      el('div', { class: 'flex items-center gap-2 font-medium text-sm min-w-0' },
-        el('span', { class: 'text-base' }, col.icon),
-        el('span', { class: 'truncate' }, col.label),
+      el('div', { class: 'flex items-center gap-2 font-medium text-sm min-w-0 flex-1' },
+        el('span', { class: 'text-base shrink-0' }, col.icon),
+        renderEditableColumnLabel(col),
       ),
       el('div', { class: 'flex items-center gap-1.5 shrink-0' },
         el('button', {
@@ -1476,10 +1525,7 @@ function toggleGearMenu() {
       class: 'w-full flex items-center justify-between gap-2 text-left rounded px-2 py-1.5 hover:bg-slate-100',
       onClick: () => { state.athleteSwitcherOpen = !state.athleteSwitcherOpen; reopen(); },
     },
-      el('span', { class: 'flex items-center gap-2 min-w-0' },
-        el('span', { class: 'text-base shrink-0' }, '👤'),
-        el('span', { class: 'text-sm font-medium text-slate-900 truncate' }, profile.athleteName || profile.tiEmail || 'Atleta'),
-      ),
+      el('span', { class: 'text-sm font-medium text-slate-900 truncate' }, profile.athleteName || profile.tiEmail || 'Atleta'),
       el('span', { class: 'text-xs text-slate-400 shrink-0' }, state.athleteSwitcherOpen ? '▴' : '▾'),
     ),
     state.athleteSwitcherOpen && el('div', { class: 'mt-1 space-y-0.5' },
@@ -1507,13 +1553,13 @@ function toggleGearMenu() {
 
   // Separa as ações em "Atleta" e "Conta" pra deixar mais organizado
   const athleteActions = profile ? [
-    { label: '👤 Sobre o atleta', onClick: () => openAthleteCard() },
-    { label: '📅 Conectar agenda', onClick: () => openCalendarSetup() },
-    { label: '✏️  Editar perfil', onClick: () => openProfileForm(profile) },
+    { label: 'Sobre o atleta', onClick: () => openAthleteCard() },
+    { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
+    { label: 'Editar atleta', onClick: () => openProfileForm(profile) },
   ] : [];
   const accountActions = state.user ? [
-    { label: '👥 Convidar membro', onClick: () => openInviteModal() },
-    { label: '🚪 Sair', onClick: () => logout() },
+    { label: 'Convidar membro', onClick: () => openInviteModal() },
+    { label: 'Sair', onClick: () => logout() },
   ] : [];
 
   const menu = el('div', {
@@ -2576,32 +2622,39 @@ function openProfileForm(profile = null) {
   const root = $('modal-root');
   root.innerHTML = '';
   const close = () => { root.innerHTML = ''; };
-  const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-40', onClick: close });
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
 
   const isEdit = !!profile;
   const inputs = {};
-  const field = (key, label, type = 'text', value = '') => {
-    const inp = el('input', { type, class: 'w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500' });
-    inp.value = value;
+  const field = (key, label, type, value, placeholder) => {
+    const inp = el('input', {
+      type, placeholder: placeholder || '',
+      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400',
+    });
+    inp.value = value || '';
     inputs[key] = inp;
     return el('label', { class: 'block' },
-      el('span', { class: 'block text-xs text-slate-500 mb-1' }, label),
+      el('span', { class: 'block text-xs text-slate-600 mb-1 font-medium' }, label),
       inp,
     );
   };
 
-  const errorBox = el('div', { class: 'text-sm text-red-600' });
+  const errorBox = el('div', { class: 'text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded px-3 py-2', style: 'display:none' });
+  const showError = (msg) => { errorBox.textContent = msg; errorBox.style.display = 'block'; };
+
   const submit = async () => {
-    errorBox.textContent = '';
+    errorBox.style.display = 'none';
     const body = {
-      athleteName: inputs.athleteName.value.trim() || null,
       tiEmail: inputs.tiEmail.value.trim(),
       tiPassword: inputs.tiPassword.value,
       originAirport: inputs.originAirport.value.trim().toUpperCase() || 'BSB',
       originCity: inputs.originCity.value.trim() || 'Brasília',
     };
-    if (!body.tiEmail) { errorBox.textContent = 'Email é obrigatório'; return; }
-    if (!isEdit && !body.tiPassword) { errorBox.textContent = 'Senha é obrigatória'; return; }
+    if (isEdit) body.athleteName = profile.athleteName;
+    if (!body.tiEmail) { showError('Email do Tênis Integrado é obrigatório'); return; }
+    if (!isEdit && !body.tiPassword) { showError('Senha do Tênis Integrado é obrigatória'); return; }
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Salvando…';
     try {
       if (isEdit) {
         const patch = { ...body };
@@ -2619,26 +2672,43 @@ function openProfileForm(profile = null) {
       await refreshActive();
       render();
     } catch (e) {
-      errorBox.textContent = e.message;
+      showError(e.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = isEdit ? 'Salvar' : 'Adicionar atleta';
     }
   };
 
-  const panel = el('div', { class: 'fixed inset-0 z-50 flex items-center justify-center p-4' },
-    el('div', { class: 'bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-3' },
-      el('h2', { class: 'text-lg font-semibold' }, isEdit ? 'Editar perfil' : 'Adicionar atleta'),
-      el('p', { class: 'text-xs text-slate-500' }, 'As credenciais do Tênis Integrado são guardadas localmente e criptografadas.'),
-      field('athleteName', 'Nome do atleta (descoberto no login)', 'text', profile?.athleteName || ''),
-      field('tiEmail', 'Email/login do Tênis Integrado', 'email', profile?.tiEmail || ''),
-      field('tiPassword', isEdit ? 'Nova senha (em branco mantém)' : 'Senha do Tênis Integrado', 'password'),
-      el('div', { class: 'grid grid-cols-2 gap-2' },
-        field('originCity', 'Cidade de origem', 'text', profile?.originCity || 'Brasília'),
-        field('originAirport', 'Aeroporto (IATA)', 'text', profile?.originAirport || 'BSB'),
+  const submitBtn = el('button', {
+    class: 'text-sm px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold disabled:opacity-60',
+    onClick: submit,
+  }, isEdit ? 'Salvar' : 'Adicionar atleta');
+
+  const panel = el('div', { class: 'fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none' },
+    el('div', { class: 'pointer-events-auto bg-white text-slate-900 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[90vh]' },
+      el('div', { class: 'shrink-0 bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
+        el('h3', { class: 'font-medium' }, isEdit ? '✏️ Editar atleta' : '🎾 Adicionar atleta'),
+        el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
       ),
-      errorBox,
-      el('div', { class: 'flex justify-between pt-2' },
+      el('div', { class: 'flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3' },
+        el('p', { class: 'text-xs text-slate-600' },
+          'Vamos buscar os torneios direto no Tênis Integrado. Suas credenciais ficam criptografadas no servidor.',
+        ),
+        field('tiEmail', 'Email do Tênis Integrado', 'email', profile?.tiEmail, 'voce@email.com'),
+        field('tiPassword', isEdit ? 'Nova senha (em branco mantém)' : 'Senha do Tênis Integrado', 'password', '', '••••••••'),
+        el('div', { class: 'pt-1' },
+          el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2' }, 'Origem do atleta'),
+          el('div', { class: 'grid grid-cols-2 gap-2' },
+            field('originCity', 'Cidade', 'text', profile?.originCity || 'Brasília', 'Brasília'),
+            field('originAirport', 'Aeroporto (IATA)', 'text', profile?.originAirport || 'BSB', 'BSB'),
+          ),
+          el('p', { class: 'text-[11px] text-slate-500 mt-1' }, 'Usado pra calcular distância e busca de passagens.'),
+        ),
+        errorBox,
+      ),
+      el('div', { class: 'shrink-0 px-5 py-3 border-t border-slate-200 flex items-center justify-between bg-slate-50' },
         isEdit
-          ? el('button', { class: 'text-sm text-red-600 hover:underline', onClick: async () => {
-              if (!confirm('Excluir este perfil e todos os dados?')) return;
+          ? el('button', { class: 'text-sm text-rose-700 hover:underline', onClick: async () => {
+              if (!confirm('Excluir este atleta e todos os dados?')) return;
               await api.deleteProfile(profile.id);
               state.profiles = await api.listProfiles();
               if (state.activeProfileId === profile.id) {
@@ -2650,11 +2720,11 @@ function openProfileForm(profile = null) {
               state.data = null;
               render();
               if (state.activeProfileId) { await refreshActive(); render(); }
-            } }, 'Excluir perfil')
+            } }, 'Excluir atleta')
           : el('span'),
         el('div', { class: 'flex gap-2' },
-          el('button', { class: 'text-sm px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-100', onClick: close }, 'Cancelar'),
-          el('button', { class: 'text-sm px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700', onClick: submit }, isEdit ? 'Salvar' : 'Criar'),
+          el('button', { class: 'text-sm px-3 py-2 rounded-lg border border-slate-300 hover:bg-slate-100', onClick: close }, 'Cancelar'),
+          submitBtn,
         ),
       ),
     ),
@@ -2662,6 +2732,7 @@ function openProfileForm(profile = null) {
 
   root.appendChild(overlay);
   root.appendChild(panel);
+  setTimeout(() => inputs.tiEmail.focus(), 0);
 }
 
 

@@ -61,7 +61,32 @@ export function listHouseholdMembers(householdId) {
   const users = readJson(USERS_FILE, []);
   return users
     .filter(u => u.householdId === householdId)
-    .map(u => ({ id: u.id, email: u.email, name: u.name || null, joinedAt: u.householdJoinedAt || u.createdAt }));
+    .map(u => ({
+      id: u.id, email: u.email, name: u.name || null,
+      joinedAt: u.householdJoinedAt || u.createdAt,
+      isFounder: u.id === householdId,
+    }));
+}
+
+// Remove um membro da household — volta a ser household solo (id própria).
+// Só o "fundador" (user cujo id === householdId) pode remover.
+// Os perfis (atletas) permanecem no household original.
+export function removeHouseholdMember({ householdId, requesterId, targetUserId }) {
+  if (requesterId !== householdId) {
+    throw new Error('Apenas o dono da família pode remover membros');
+  }
+  if (targetUserId === householdId) {
+    throw new Error('O dono não pode se remover; transfira a propriedade primeiro');
+  }
+  const users = readJson(USERS_FILE, []);
+  const target = users.find(u => u.id === targetUserId);
+  if (!target) throw new Error('Membro não encontrado');
+  if (target.householdId !== householdId) throw new Error('Membro não pertence à família');
+  target.householdId = target.id;
+  target.householdLeftAt = new Date().toISOString();
+  delete target.householdJoinedAt;
+  writeJson(USERS_FILE, users);
+  return { id: target.id, email: target.email };
 }
 
 // Verifica se um perfil pertence à household. Profiles sem householdId

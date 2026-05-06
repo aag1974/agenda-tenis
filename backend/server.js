@@ -29,6 +29,7 @@ import {
 import {
   migrateHouseholdsOnBoot, listHouseholdMembers, profileBelongsToHousehold,
   createInvite, getInvite, listInvitesByHousehold, revokeInvite, acceptInvite,
+  removeHouseholdMember,
 } from './household.js';
 
 migrateHouseholdsOnBoot();
@@ -94,6 +95,19 @@ app.post('/api/auth/logout', (req, res) => {
 // ===== Household / convites =====
 app.get('/api/household/members', requireAuth, (req, res) => {
   res.json({ members: listHouseholdMembers(req.householdId) });
+});
+
+app.delete('/api/household/members/:userId', requireAuth, (req, res) => {
+  try {
+    const result = removeHouseholdMember({
+      householdId: req.householdId,
+      requesterId: req.userId,
+      targetUserId: req.params.userId,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(403).json({ error: err.message });
+  }
 });
 
 app.get('/api/household/invites', requireAuth, (req, res) => {
