@@ -622,7 +622,7 @@ function renderKanban(allTournaments) {
 
 function renderKanbanColumn(col, cards) {
   const list = el('div', {
-    class: 'kanban-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-2 pb-10',
+    class: 'kanban-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-2',
     'data-column': col.id,
   });
   for (const t of cards) list.appendChild(renderKanbanCard(t));
@@ -659,6 +659,9 @@ function renderKanbanColumn(col, cards) {
       ),
     ),
     list,
+    // Footer fixo — mantém uma faixa azul visível no fim da coluna,
+    // do mesmo tamanho do gap entre cards (8px).
+    el('div', { class: 'shrink-0 h-2' }),
   );
 }
 
