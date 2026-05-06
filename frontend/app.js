@@ -1763,57 +1763,85 @@ function openCalendarSetup() {
   const root = $('modal-root');
   root.innerHTML = '';
   const close = () => { root.innerHTML = ''; };
-  const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-40', onClick: close });
-  const content = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 max-h-[90vh] overflow-y-auto bg-white text-slate-900 sm:rounded-2xl rounded-t-2xl z-50 max-w-xl w-full p-5 shadow-xl' },
-    el('div', { class: 'flex items-center justify-between mb-3' },
-      el('h2', { class: 'text-lg font-semibold' }, '📅 Conectar com calendário'),
-      el('button', { class: 'text-slate-400 hover:text-slate-700 text-2xl leading-none px-2', onClick: close }, '×'),
-    ),
-    renderCalendarSetupBody(profile),
-  );
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden',
+  });
+  card.appendChild(el('div', { class: 'shrink-0 bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
+    el('h3', { class: 'font-medium' }, 'Conectar agenda'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  ));
+  const body = el('div', { class: 'flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4' });
+  card.appendChild(body);
+  body.appendChild(el('p', { class: 'text-sm text-slate-600' }, 'Carregando…'));
   root.appendChild(overlay);
-  root.appendChild(content);
-}
+  root.appendChild(card);
 
-function renderCalendarSetupBody(profile) {
-  const wrapper = el('div', { class: 'space-y-3' });
   (async () => {
     let token = profile.calendarToken;
     if (!token) {
-      const r = await fetch(`/api/profiles/${profile.id}/calendar-token`);
-      token = (await r.json()).token;
-      profile.calendarToken = token;
+      try {
+        const r = await fetch(`/api/profiles/${profile.id}/calendar-token`);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        token = (await r.json()).token;
+        profile.calendarToken = token;
+      } catch (err) {
+        body.innerHTML = '';
+        body.appendChild(el('p', { class: 'text-sm text-rose-700' }, 'Erro ao gerar link da agenda: ' + err.message));
+        return;
+      }
     }
     const httpUrl = `${location.protocol}//${location.host}/calendar/${token}.ics`;
     const webcalUrl = `webcal://${location.host}/calendar/${token}.ics`;
     const starredCount = (state.data?.tournaments || []).filter(t => t.notes?.selected).length;
 
-    wrapper.innerHTML = '';
-    wrapper.appendChild(el('p', { class: 'text-sm text-slate-700' },
-      `Faça uma vez. Sua agenda nativa puxa as atualizações sozinha. Inclui ${starredCount} torneio${starredCount === 1 ? '' : 's'} marcado${starredCount === 1 ? '' : 's'} ⭐.`,
+    body.innerHTML = '';
+    body.appendChild(el('p', { class: 'text-sm text-slate-700' },
+      `Conecte uma vez — a agenda atualiza sozinha. Inclui ${starredCount} torneio${starredCount === 1 ? '' : 's'} marcado${starredCount === 1 ? '' : 's'} com ⭐.`,
     ));
-    wrapper.appendChild(el('div', { class: 'flex flex-col gap-2' },
-      el('a', {
-        href: webcalUrl,
-        class: 'text-center bg-emerald-600 text-white text-sm px-4 py-2.5 rounded hover:bg-emerald-700',
-      }, '📅 Adicionar ao Apple Calendar'),
+
+    // Botões grandes
+    body.appendChild(el('div', { class: 'flex flex-col gap-2' },
       el('a', {
         href: `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(httpUrl)}`,
         target: '_blank', rel: 'noopener',
-        class: 'text-center bg-white border border-slate-300 text-slate-700 text-sm px-4 py-2.5 rounded hover:bg-slate-100',
-      }, '🌐 Adicionar ao Google Calendar'),
-      el('button', {
-        class: 'text-center bg-white border border-slate-300 text-slate-700 text-sm px-4 py-2.5 rounded hover:bg-slate-100',
-        onClick: async () => { try { await navigator.clipboard.writeText(httpUrl); alert('URL copiada!'); } catch { alert('Falha ao copiar'); } },
-      }, '📋 Copiar URL'),
+        class: 'text-center bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg',
+      }, 'Inscrever no Google Calendar'),
+      el('a', {
+        href: webcalUrl,
+        class: 'text-center bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-sm font-medium px-4 py-2.5 rounded-lg',
+      }, 'Inscrever no Apple Calendar'),
     ));
-    wrapper.appendChild(el('div', { class: 'text-xs text-slate-500 space-y-1 pt-2 border-t border-slate-100' },
-      el('p', null, '• 🎾 Eventos de torneio têm alarme 7 dias antes.'),
-      el('p', null, '• 💰 Eventos de boleto têm alarme 1 dia antes.'),
-      el('p', null, '• Pra editar a frequência de atualização no iPhone: Ajustes → Calendário → Contas → Inscritos.'),
+
+    // URL pra copiar (Outlook, Yahoo, ou qualquer app)
+    const urlInput = el('input', {
+      type: 'text', value: httpUrl, readonly: 'readonly',
+      class: 'flex-1 text-xs bg-slate-50 border border-slate-300 rounded px-2 py-1.5 font-mono',
+      onClick: (e) => e.target.select(),
+    });
+    const copyBtn = el('button', {
+      type: 'button',
+      class: 'shrink-0 text-xs rounded bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5',
+      onClick: async () => {
+        try {
+          await navigator.clipboard.writeText(httpUrl);
+          copyBtn.textContent = 'Copiado!';
+          setTimeout(() => copyBtn.textContent = 'Copiar', 1500);
+        } catch { urlInput.select(); document.execCommand('copy'); }
+      },
+    }, 'Copiar');
+    body.appendChild(el('div', { class: 'pt-2 border-t border-slate-200' },
+      el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5' }, 'Outro app de agenda?'),
+      el('div', { class: 'flex items-center gap-2' }, urlInput, copyBtn),
+      el('p', { class: 'text-[11px] text-slate-500 mt-1' }, 'Cole essa URL na opção "Inscrever em calendário" do seu app (Outlook, Yahoo, Fantastical, etc).'),
+    ));
+
+    body.appendChild(el('ul', { class: 'text-xs text-slate-500 space-y-1 pt-2 border-t border-slate-100 list-disc pl-4' },
+      el('li', null, 'Torneios marcados com ⭐ entram com alarme 7 dias antes.'),
+      el('li', null, 'Boletos pendentes entram com alarme 1 dia antes.'),
+      el('li', null, 'No iPhone: Ajustes → Calendário → Contas → Inscritos pra ajustar a frequência de atualização.'),
     ));
   })();
-  return wrapper;
 }
 
 async function syncNow() {
