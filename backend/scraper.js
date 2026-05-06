@@ -8,6 +8,16 @@ const BASE = 'https://www.tenisintegrado.com.br';
 const JUVENIL_CATEGORY = 2;
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
 
+// TI category IDs as exposed in /new_torneio/index2/{categoryId}/...
+// Maps a regex (matched against rankings text on profile) to a category id.
+export const TI_CATEGORIES = [
+  { id: 2,  name: 'Juvenil',       match: /Juvenil/i },
+  { id: 17, name: 'Profissional',  match: /Profissional/i },
+  { id: 5,  name: 'Senior',        match: /\bSenior\b/i },
+  { id: 24, name: 'Beach Tennis',  match: /Beach\s*Tennis/i },
+  { id: 29, name: 'Tennis Kids',   match: /Tennis\s*Kids|Mini\s*T[eê]nis/i },
+];
+
 function extractTier(name) {
   if (!name) return null;
   if (/\bG1\+/.test(name)) return 'G1+';
@@ -129,6 +139,17 @@ async function getAthleteInfo(client) {
     });
   }
 
+  // Detect TI categories where the athlete has a ranking entry.
+  // Looks for text patterns near "Ranking" lines.
+  const detectedCategories = [];
+  // Slice the body text around "Ranking" occurrences and check keywords
+  const rankingMentions = [...bodyText.matchAll(/Ranking[\s\S]{0,120}/gi)].map(m => m[0]);
+  for (const cat of TI_CATEGORIES) {
+    if (rankingMentions.some(snippet => cat.match.test(snippet))) {
+      detectedCategories.push(cat.id);
+    }
+  }
+
   return {
     name: name || 'Atleta',
     tournamentIds: [...tournamentIds],
@@ -138,6 +159,7 @@ async function getAthleteInfo(client) {
     about,
     hand,
     rankings,
+    detectedCategories,
   };
 }
 
@@ -426,7 +448,28 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
     pendingPayments[i].boletoUrl = boletoUrls[i] || null;
   }
 
-  const catalog = await fetchCatalog(client, { category: JUVENIL_CATEGORY });
+  // Determine which categories to fetch:
+  // 1. Categories detected on the athlete's profile (rankings)
+  // 2. Fallback: Juvenil if nothing detected (most common case for parents using this app)
+  const categoriesToFetch = athlete.detectedCategories?.length
+    ? athlete.detectedCategories
+    : [JUVENIL_CATEGORY];
+
+  // Fetch all detected category catalogs in parallel
+  const catalogResults = await Promise.all(
+    categoriesToFetch.map(cat => fetchCatalog(client, { category: cat }).catch(() => []))
+  );
+  // Dedupe by tournament id (a tournament shouldn't appear in two categories, but be safe)
+  const seenIds = new Set();
+  const catalog = [];
+  for (let i = 0; i < catalogResults.length; i++) {
+    const cat = categoriesToFetch[i];
+    for (const t of catalogResults[i]) {
+      if (seenIds.has(t.id)) continue;
+      seenIds.add(t.id);
+      catalog.push({ ...t, tiCategoryId: cat });
+    }
+  }
 
   const pendingByName = new Map();
   for (const p of pendingPayments) pendingByName.set(normalizeName(p.tournamentName), p);
@@ -511,6 +554,10 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
       rankingNational: nationalRanking12F,           // { year, category, points, position }
       rankingDF: dfRanking,                          // { dfPosition, totalDF } | null
       rankingsAll: athlete.rankings || [],           // all rankings on profile
+      categories: categoriesToFetch.map(id => ({
+        id,
+        name: TI_CATEGORIES.find(c => c.id === id)?.name || `Categoria ${id}`,
+      })),
     },
     tournaments,
     syncedAt: new Date().toISOString(),
