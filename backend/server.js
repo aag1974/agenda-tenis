@@ -9,6 +9,8 @@ import {
   getSyncedData, getNotes, updateTournamentNotes,
   ensureCalendarToken, findProfileByCalendarToken, claimOrphanProfiles,
   setCardColumn, addCardComment, updateCardComment, deleteCardComment, getCardActivity,
+  getAlertRules, addAlertRule, updateAlertRule, deleteAlertRule,
+  getAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
 } from './storage.js';
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn } from './board.js';
 import {
@@ -239,7 +241,61 @@ app.get('/api/profiles/:id/sync-status', requireAuth, ensureOwnedProfile, (req, 
   res.json({
     ...getSyncStatus(req.params.id),
     syncedAt: getSyncedData(req.params.id)?.syncedAt || null,
+    unseenAlerts: getAlertEvents(req.params.id).filter(e => !e.seen).length,
   });
+});
+
+// ===== Alertas =====
+const VALID_ALERT_TYPES = new Set(['new_tournament_location', 'new_tournament_tier', 'ranking_change']);
+
+app.get('/api/profiles/:id/alert-rules', requireAuth, ensureOwnedProfile, (req, res) => {
+  res.json(getAlertRules(req.params.id));
+});
+
+app.post('/api/profiles/:id/alert-rules', requireAuth, ensureOwnedProfile, (req, res) => {
+  const { type, params, label, enabled } = req.body || {};
+  if (!VALID_ALERT_TYPES.has(type)) return res.status(400).json({ error: 'Tipo inválido' });
+  const rule = addAlertRule(req.params.id, { type, params: params || {}, label: label || null, enabled: enabled !== false });
+  res.json(rule);
+});
+
+app.patch('/api/profiles/:id/alert-rules/:ruleId', requireAuth, ensureOwnedProfile, (req, res) => {
+  const { type, params, label, enabled } = req.body || {};
+  if (type && !VALID_ALERT_TYPES.has(type)) return res.status(400).json({ error: 'Tipo inválido' });
+  const patch = {};
+  if (type !== undefined) patch.type = type;
+  if (params !== undefined) patch.params = params;
+  if (label !== undefined) patch.label = label;
+  if (enabled !== undefined) patch.enabled = enabled;
+  const updated = updateAlertRule(req.params.id, req.params.ruleId, patch);
+  if (!updated) return res.status(404).json({ error: 'Regra não encontrada' });
+  res.json(updated);
+});
+
+app.delete('/api/profiles/:id/alert-rules/:ruleId', requireAuth, ensureOwnedProfile, (req, res) => {
+  deleteAlertRule(req.params.id, req.params.ruleId);
+  res.status(204).end();
+});
+
+app.get('/api/profiles/:id/alerts', requireAuth, ensureOwnedProfile, (req, res) => {
+  const onlyUnseen = req.query.unseen === '1';
+  const events = getAlertEvents(req.params.id);
+  res.json(onlyUnseen ? events.filter(e => !e.seen) : events);
+});
+
+app.post('/api/profiles/:id/alerts/seen', requireAuth, ensureOwnedProfile, (req, res) => {
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids[] obrigatório' });
+  res.json(markAlertsSeen(req.params.id, ids));
+});
+
+app.post('/api/profiles/:id/alerts/seen-all', requireAuth, ensureOwnedProfile, (req, res) => {
+  res.json(markAllAlertsSeen(req.params.id));
+});
+
+app.delete('/api/profiles/:id/alerts/:eventId', requireAuth, ensureOwnedProfile, (req, res) => {
+  deleteAlertEvent(req.params.id, req.params.eventId);
+  res.status(204).end();
 });
 
 // Tournaments — single source of truth, server applies derivedStatus and merges notes

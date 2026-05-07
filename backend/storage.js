@@ -279,6 +279,107 @@ export function getCardActivity(profileId, tournamentId) {
   return items;
 }
 
+// ===== Alertas =====
+// Regras criadas pelo usuário e eventos disparados pelo sync.
+// Regra: { id, type, params, enabled, createdAt, label? }
+// Evento: { id, ruleId, ruleType, message, tournamentId?, createdAt, seen }
+function alertsFile(profileId, kind) {
+  return join(profileDir(profileId), `alert-${kind}.json`);
+}
+
+export function getAlertRules(profileId) {
+  return readJson(alertsFile(profileId, 'rules'), []);
+}
+
+export function saveAlertRules(profileId, rules) {
+  writeJson(alertsFile(profileId, 'rules'), rules);
+}
+
+export function addAlertRule(profileId, rule) {
+  const rules = getAlertRules(profileId);
+  const full = {
+    id: newId(),
+    enabled: true,
+    createdAt: new Date().toISOString(),
+    ...rule,
+  };
+  rules.push(full);
+  saveAlertRules(profileId, rules);
+  return full;
+}
+
+export function updateAlertRule(profileId, ruleId, patch) {
+  const rules = getAlertRules(profileId);
+  const idx = rules.findIndex(r => r.id === ruleId);
+  if (idx < 0) return null;
+  rules[idx] = { ...rules[idx], ...patch, id: rules[idx].id };
+  saveAlertRules(profileId, rules);
+  return rules[idx];
+}
+
+export function deleteAlertRule(profileId, ruleId) {
+  const rules = getAlertRules(profileId).filter(r => r.id !== ruleId);
+  saveAlertRules(profileId, rules);
+}
+
+export function getAlertEvents(profileId) {
+  return readJson(alertsFile(profileId, 'events'), []);
+}
+
+export function saveAlertEvents(profileId, events) {
+  writeJson(alertsFile(profileId, 'events'), events);
+}
+
+// Cap mantido pequeno — alertas antigos não precisam ficar pra sempre.
+const ALERT_EVENTS_CAP = 200;
+
+export function addAlertEvents(profileId, newEvents) {
+  if (!newEvents?.length) return [];
+  const events = getAlertEvents(profileId);
+  const seen = new Set(events.map(e => e.dedupeKey).filter(Boolean));
+  const added = [];
+  for (const ev of newEvents) {
+    if (ev.dedupeKey && seen.has(ev.dedupeKey)) continue;
+    const full = {
+      id: newId(),
+      createdAt: new Date().toISOString(),
+      seen: false,
+      ...ev,
+    };
+    events.unshift(full);
+    added.push(full);
+    if (ev.dedupeKey) seen.add(ev.dedupeKey);
+  }
+  // Trim antigos vistos
+  if (events.length > ALERT_EVENTS_CAP) events.length = ALERT_EVENTS_CAP;
+  saveAlertEvents(profileId, events);
+  return added;
+}
+
+export function markAlertsSeen(profileId, ids) {
+  const set = new Set(ids || []);
+  const events = getAlertEvents(profileId);
+  let touched = false;
+  for (const e of events) {
+    if (set.has(e.id) && !e.seen) { e.seen = true; touched = true; }
+  }
+  if (touched) saveAlertEvents(profileId, events);
+  return events;
+}
+
+export function markAllAlertsSeen(profileId) {
+  const events = getAlertEvents(profileId);
+  let touched = false;
+  for (const e of events) if (!e.seen) { e.seen = true; touched = true; }
+  if (touched) saveAlertEvents(profileId, events);
+  return events;
+}
+
+export function deleteAlertEvent(profileId, id) {
+  const events = getAlertEvents(profileId).filter(e => e.id !== id);
+  saveAlertEvents(profileId, events);
+}
+
 export function getManualTournaments(profileId) {
   return readJson(join(profileDir(profileId), 'manual.json'), []);
 }

@@ -2,9 +2,11 @@ import { syncAthlete } from './scraper.js';
 import {
   listProfiles, getProfile, getProfileCredentials, getSyncedData, saveSyncedData,
   updateProfile, getNotes, updateTournamentNotes, addAutoActivity,
+  getAlertRules, addAlertEvents,
 } from './storage.js';
 import { cleanupExpiredReceipts } from './receipts.js';
 import { diffTournamentForActivity } from './board.js';
+import { evaluateRules } from './alerts.js';
 
 const inFlight = new Map(); // profileId -> Promise
 const status = new Map();   // profileId -> { state, startedAt, finishedAt, error }
@@ -67,15 +69,58 @@ export async function syncProfile(profileId) {
         return { ...t, firstSeenAt: isBaselineEstablishment ? FAR_PAST : nowIso };
       });
 
-      // Diff against previous to log auto-activity per card.
-      // Skip the first sync (baseline) — would generate activity for everything at once.
-      if (!isBaselineEstablishment && previous?.tournaments) {
+      // Diff against previous to log auto-activity per card AND build a sync summary
+      // for the UI ("X novos, Y atualizações"). Baseline establishment is the first
+      // real sync — we still report counts but flag it so the UI can frame appropriately.
+      const summary = {
+        baseline: isBaselineEstablishment,
+        totalTournaments: result.tournaments.length,
+        newTournaments: [],         // [{ id, name, startDate, state, tier }]
+        updatedTournaments: [],     // [{ id, name, events: [{ type, message }] }]
+        eventCounts: {},            // { boleto_detected: 2, inscribed: 1, ... }
+      };
+      if (previous?.tournaments) {
         const prevById = new Map(previous.tournaments.map(t => [t.id, t]));
         for (const t of result.tournaments) {
           const events = diffTournamentForActivity(prevById.get(t.id), t);
-          if (events.length) addAutoActivity(profileId, t.id, events);
+          if (!events.length) continue;
+          if (!isBaselineEstablishment) addAutoActivity(profileId, t.id, events);
+          for (const ev of events) {
+            summary.eventCounts[ev.type] = (summary.eventCounts[ev.type] || 0) + 1;
+          }
+          if (!prevById.has(t.id)) {
+            summary.newTournaments.push({
+              id: t.id, name: t.name, startDate: t.startDate || null,
+              state: t.state || null, tier: t.tier || null,
+            });
+          } else {
+            summary.updatedTournaments.push({
+              id: t.id, name: t.name,
+              events: events.map(e => ({ type: e.type, message: e.message })),
+            });
+          }
         }
       }
+
+      // Avalia regras de alerta — só dispara depois que o baseline já foi
+      // estabelecido (senão a primeira sincronização gera dezenas de alertas).
+      let triggeredAlerts = [];
+      if (!isBaselineEstablishment) {
+        try {
+          const rules = getAlertRules(profileId);
+          const events = evaluateRules({
+            rules,
+            prevTournaments: previous?.tournaments,
+            currTournaments: result.tournaments,
+            prevAthlete: previous?.athlete,
+            currAthlete: result.athlete,
+          });
+          triggeredAlerts = addAlertEvents(profileId, events);
+        } catch (err) {
+          console.error(`[alerts ${profileId}]`, err.message);
+        }
+      }
+      summary.newAlerts = triggeredAlerts.length;
 
       saveSyncedData(profileId, result);
       const p = getProfile(profileId);
@@ -87,6 +132,7 @@ export async function syncProfile(profileId) {
         state: 'success',
         startedAt: status.get(profileId).startedAt,
         finishedAt: new Date().toISOString(),
+        summary,
       });
       return result;
     } catch (err) {

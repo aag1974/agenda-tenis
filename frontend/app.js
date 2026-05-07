@@ -149,6 +149,8 @@ const state = {
   activeProfileId: localStorage.getItem('activeProfileId') || null,
   data: null,
   syncStatus: null,
+  unseenAlertsCount: 0,
+  alertOnLoadShown: false,
   filterUFs: (() => {
     const raw = localStorage.getItem('filterUFs');
     try { const v = JSON.parse(raw); if (Array.isArray(v)) return v; } catch {}
@@ -339,6 +341,41 @@ const api = {
     if (!r.ok && r.status !== 204) throw new Error((await r.json()).error || 'Erro');
   },
   async getQuota(profileId) { return (await fetch(`/api/profiles/${profileId}/quota`)).json(); },
+  async listAlertRules(profileId) { return (await fetch(`/api/profiles/${profileId}/alert-rules`)).json(); },
+  async createAlertRule(profileId, body) {
+    const r = await fetch(`/api/profiles/${profileId}/alert-rules`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async updateAlertRule(profileId, ruleId, body) {
+    const r = await fetch(`/api/profiles/${profileId}/alert-rules/${ruleId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async deleteAlertRule(profileId, ruleId) {
+    await fetch(`/api/profiles/${profileId}/alert-rules/${ruleId}`, { method: 'DELETE' });
+  },
+  async listAlerts(profileId, { unseen = false } = {}) {
+    const q = unseen ? '?unseen=1' : '';
+    return (await fetch(`/api/profiles/${profileId}/alerts${q}`)).json();
+  },
+  async markAlertsSeen(profileId, ids) {
+    const r = await fetch(`/api/profiles/${profileId}/alerts/seen`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }),
+    });
+    return r.json();
+  },
+  async markAllAlertsSeen(profileId) {
+    const r = await fetch(`/api/profiles/${profileId}/alerts/seen-all`, { method: 'POST' });
+    return r.json();
+  },
+  async deleteAlertEvent(profileId, eventId) {
+    await fetch(`/api/profiles/${profileId}/alerts/${eventId}`, { method: 'DELETE' });
+  },
 };
 
 // ===== Init =====
@@ -777,6 +814,16 @@ async function logout() {
 async function refreshActive() {
   if (!state.activeProfileId) { state.data = null; return; }
   state.data = await api.getTournaments(state.activeProfileId);
+  // Carrega contador de alertas e dispara popup automático na primeira vez
+  // que abrir o app com eventos pendentes.
+  try {
+    const unseen = await api.listAlerts(state.activeProfileId, { unseen: true });
+    state.unseenAlertsCount = unseen.length;
+    if (!state.alertOnLoadShown && unseen.length > 0) {
+      state.alertOnLoadShown = true;
+      setTimeout(() => openAlertsListModal({ onlyUnseen: true }), 400);
+    }
+  } catch {}
 }
 
 let pollTimer = null;
@@ -787,12 +834,16 @@ async function pollSyncStatus() {
     const s = await api.syncStatus(state.activeProfileId);
     const wasRunning = state.syncStatus?.state === 'running';
     state.syncStatus = s;
+    if (typeof s.unseenAlerts === 'number') state.unseenAlertsCount = s.unseenAlerts;
     if (wasRunning && s.state !== 'running') {
       await refreshActive();
       render();
+      // Não auto-abre se o modal de progresso de sync ainda está aberto —
+      // o usuário verá o "X alertas novos" no resumo e pode clicar no sino.
     } else {
       renderHeader();
     }
+    if (typeof refreshSyncProgressModal === 'function') refreshSyncProgressModal();
   } catch {}
   pollTimer = setTimeout(pollSyncStatus, state.syncStatus?.state === 'running' ? 2000 : 30000);
 }
@@ -1616,9 +1667,25 @@ function renderHeaderEl() {
     profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchInput),
     el('div', { class: 'flex items-center gap-1 sm:gap-2 shrink-0' },
       memberStack,
+      profile && renderAlertsBell(),
       profile && renderSyncIndicator(),
       avatarButton,
     ),
+  );
+}
+
+function renderAlertsBell() {
+  const count = state.unseenAlertsCount || 0;
+  const hasUnseen = count > 0;
+  return el('button', {
+    class: 'relative w-10 h-10 flex items-center justify-center rounded hover:bg-slate-100',
+    title: hasUnseen ? `${count} alerta${count > 1 ? 's' : ''} não visto${count > 1 ? 's' : ''}` : 'Alertas',
+    onClick: () => openAlertsListModal(),
+  },
+    el('span', { class: hasUnseen ? 'text-[#0e3a4d]' : 'text-slate-400', style: 'font-size:18px;line-height:1' }, '🔔'),
+    hasUnseen && el('span', {
+      class: 'absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center',
+    }, count > 9 ? '9+' : String(count)),
   );
 }
 
@@ -1648,10 +1715,7 @@ function showSyncStatus() {
 
   let dot, title, detail;
   if (ss?.state === 'running') {
-    dot = 'bg-amber-400';
-    title = 'Sincronizando agora…';
-    detail = 'Aguarde — buscando dados atualizados no Tênis Integrado.';
-    openSyncModal({ dot, title, detail, runningOnly: true });
+    openSyncProgressModal();
     return;
   }
   if (ss?.state === 'error') {
@@ -1668,6 +1732,204 @@ function showSyncStatus() {
     detail = 'Clique abaixo pra puxar os torneios pela primeira vez.';
   }
   openSyncModal({ dot, title, detail });
+}
+
+// Persistent progress modal — opens on "Sincronizar agora", stays até o usuário
+// dar OK depois da conclusão. Mostra contador de tempo enquanto roda e um
+// mini relatório do que mudou ao terminar.
+let syncProgressTickTimer = null;
+function openSyncProgressModal() {
+  const root = $('modal-root');
+  if (document.getElementById('sync-progress-modal')) return;
+  root.innerHTML = '';
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50' });
+  const card = el('div', {
+    id: 'sync-progress-modal',
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    style: 'max-height: 85vh;',
+  });
+  const header = el('div', { class: 'bg-[#0e3a4d] text-white px-5 py-3 flex items-center gap-2' },
+    el('span', { id: 'sync-progress-dot', class: 'inline-block w-3 h-3 rounded-full bg-amber-400 animate-pulse' }),
+    el('span', { class: 'font-medium' }, 'Sincronização'),
+  );
+  const body = el('div', { id: 'sync-progress-body', class: 'px-5 py-4 overflow-y-auto flex-1' });
+  const footer = el('div', { id: 'sync-progress-footer', class: 'px-5 py-3 border-t border-slate-200 flex justify-end gap-2 bg-slate-50' });
+  card.appendChild(header);
+  card.appendChild(body);
+  card.appendChild(footer);
+  root.appendChild(overlay);
+  root.appendChild(card);
+
+  if (syncProgressTickTimer) clearInterval(syncProgressTickTimer);
+  syncProgressTickTimer = setInterval(refreshSyncProgressModal, 1000);
+  refreshSyncProgressModal();
+}
+
+function refreshSyncProgressModal() {
+  const card = document.getElementById('sync-progress-modal');
+  if (!card) return;
+  const ss = state.syncStatus;
+  const dot = document.getElementById('sync-progress-dot');
+  const body = document.getElementById('sync-progress-body');
+  const footer = document.getElementById('sync-progress-footer');
+  if (!body || !footer || !dot) return;
+
+  body.innerHTML = '';
+  footer.innerHTML = '';
+
+  const close = () => {
+    if (syncProgressTickTimer) { clearInterval(syncProgressTickTimer); syncProgressTickTimer = null; }
+    document.getElementById('modal-root').innerHTML = '';
+  };
+
+  if (!ss || ss.state === 'running') {
+    dot.className = 'inline-block w-3 h-3 rounded-full bg-amber-400 animate-pulse';
+    const startedAt = ss?.startedAt ? new Date(ss.startedAt).getTime() : Date.now();
+    const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    body.appendChild(el('div', { class: 'flex items-center gap-3 mb-3' },
+      el('div', { class: 'w-8 h-8 rounded-full border-4 border-slate-200 border-t-[#00a3e0] animate-spin' }),
+      el('div', null,
+        el('div', { class: 'font-semibold' }, 'Sincronizando…'),
+        el('div', { class: 'text-xs text-slate-500' }, `Decorrido: ${elapsedSec}s · costuma levar ~30s`),
+      ),
+    ));
+    body.appendChild(el('p', { class: 'text-sm text-slate-600' },
+      'Buscando torneios, inscrições e boletos no Tênis Integrado. Pode deixar essa janela aberta — vou mostrar aqui o que mudou quando terminar.'));
+    footer.appendChild(el('button', {
+      type: 'button',
+      class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-600 hover:bg-slate-100',
+      onClick: close,
+    }, 'Esconder'));
+    return;
+  }
+
+  if (ss.state === 'error') {
+    dot.className = 'inline-block w-3 h-3 rounded-full bg-rose-500';
+    body.appendChild(el('h3', { class: 'text-base font-semibold mb-1' }, 'Falha na sincronização'));
+    body.appendChild(el('p', { class: 'text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded px-3 py-2 whitespace-pre-line' },
+      ss.error || 'Erro desconhecido'));
+    footer.appendChild(el('button', {
+      type: 'button',
+      class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-100',
+      onClick: close,
+    }, 'Fechar'));
+    footer.appendChild(el('button', {
+      type: 'button',
+      class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
+      onClick: () => { close(); syncNow(); },
+    }, 'Tentar de novo'));
+    return;
+  }
+
+  // Success — show summary
+  dot.className = 'inline-block w-3 h-3 rounded-full bg-emerald-500';
+  const s = ss.summary || {};
+  const startedAt = ss.startedAt ? new Date(ss.startedAt).getTime() : null;
+  const finishedAt = ss.finishedAt ? new Date(ss.finishedAt).getTime() : Date.now();
+  const elapsedSec = startedAt ? Math.max(0, Math.round((finishedAt - startedAt) / 1000)) : null;
+
+  const headerRow = el('div', { class: 'flex items-start gap-3 mb-3' },
+    el('div', { class: 'w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg font-bold' }, '✓'),
+    el('div', null,
+      el('div', { class: 'font-semibold text-emerald-700' }, 'Sincronização concluída'),
+      el('div', { class: 'text-xs text-slate-500' },
+        [
+          s.totalTournaments != null ? `${s.totalTournaments} torneios no total` : null,
+          elapsedSec != null ? `em ${elapsedSec}s` : null,
+        ].filter(Boolean).join(' · '),
+      ),
+    ),
+  );
+  body.appendChild(headerRow);
+
+  if (s.baseline) {
+    body.appendChild(el('div', { class: 'rounded-lg bg-sky-50 border border-sky-200 px-3 py-2 text-sm text-sky-800' },
+      'Primeira sincronização — todos os torneios foram carregados como base. As próximas vão destacar apenas as mudanças.'));
+    footer.appendChild(el('button', {
+      type: 'button',
+      class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
+      onClick: close,
+    }, 'OK'));
+    return;
+  }
+
+  const newCount = (s.newTournaments || []).length;
+  const updCount = (s.updatedTournaments || []).length;
+  const ec = s.eventCounts || {};
+
+  if (newCount === 0 && updCount === 0) {
+    body.appendChild(el('div', { class: 'rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-700' },
+      'Nada novo. Nenhum torneio adicionado e nenhuma informação mudou desde a última sincronização.'));
+  } else {
+    const counterRow = el('div', { class: 'grid grid-cols-2 gap-2 mb-3' });
+    const counterCard = (n, label, color) => el('div', { class: `rounded-lg border px-3 py-2 ${color}` },
+      el('div', { class: 'text-2xl font-bold leading-none' }, String(n)),
+      el('div', { class: 'text-xs mt-0.5' }, label),
+    );
+    counterRow.appendChild(counterCard(newCount, 'novos torneios', 'bg-emerald-50 border-emerald-200 text-emerald-800'));
+    counterRow.appendChild(counterCard(updCount, 'com atualizações', 'bg-amber-50 border-amber-200 text-amber-800'));
+    body.appendChild(counterRow);
+
+    const evLine = (icon, n, label) => n > 0 && el('div', { class: 'flex items-center gap-2 text-sm' },
+      el('span', null, icon),
+      el('span', { class: 'font-semibold' }, String(n)),
+      el('span', { class: 'text-slate-600' }, label),
+    );
+    const evList = el('div', { class: 'space-y-1 mb-3' },
+      evLine('💰', ec.boleto_detected || 0, 'boletos novos detectados'),
+      evLine('✅', ec.boleto_cleared || 0, 'pagamentos confirmados'),
+      evLine('✓',  ec.inscribed || 0,      'inscrições confirmadas no TI'),
+      evLine('↩︎', ec.uninscribed || 0,    'inscrições removidas no TI'),
+      s.newAlerts > 0 && el('button', {
+        class: 'flex items-center gap-2 text-sm text-cyan-700 hover:underline',
+        onClick: () => { close(); openAlertsListModal({ onlyUnseen: true }); },
+      },
+        el('span', null, '🔔'),
+        el('span', { class: 'font-semibold' }, String(s.newAlerts)),
+        el('span', null, `alerta${s.newAlerts > 1 ? 's' : ''} de regras (clique pra ver)`),
+      ),
+    );
+    if (evList.children.length) body.appendChild(evList);
+
+    if (newCount > 0) {
+      body.appendChild(el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mt-3 mb-1' },
+        `Novos torneios (${newCount})`));
+      const list = el('ul', { class: 'space-y-1' });
+      for (const t of s.newTournaments.slice(0, 20)) {
+        const meta = [t.startDate, t.state, t.tier].filter(Boolean).join(' · ');
+        list.appendChild(el('li', { class: 'text-sm border-l-2 border-emerald-400 pl-2' },
+          el('div', { class: 'font-medium' }, t.name),
+          meta && el('div', { class: 'text-xs text-slate-500' }, meta),
+        ));
+      }
+      if (s.newTournaments.length > 20) {
+        list.appendChild(el('li', { class: 'text-xs text-slate-500 italic' }, `…e mais ${s.newTournaments.length - 20}`));
+      }
+      body.appendChild(list);
+    }
+
+    if (updCount > 0) {
+      body.appendChild(el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mt-3 mb-1' },
+        `Torneios atualizados (${updCount})`));
+      const list = el('ul', { class: 'space-y-1.5' });
+      for (const t of s.updatedTournaments.slice(0, 20)) {
+        list.appendChild(el('li', { class: 'text-sm border-l-2 border-amber-400 pl-2' },
+          el('div', { class: 'font-medium' }, t.name),
+          ...(t.events || []).map(ev => el('div', { class: 'text-xs text-slate-600' }, ev.message)),
+        ));
+      }
+      if (s.updatedTournaments.length > 20) {
+        list.appendChild(el('li', { class: 'text-xs text-slate-500 italic' }, `…e mais ${s.updatedTournaments.length - 20}`));
+      }
+      body.appendChild(list);
+    }
+  }
+
+  footer.appendChild(el('button', {
+    type: 'button',
+    class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
+    onClick: close,
+  }, 'OK'));
 }
 
 function openSyncModal({ dot, title, detail, runningOnly = false }) {
@@ -1700,6 +1962,297 @@ function openSyncModal({ dot, title, detail, runningOnly = false }) {
   );
   root.appendChild(overlay);
   root.appendChild(card);
+}
+
+// ===== Alertas =====
+const ALERT_TYPE_META = {
+  new_tournament_location: { label: 'Novo torneio em UF/cidade', icon: '📍' },
+  new_tournament_tier:     { label: 'Novo torneio em chave',     icon: '🏆' },
+  ranking_change:          { label: 'Mudança de ranking',        icon: '📊' },
+};
+
+function ruleSummary(rule) {
+  const meta = ALERT_TYPE_META[rule.type];
+  if (!meta) return rule.type;
+  if (rule.type === 'new_tournament_location') {
+    const ufs = rule.params?.ufs || [];
+    const cities = rule.params?.cities || [];
+    const parts = [];
+    if (ufs.length) parts.push(`UF: ${ufs.join(', ')}`);
+    if (cities.length) parts.push(`Cidades: ${cities.join(', ')}`);
+    return parts.join(' · ') || 'Sem filtros';
+  }
+  if (rule.type === 'new_tournament_tier') {
+    const tiers = rule.params?.tiers || [];
+    return `Chaves: ${tiers.join(', ') || '—'}`;
+  }
+  if (rule.type === 'ranking_change') {
+    return rule.params?.scope === 'df' ? 'Ranking DF' : 'Ranking nacional';
+  }
+  return '';
+}
+
+function openAlertRulesModal() {
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    style: 'max-height: 85vh;',
+  });
+  const header = el('div', { class: 'bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
+    el('span', { class: 'font-medium' }, '🔔 Alertas'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  );
+  const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1' });
+  const footer = el('div', { class: 'px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-between gap-2' });
+  card.appendChild(header);
+  card.appendChild(body);
+  card.appendChild(footer);
+  root.appendChild(overlay);
+  root.appendChild(card);
+
+  let rules = [];
+  let editing = null; // rule id sendo editada, ou 'new'
+
+  const reload = async () => {
+    rules = await api.listAlertRules(state.activeProfileId);
+    renderList();
+  };
+
+  const renderList = () => {
+    body.innerHTML = '';
+    footer.innerHTML = '';
+
+    body.appendChild(el('p', { class: 'text-sm text-slate-600 mb-3' },
+      'Crie regras pra ser avisado quando aparecerem novos torneios ou houver mudança no ranking. Os alertas são checados a cada sincronização.'));
+
+    if (rules.length === 0) {
+      body.appendChild(el('div', { class: 'text-sm text-slate-500 italic py-4 text-center' },
+        'Nenhuma regra criada ainda.'));
+    } else {
+      const list = el('ul', { class: 'space-y-2' });
+      for (const r of rules) {
+        const meta = ALERT_TYPE_META[r.type] || {};
+        const enabled = r.enabled !== false;
+        list.appendChild(el('li', { class: `flex items-start gap-3 border rounded-lg p-3 ${enabled ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60'}` },
+          el('span', { class: 'text-xl' }, meta.icon || '🔔'),
+          el('div', { class: 'flex-1 min-w-0' },
+            el('div', { class: 'font-medium text-sm' }, r.label || meta.label),
+            el('div', { class: 'text-xs text-slate-500 mt-0.5' }, ruleSummary(r)),
+          ),
+          el('div', { class: 'flex items-center gap-1 shrink-0' },
+            el('button', {
+              class: 'text-xs px-2 py-1 rounded text-slate-600 hover:bg-slate-100',
+              onClick: async () => {
+                await api.updateAlertRule(state.activeProfileId, r.id, { enabled: !enabled });
+                reload();
+              },
+            }, enabled ? 'Pausar' : 'Ativar'),
+            el('button', {
+              class: 'text-xs px-2 py-1 rounded text-slate-600 hover:bg-slate-100',
+              onClick: () => { editing = r.id; renderForm(r); },
+            }, 'Editar'),
+            el('button', {
+              class: 'text-xs px-2 py-1 rounded text-rose-600 hover:bg-rose-50',
+              onClick: async () => {
+                if (!confirm('Apagar esta regra?')) return;
+                await api.deleteAlertRule(state.activeProfileId, r.id);
+                reload();
+              },
+            }, 'Apagar'),
+          ),
+        ));
+      }
+      body.appendChild(list);
+    }
+
+    footer.appendChild(el('button', {
+      class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-100',
+      onClick: close,
+    }, 'Fechar'));
+    footer.appendChild(el('button', {
+      class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
+      onClick: () => { editing = 'new'; renderForm(null); },
+    }, '+ Nova regra'));
+  };
+
+  const renderForm = (rule) => {
+    body.innerHTML = '';
+    footer.innerHTML = '';
+    const initial = rule || { type: 'new_tournament_location', params: {} };
+    let typeSel = initial.type;
+    let params = { ...(initial.params || {}) };
+
+    body.appendChild(el('div', { class: 'mb-3' },
+      el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1' }, 'Tipo'),
+      el('select', {
+        class: 'w-full border border-slate-300 rounded px-2 py-1.5 text-sm',
+        onChange: (e) => { typeSel = e.target.value; params = {}; renderParamsBlock(); },
+      },
+        ...Object.entries(ALERT_TYPE_META).map(([id, m]) => el('option', { value: id, ...(typeSel === id ? { selected: true } : {}) }, `${m.icon} ${m.label}`)),
+      ),
+    ));
+
+    const paramsBlock = el('div', { class: 'space-y-2' });
+    body.appendChild(paramsBlock);
+
+    const renderParamsBlock = () => {
+      paramsBlock.innerHTML = '';
+      if (typeSel === 'new_tournament_location') {
+        const ufs = (params.ufs || []).join(', ');
+        const cities = (params.cities || []).join(', ');
+        paramsBlock.appendChild(el('div', null,
+          el('label', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500' }, 'UFs (separadas por vírgula)'),
+          el('input', {
+            class: 'w-full border border-slate-300 rounded px-2 py-1.5 text-sm mt-1',
+            placeholder: 'DF, GO, SP', value: ufs,
+            onInput: (e) => { params.ufs = e.target.value.split(',').map(s => s.trim()).filter(Boolean); },
+          }),
+        ));
+        paramsBlock.appendChild(el('div', null,
+          el('label', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500' }, 'Cidades (separadas por vírgula)'),
+          el('input', {
+            class: 'w-full border border-slate-300 rounded px-2 py-1.5 text-sm mt-1',
+            placeholder: 'Brasília, Goiânia', value: cities,
+            onInput: (e) => { params.cities = e.target.value.split(',').map(s => s.trim()).filter(Boolean); },
+          }),
+        ));
+        paramsBlock.appendChild(el('p', { class: 'text-xs text-slate-500' },
+          'Pode preencher só UF, só cidade, ou os dois (combinação OU).'));
+      } else if (typeSel === 'new_tournament_tier') {
+        const allTiers = TIER_ORDER;
+        const sel = new Set(params.tiers || []);
+        paramsBlock.appendChild(el('div', null,
+          el('label', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 block mb-1' }, 'Chaves'),
+          el('div', { class: 'flex flex-wrap gap-1.5' },
+            ...allTiers.map(t => el('button', {
+              class: `text-xs px-2.5 py-1 rounded-full border ${sel.has(t) ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-300'}`,
+              onClick: (e) => {
+                e.preventDefault();
+                if (sel.has(t)) sel.delete(t); else sel.add(t);
+                params.tiers = [...sel];
+                renderParamsBlock();
+              },
+            }, t)),
+          ),
+        ));
+      } else if (typeSel === 'ranking_change') {
+        const scope = params.scope || 'national';
+        paramsBlock.appendChild(el('div', null,
+          el('label', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 block mb-1' }, 'Escopo'),
+          el('div', { class: 'flex gap-1.5' },
+            ...[['national', 'Nacional'], ['df', 'DF']].map(([id, label]) => el('button', {
+              class: `text-xs px-2.5 py-1 rounded-full border ${(params.scope || 'national') === id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-300'}`,
+              onClick: (e) => { e.preventDefault(); params.scope = id; renderParamsBlock(); },
+            }, label)),
+          ),
+        ));
+        paramsBlock.appendChild(el('p', { class: 'text-xs text-slate-500' },
+          'Avisa em qualquer mudança de posição (subiu ou caiu).'));
+      }
+    };
+    renderParamsBlock();
+
+    footer.appendChild(el('button', {
+      class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-100',
+      onClick: () => { editing = null; renderList(); },
+    }, 'Cancelar'));
+    footer.appendChild(el('button', {
+      class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
+      onClick: async () => {
+        const body = { type: typeSel, params };
+        try {
+          if (rule) await api.updateAlertRule(state.activeProfileId, rule.id, body);
+          else await api.createAlertRule(state.activeProfileId, body);
+          editing = null;
+          await reload();
+        } catch (err) { alert('Erro: ' + err.message); }
+      },
+    }, rule ? 'Salvar' : 'Criar'));
+  };
+
+  reload();
+}
+
+function openAlertsListModal({ onlyUnseen = false } = {}) {
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    style: 'max-height: 85vh;',
+  });
+  const header = el('div', { class: 'bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
+    el('span', { class: 'font-medium' }, onlyUnseen ? '🔔 Novos alertas' : '🔔 Alertas'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  );
+  const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1' });
+  const footer = el('div', { class: 'px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-between gap-2' });
+  card.appendChild(header);
+  card.appendChild(body);
+  card.appendChild(footer);
+  root.appendChild(overlay);
+  root.appendChild(card);
+
+  const reload = async () => {
+    body.innerHTML = '';
+    footer.innerHTML = '';
+    const events = await api.listAlerts(state.activeProfileId, { unseen: onlyUnseen });
+
+    if (events.length === 0) {
+      body.appendChild(el('div', { class: 'text-sm text-slate-500 italic py-6 text-center' },
+        onlyUnseen ? 'Nenhum alerta novo.' : 'Nenhum alerta ainda. Configure regras em Criar alertas.'));
+    } else {
+      const list = el('ul', { class: 'space-y-2' });
+      for (const e of events) {
+        const tournament = state.data?.tournaments?.find(t => t.id === e.tournamentId);
+        list.appendChild(el('li', { class: `border rounded-lg p-3 ${e.seen ? 'bg-slate-50 border-slate-200' : 'bg-white border-amber-300'}` },
+          el('div', { class: 'flex items-start justify-between gap-2' },
+            el('div', { class: 'flex-1 min-w-0' },
+              el('div', { class: `text-sm ${e.seen ? 'text-slate-600' : 'font-medium'}` }, e.message),
+              el('div', { class: 'text-xs text-slate-500 mt-0.5' }, new Date(e.createdAt).toLocaleString('pt-BR')),
+            ),
+            !e.seen && el('button', {
+              class: 'text-xs px-2 py-1 rounded text-slate-500 hover:bg-slate-100 shrink-0',
+              onClick: async () => {
+                await api.markAlertsSeen(state.activeProfileId, [e.id]);
+                state.unseenAlertsCount = Math.max(0, (state.unseenAlertsCount || 0) - 1);
+                renderHeader();
+                reload();
+              },
+            }, 'Vi'),
+            tournament && el('button', {
+              class: 'text-xs px-2 py-1 rounded text-cyan-700 hover:bg-cyan-50 shrink-0',
+              onClick: () => { close(); openTournament(tournament.id); },
+            }, 'Ver'),
+          ),
+        ));
+      }
+      body.appendChild(list);
+    }
+
+    const hasUnseen = events.some(e => !e.seen);
+    footer.appendChild(el('button', {
+      class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-100',
+      onClick: close,
+    }, 'Fechar'));
+    if (hasUnseen) {
+      footer.appendChild(el('button', {
+        class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
+        onClick: async () => {
+          await api.markAllAlertsSeen(state.activeProfileId);
+          state.unseenAlertsCount = 0;
+          renderHeader();
+          close();
+        },
+      }, 'Marcar todos como vistos'));
+    }
+  };
+
+  reload();
 }
 
 function toggleGearMenu() {
@@ -1830,6 +2383,7 @@ function toggleGearMenu() {
   const isMobile = window.matchMedia('(max-width: 640px)').matches;
   const accountActions = state.user ? [
     isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
+    profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
     { label: 'Sair', onClick: () => logout() },
   ].filter(Boolean) : [];
@@ -2153,9 +2707,10 @@ function openCalendarSetup() {
 
 async function syncNow() {
   if (!state.activeProfileId) return;
-  state.syncStatus = { state: 'running' };
+  state.syncStatus = { state: 'running', startedAt: new Date().toISOString() };
   renderHeader();
-  await api.sync(state.activeProfileId);
+  openSyncProgressModal();
+  try { await api.sync(state.activeProfileId); } catch {}
   pollSyncStatus();
 }
 
