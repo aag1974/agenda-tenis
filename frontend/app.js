@@ -1697,7 +1697,7 @@ async function openLabelPicker(t) {
     const errBox = el('div', { class: 'text-xs text-red-600' });
 
     editorCard.append(
-      el('h4', { class: 'text-sm font-semibold' }, isEdit ? 'Editar etiqueta' : 'Nova etiqueta'),
+      el('h4', { class: 'text-base font-semibold text-slate-900' }, isEdit ? 'Editar etiqueta' : 'Nova etiqueta'),
       el('label', { class: 'block' },
         el('div', { class: 'text-xs text-slate-500 mb-1' }, 'Nome'),
         nameInp,
