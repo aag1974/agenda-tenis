@@ -1217,26 +1217,28 @@ async function togglePinCard(t) {
 }
 
 function buildShareText(t, shareUrl) {
+  // Mensagem propositalmente sem emojis no corpo — alguns dispositivos
+  // renderizam como "?" e prejudicam a leitura. WhatsApp gera o preview
+  // bonito a partir das og:tags da página /share, então o texto pode ser
+  // simples e direto.
   const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
-  const where = [t.city, t.state].filter(Boolean).join('/');
+  const where = [t.city, t.state].filter(Boolean).join(' / ');
   const dates = t.startDate
     ? (t.endDate && t.endDate !== t.startDate ? `${t.startDate} a ${t.endDate}` : t.startDate)
     : null;
+  const meta = [dates, tiers.join(' · ')].filter(Boolean).join(' · ');
   const lines = [];
-  lines.push(`🎾 *${t.name || 'Torneio'}*`);
-  if (dates) lines.push(`📅 ${dates}`);
-  if (where) lines.push(`📍 ${where}`);
-  if (tiers.length) lines.push(`🏆 ${tiers.join(' · ')}`);
-  if (t.registrationStatus) lines.push(`📝 ${t.registrationStatus}`);
+  lines.push(`*${t.name || 'Torneio'}*`);
+  if (where) lines.push(where);
+  if (meta) lines.push(meta);
   lines.push('');
   if (shareUrl) {
-    lines.push('Veja todos os detalhes:');
-    lines.push(shareUrl);
+    lines.push(`Abrir torneio: ${shareUrl}`);
   } else if (t.url) {
-    lines.push(`🔗 ${t.url}`);
+    lines.push(`Abrir torneio: ${t.url}`);
   }
   lines.push('');
-  lines.push('— Compartilhado via *Tennis Flow* 🎾');
+  lines.push('— Compartilhado via Tennis Flow');
   return lines.join('\n');
 }
 
