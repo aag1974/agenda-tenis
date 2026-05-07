@@ -1452,6 +1452,11 @@ function tierStripClass(color) {
 
 function wireKanbanSortable(container) {
   if (typeof Sortable === 'undefined') return;
+  // Em mobile (telas <640px) o drag-drop do touchscreen briga com o
+  // scroll/swipe natural. Pula o wiring inteiro — usuário move card
+  // via dropdown "Mudar coluna" no header do modal e reorganiza colunas
+  // via desktop. Detecção é dinâmica (atualiza em resize).
+  if (window.matchMedia('(max-width: 640px)').matches) return;
 
   // SortableJS pra cards (drag entre colunas)
   const lists = container.querySelectorAll('.kanban-list');
