@@ -1549,8 +1549,9 @@ function renderHeaderEl() {
   const logo = el('div', { class: 'flex items-center gap-2 shrink-0 select-none' },
     el('span', { class: 'text-xl' }, '🎾'),
     el('span', { class: 'font-bold tracking-tight text-base sm:text-lg' },
-      el('span', { class: 'text-slate-900' }, 'Tennis'),
-      el('span', { class: 'text-cyan-600 ml-0.5' }, 'Flow'),
+      el('span', { class: 'text-slate-900' }, 'T'),
+      el('span', { class: 'text-slate-900 hidden sm:inline' }, 'ennis'),
+      el('span', { class: 'text-cyan-600 sm:ml-0.5' }, 'Flow'),
     ),
   );
 

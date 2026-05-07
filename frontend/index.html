@@ -126,24 +126,24 @@
         padding: 0.5rem;
         overflow-x: hidden;
       }
-      #kanban-col-row {
+      body.kanban-mode #kanban-col-row {
+        width: 100% !important;     /* relativo ao #kanban-board, não vw */
         scroll-snap-type: x mandatory !important;
-        gap: 0.75rem !important; /* mesma separação do desktop entre colunas */
+        gap: 0.75rem !important;
         padding: 0 !important;
         margin: 0 !important;
         touch-action: pan-x !important;
-        scroll-padding-left: 0.5rem;
       }
       body.kanban-mode .kanban-list {
         touch-action: pan-y !important;
       }
       body.kanban-mode .kanban-col {
-        /* width = 100vw menos as duas margens laterais do board (0.5rem cada)
-           = espaço útil. Snap ao início garante "uma coluna por página". */
-        flex: 0 0 calc(100vw - 1rem) !important;
-        width: calc(100vw - 1rem) !important;
-        max-width: calc(100vw - 1rem) !important;
-        min-width: calc(100vw - 1rem) !important;
+        /* flex-basis 100% = exatamente a largura do col-row. Cada coluna
+           preenche a viewport útil — snap por página, sem overflow. */
+        flex: 0 0 100% !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
         scroll-snap-stop: always !important;
         scroll-snap-align: start !important;
       }
