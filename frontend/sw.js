@@ -1,7 +1,7 @@
 // Service worker — network-first pra HTML e app.js (sempre serve a versão
 // nova quando online; cai pro cache só offline). Stale-while-revalidate
 // pra ícones / manifest / assets pesados que mudam pouco.
-const CACHE = 'agenda-tenis-v69';
+const CACHE = 'agenda-tenis-v70';
 const SHELL_OFFLINE = ['/', '/app.js', '/manifest.webmanifest', '/icon-192.svg', '/icon-512.svg'];
 
 self.addEventListener('install', (e) => {

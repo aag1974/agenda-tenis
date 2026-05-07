@@ -874,6 +874,14 @@ const KANBAN_COLUMNS = [
 ];
 const KANBAN_COLUMN_IDS = KANBAN_COLUMNS.map(c => c.id);
 
+function orderedKanbanColumns() {
+  const order = state.columnOrder;
+  if (!Array.isArray(order) || !order.length) return KANBAN_COLUMNS;
+  const ordered = order.map(id => KANBAN_COLUMNS.find(c => c.id === id)).filter(Boolean);
+  const remaining = KANBAN_COLUMNS.filter(c => !order.includes(c.id));
+  return [...ordered, ...remaining];
+}
+
 function autoColumnFor(t) {
   const status = t.derivedStatus || 'unknown';
   if (status === 'past') return 'historico';
@@ -1616,7 +1624,7 @@ function toggleGearMenu() {
       onClick: (e) => { e.preventDefault(); onClick(); },
     }, text);
     return el('div', { class: 'px-3 py-2' },
-      el('div', { class: 'text-xs text-slate-600 mb-1.5' }, label),
+      el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5' }, label),
       el('div', { class: 'flex flex-wrap gap-1.5' },
         pill('Todos', allActive, onClearAll),
         ...options.map(v => pill(v, isSelected(v), () => onTogglePill(v))),
@@ -2468,7 +2476,7 @@ async function openTournament(tid) {
     class: 'text-sm bg-white/10 hover:bg-white/15 text-white border border-white/20 rounded px-2 py-1 cursor-pointer',
     title: 'Mudar coluna',
   },
-    ...KANBAN_COLUMNS.map(c => el('option', { value: c.id, selected: c.id === currentCol ? 'selected' : false },
+    ...orderedKanbanColumns().map(c => el('option', { value: c.id, selected: c.id === currentCol ? 'selected' : false },
       `${c.icon} ${state.columnLabels[c.id] || c.label}`,
     )),
   );
