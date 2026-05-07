@@ -478,6 +478,31 @@ function parseVenuesSection(text) {
   return result;
 }
 
+// Debug: roda só os scrapes de inscrição da atleta e retorna o que veio
+// de cada página do TI. Útil pra investigar "por que Anna não aparece
+// como inscrita nesse torneio".
+export async function debugAthleteInscriptions({ email, password }) {
+  const client = new TIClient();
+  await client.login(email, password);
+  const athlete = await getAthleteInfo(client);
+  let programaIds = [];
+  let programaError = null;
+  try { programaIds = await getProgramaIds(client); }
+  catch (err) { programaError = err.message; }
+  const annaIds = [...new Set([...athlete.tournamentIds, ...programaIds])];
+  return {
+    athleteId: client.athleteId,
+    athleteName: athlete.name,
+    profileTournamentIds: athlete.tournamentIds,
+    profileTournamentCount: athlete.tournamentIds.length,
+    programaIds,
+    programaCount: programaIds.length,
+    programaError,
+    unionIds: annaIds,
+    unionCount: annaIds.length,
+  };
+}
+
 export async function syncAthlete({ email, password, starredIds = [] }) {
   const client = new TIClient();
   await client.login(email, password);

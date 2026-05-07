@@ -25,7 +25,8 @@ import {
   deleteManualLabel, deriveAutoLabels, resolveManualLabels, LABEL_COLORS,
 } from './labels.js';
 import { syncProfile, getSyncStatus, startAutoSync } from './sync-manager.js';
-import { deriveStatus, fetchTournamentDetails } from './scraper.js';
+import { deriveStatus, fetchTournamentDetails, debugAthleteInscriptions } from './scraper.js';
+import { getProfileCredentials } from './storage.js';
 import {
   createUser, authenticate, signCookie, authMiddleware, requireAuth,
   userCount, listUsers, findUserById, getPlanInfo, migrateUsersAddPlan,
@@ -652,6 +653,21 @@ app.patch('/api/profiles/:id/tournaments/:tid/notes', requireAuth, ensureOwnedPr
 app.post('/api/profiles/:id/reset-board-overrides', requireAuth, ensureOwnedProfile, (req, res) => {
   const cleared = clearColumnOverrides(req.params.id);
   res.json({ cleared });
+});
+
+// Debug: roda o scrape de inscrições da atleta e retorna pra inspeção.
+// Útil pra investigar "por que Anna não aparece como inscrita em X".
+app.get('/api/profiles/:id/debug-inscriptions', requireAuth, ensureOwnedProfile, async (req, res) => {
+  const creds = getProfileCredentials(req.params.id);
+  if (!creds) return res.status(404).json({ error: 'Perfil não encontrado' });
+  try {
+    const data = await debugAthleteInscriptions(creds);
+    const tid = req.query.tid;
+    const found = tid ? data.unionIds.includes(String(tid)) : null;
+    res.json({ ...data, queryTid: tid || null, found });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Reset radical: apaga synced + notes + alertas. Preserva perfil + creds.
