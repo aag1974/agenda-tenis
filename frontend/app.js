@@ -1549,7 +1549,7 @@ async function openLabelPicker(t) {
 
   // Header
   card.appendChild(el('div', { class: 'shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between' },
-    el('h3', { class: 'text-sm font-semibold' }, '🏷️ Etiquetas'),
+    el('h3', { class: 'text-base font-semibold text-slate-900' }, '🏷️ Etiquetas'),
     el('button', { class: 'text-slate-500 hover:text-slate-900 text-xl leading-none', onClick: close }, '×'),
   ));
 
