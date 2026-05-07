@@ -1461,10 +1461,11 @@ function wireKanbanSortable(container) {
       animation: 150,
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
-      // Touch: precisa segurar 300ms antes de iniciar drag (libera scroll/swipe)
+      // Touch: segurar 300ms imóvel pra iniciar drag. Qualquer movimento
+       // dentro do delay cancela e libera scroll/swipe nativos.
       delay: 300,
       delayOnTouchOnly: true,
-      touchStartThreshold: 8,
+      touchStartThreshold: 0,
       onEnd: async (evt) => {
         const tid = evt.item.dataset.tid;
         const newColumn = evt.to.dataset.column;
@@ -1515,7 +1516,7 @@ function wireKanbanSortable(container) {
       draggable: '.kanban-col',
       delay: 300,
       delayOnTouchOnly: true,
-      touchStartThreshold: 8,
+      touchStartThreshold: 0,
       onEnd: async () => {
         const ids = [...colRow.querySelectorAll('.kanban-col')].map(c => c.dataset.columnId).filter(Boolean);
         state.columnOrder = ids;
