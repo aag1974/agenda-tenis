@@ -3351,16 +3351,13 @@ async function openTournament(tid) {
       // Etiquetas (auto + manuais)
       renderLabelsSection(t),
 
-      // Aviso prominente quando o torneio foi "perdido"
-      isLost && el('section', { class: 'rounded-lg bg-slate-100 border border-slate-300 p-3' },
-        el('div', { class: 'text-sm font-medium text-slate-700' },
-          boletoExpired ? '❌ Boleto vencido — inscrição perdida' : '🔒 Inscrições encerradas',
-        ),
+      // Aviso prominente só pra boleto vencido (info nova). "Inscrições
+      // encerradas" sozinho já é representado pela etiqueta acima — não
+      // duplicar.
+      boletoExpired && el('section', { class: 'rounded-lg bg-slate-100 border border-slate-300 p-3' },
+        el('div', { class: 'text-sm font-medium text-slate-700' }, '❌ Boleto vencido — inscrição perdida'),
         el('div', { class: 'text-xs text-slate-600 mt-1' },
-          boletoExpired
-            ? 'O prazo de pagamento passou. Você não pode mais participar deste torneio.'
-            : 'O TI não aceita mais novas inscrições neste torneio.',
-        ),
+          'O prazo de pagamento passou. Você não pode mais participar deste torneio.'),
       ),
 
       t.pendingPayment && el('section', { class: 'rounded-lg bg-amber-50 border border-amber-300 px-3 py-2 flex items-center justify-between gap-3' },

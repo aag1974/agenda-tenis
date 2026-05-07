@@ -13,7 +13,7 @@ Transformar o Tennis Flow de ferramenta pessoal em produto com 3 níveis:
 - **Free (pós-trial)** — depois dos 15 dias, se não pagou, vira Free
   degradado. Mantém acesso à conta e a um quadro útil mas limitado.
 - **Pro vitalício** — pagamento único via Pix. Preço definido: **R$297
-  (fundador) / R$697 (regular)** — explico abaixo. Sem mensalidade, sem
+  (fundador) / R$597 (regular)** — explico abaixo. Sem mensalidade, sem
   cartão, sem renovação. Garantia de reembolso 15 dias.
 
 Estratégia de aquisição: **virar viral pelo botão Compartilhar**. Quando o
@@ -259,7 +259,7 @@ ter algo útil.
    convidado quiser quadro próprio (atleta próprio), precisa Pro próprio.
 4. **Sem revogação de token** no MVP. Card compartilhado fica público
    indefinidamente. Adicionamos botão "Apagar links" se virar problema.
-5. **Preço definido: R$297 fundador / R$697 regular**. Detalhes abaixo.
+5. **Preço definido: R$297 fundador / R$597 regular**. Detalhes abaixo.
 
 ## Estratégia de preço
 
@@ -298,17 +298,17 @@ com preço da conta corrente — categorias diferentes.
 | Fase                     | Preço    | Quando                          |
 |--------------------------|----------|---------------------------------|
 | **Fundador**             | **R$297**| Primeiros 100 ou até dez/2026   |
-| **Regular**              | **R$697**| Depois                          |
+| **Regular**              | **R$597**| Depois                          |
 
-Gap fundador → regular = 2.35x. Está no limite do que mercado aceita
-(campanhas típicas vão de 1.5-2x). Funciona porque:
+Gap fundador → regular = 2.01x. Está dentro do range aceitável de
+mercado (campanhas típicas vão de 1.5-2x). Funciona porque:
 
 1. **R$297 é zona de impulso (sub-300).** Maximiza conversão na
    validação. Em fase early, learning > receita por unidade.
-2. **R$697 é zona "decisão consciente" mas ainda sub-R$1k.** Não vira
+2. **R$597 é zona "decisão consciente" mas ainda sub-R$1k.** Não vira
    reunião familiar.
 3. **História "antes e depois" é forte.** "Comprei por R$297 quando ainda
-   era fundador, hoje custa R$697" vira boca-a-boca.
+   era fundador, hoje custa R$597" vira boca-a-boca.
 4. **Risco mitigado pelo cap claro.** "Primeiros 100" ou "até dez/2026" —
    um critério, cumprido. Sem promoção eterna.
 
@@ -317,14 +317,14 @@ Gap fundador → regular = 2.35x. Está no limite do que mercado aceita
 1. **Cap rígido.** 100 clientes ou data fixa. Não relaxar.
 2. **Comunicar transição com antecedência.** Banner 30 dias antes:
    "Restam 12 vagas fundador" ou "Fundador encerra em DD/MM".
-3. **Landing/produto na régua de R$697.** Quem chega na fase regular
+3. **Landing/produto na régua de R$597.** Quem chega na fase regular
    julga pelo que vê. Manual, UX, atendimento — qualidade alta.
-4. **Garantia 15 dias amortece tensão.** Quem paga R$697 vendo que
+4. **Garantia 15 dias amortece tensão.** Quem paga R$597 vendo que
    outros pagaram R$297 pode resistir; reembolso amplo compensa.
 
 ### Por que NÃO R$197 ou R$497 fundador
 
-- **R$197**: dá impressão de hobby, mata a justificativa do R$697 depois.
+- **R$197**: dá impressão de hobby, mata a justificativa do R$597 depois.
 - **R$497**: gap fica 1.4x, narrativa do "fundador" fica fraca.
 - **R$297** equilibra: zona de impulso + gap suficiente pra história
   do "antes e depois" valer.
