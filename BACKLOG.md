@@ -43,6 +43,42 @@ torneio é G1+ e GA". Mitigação atual: lazy-merge quando user abre o
 modal (persiste no synced.json). Mitigação ideal: enrich incremental
 até cobrir todos.
 
+### 5. Colunas customizadas
+Permitir o usuário criar colunas próprias além das 7 fixas. Arquitetura
+já comporta — `notes.column` por torneio (override), `columnOrder`,
+`columnLabels`, `hiddenColumns` já são persistidos via `/api/household/board-config`.
+
+**O que precisa:**
+- `state.customColumns: [{id: 'custom_xyz', label, icon}]` persistido
+  na board-config do household.
+- `KANBAN_COLUMNS` vira `[...DEFAULT_COLUMNS, ...customColumns]` no runtime.
+- Botão "+ Criar coluna" na seção Colunas do painel de filtros, abrindo
+  form simples: nome + emoji (input de texto, sugestão de 6-8 emojis
+  populares: 📋 🏆 ⏰ 🎯 🔥 ⚡ 💪 🎪).
+- Lixeira ao lado de cada coluna custom — deletar limpa `notes.column`
+  dos cards apontados pra ela (caem pro auto).
+
+**Trade-offs:**
+- Colunas custom só recebem cards via drag/drop (sem regra automática).
+  Aceitável — usuário decide o uso.
+- Colunas são household-wide (todos do household compartilham), coerente
+  com columnOrder/columnLabels que já são compartilhados.
+
+Esforço: ~1h30, ~150 linhas.
+
+### 6. Indicação visual da coluna na busca
+Quando o usuário busca, hoje os cards aparecem nas colunas mas é difícil
+saber rapidamente onde cada um está sem rolar a coluna inteira.
+
+**Plano sugerido (1+2 juntos):**
+- **Chip da coluna no card** durante busca (já existe no mobile, expandir
+  pro desktop): mostra ícone+nome da coluna logo abaixo do título.
+- **Contador no header da coluna** durante busca: "Inscrições Abertas · 3
+  resultados" — guia o olho pra coluna com mais matches.
+
+(3) "Dim das colunas sem match" foi descartado — estético mas não
+acrescenta info que (1)+(2) não cobrem.
+
 ## Performance / produção
 
 ### Pré-compilar Tailwind (sair do CDN)
