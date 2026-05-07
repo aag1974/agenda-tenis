@@ -643,7 +643,7 @@ async function openInviteModal() {
   const close = () => { root.innerHTML = ''; };
   const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
   const card = el('div', {
-    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden',
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden',
   });
   const header = el('div', { class: 'shrink-0 bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
     el('h3', { class: 'font-medium' }, '👥 Convidar membro'),
@@ -1675,7 +1675,7 @@ function openSyncModal({ dot, title, detail, runningOnly = false }) {
   const close = () => { root.innerHTML = ''; };
   const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
   const card = el('div', {
-    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden',
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-sm bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden',
   },
     el('div', { class: 'bg-[#0e3a4d] text-white px-5 py-3 flex items-center gap-2' },
       el('span', { class: `inline-block w-3 h-3 rounded-full ${dot}` }),
@@ -1824,8 +1824,8 @@ function toggleGearMenu() {
   const athleteFirstName = (profile?.athleteName || profile?.tiEmail || 'Atleta').split(/\s+/)[0];
   const athleteActions = profile ? [
     { label: `Sobre ${athleteFirstName}`, onClick: () => openAthleteCard() },
+    { label: `TI de ${athleteFirstName}`, onClick: () => openProfileForm(profile) },
     { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
-    { label: 'TI do atleta', onClick: () => openProfileForm(profile) },
   ] : [];
   const accountActions = state.user ? [
     { label: 'Convidar membro', onClick: () => openInviteModal() },
@@ -2070,7 +2070,7 @@ function openCalendarSetup() {
   const close = () => { root.innerHTML = ''; };
   const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
   const card = el('div', {
-    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden',
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden',
   });
   card.appendChild(el('div', { class: 'shrink-0 bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
     el('h3', { class: 'font-medium' }, 'Conectar agenda'),
