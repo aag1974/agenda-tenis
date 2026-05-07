@@ -2568,9 +2568,14 @@ function toggleGearMenu() {
 
   const menu = el('div', {
     id: 'gear-menu',
-    // bg-white inline style pra não sofrer override do tema kanban-dark
+    // bg-white inline style pra não sofrer override do tema kanban-dark.
+    // max-height usa dvh (dynamic viewport height) pra considerar a barra
+    // dinâmica do Safari iOS e safe-area-inset-bottom pra não invadir o
+    // notch/home indicator.
+    // bg-white pra escapar dos overrides do tema kanban; max-height
+    // calculado dinamicamente abaixo (depende de onde o menu cair).
     style: 'background:#fff; color:#0f172a;',
-    class: 'fixed z-50 border border-slate-200 rounded-lg shadow-xl py-1 w-72 max-w-[calc(100vw-1rem)] overflow-hidden',
+    class: 'fixed z-50 border border-slate-200 rounded-lg shadow-xl py-1 w-72 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain',
     onClick: (e) => e.stopPropagation(),
   },
     userHeader,
@@ -2617,12 +2622,16 @@ function toggleGearMenu() {
   // Anexa ao body (fora do #header-bar pra escapar dos overrides do tema kanban)
   document.body.appendChild(menu);
 
-  // Posiciona logo abaixo do botão avatar, alinhado à direita
+  // Posiciona logo abaixo do botão avatar, alinhado à direita.
+  // max-height respeita a barra inferior dinâmica do Safari iOS via dvh
+  // + safe-area-inset-bottom — senão o último item do menu fica escondido.
   const anchor = $('avatar-button');
   if (anchor) {
     const rect = anchor.getBoundingClientRect();
-    menu.style.top = `${rect.bottom + 6}px`;
+    const top = rect.bottom + 6;
+    menu.style.top = `${top}px`;
     menu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+    menu.style.maxHeight = `calc(100dvh - ${top + 8}px - env(safe-area-inset-bottom))`;
   }
 
   setTimeout(() => {
