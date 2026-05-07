@@ -1995,13 +1995,20 @@ function renderFiltersButton() {
     (state.filterYears?.length || 0) +
     (state.filterTiers?.length || 0) +
     (state.hiddenColumns?.length || 0);
+  // Funil (Heroicons FunnelIcon, mini 20x20) — 3 linhas formando triângulo
+  // invertido, ícone universal de filtro.
+  const funnel = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  funnel.setAttribute('viewBox', '0 0 20 20');
+  funnel.setAttribute('fill', 'currentColor');
+  funnel.setAttribute('class', 'w-5 h-5');
+  funnel.innerHTML = '<path fill-rule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clip-rule="evenodd" />';
   return el('button', {
     id: 'filters-button',
     class: 'relative w-9 h-9 rounded-full flex items-center justify-center text-white/85 hover:text-white hover:bg-white/10',
     title: activeCount ? `Filtros (${activeCount} ativos)` : 'Filtros',
     onClick: (e) => { e.stopPropagation(); openFiltersPanel(); },
   },
-    el('span', { class: 'text-base' }, '🎚️'),
+    funnel,
     activeCount > 0 && el('span', {
       class: 'absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-cyan-500 text-white text-[10px] font-bold flex items-center justify-center',
     }, String(activeCount)),
