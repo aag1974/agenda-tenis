@@ -43,6 +43,17 @@ torneio é G1+ e GA". Mitigação atual: lazy-merge quando user abre o
 modal (persiste no synced.json). Mitigação ideal: enrich incremental
 até cobrir todos.
 
+## Performance / produção
+
+### Pré-compilar Tailwind (sair do CDN)
+Hoje usamos `<script src="cdn.tailwindcss.com">` que compila CSS em
+runtime. Console mostra warning "should not be used in production".
+Pra polir antes do lançamento comercial:
+- Adicionar tailwindcss como devDependency
+- Build step no Render: `npx tailwindcss -i in.css -o styles.css --minify`
+- Trocar `<script>` por `<link rel="stylesheet">`
+- Reduz ~3MB JS → ~30KB CSS, melhora Lighthouse e first paint
+
 ## Ideias soltas
 
 - Login com Google (OAuth)
