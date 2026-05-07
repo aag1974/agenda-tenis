@@ -1169,13 +1169,23 @@ function openCardActions(anchorEl, t) {
     }, 'Compartilhar'),
   );
 
+  // Posiciona off-screen primeiro pra forçar layout antes de medir.
+  // Sem isso, na primeira renderização o offsetWidth pode vir 0 ou
+  // o popover aparece brevemente em posição default antes do reposicionamento.
+  pop.style.left = '-9999px';
+  pop.style.top = '-9999px';
+  pop.style.visibility = 'hidden';
   document.body.appendChild(pop);
-  // Posiciona abaixo do botão âncora
   const r = anchorEl.getBoundingClientRect();
-  const popW = pop.offsetWidth;
-  const left = Math.max(8, Math.min(r.right - popW, window.innerWidth - popW - 8));
+  const popW = pop.offsetWidth || 200;
+  const popH = pop.offsetHeight || 80;
+  let left = r.right - popW;
+  let top = r.bottom + 4;
+  left = Math.max(8, Math.min(left, window.innerWidth - popW - 8));
+  if (top + popH > window.innerHeight - 8) top = r.top - popH - 4;
   pop.style.left = `${left}px`;
-  pop.style.top = `${r.bottom + 4}px`;
+  pop.style.top = `${top}px`;
+  pop.style.visibility = 'visible';
 
   // Fecha ao clicar fora ou pressionar Esc
   const onAway = (ev) => {
@@ -1297,6 +1307,9 @@ function renderKanbanCard(t) {
       class: 'absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 leading-none',
       title: 'Ações',
       'aria-label': 'Ações do torneio',
+      // Stop mousedown também — senão SortableJS pode interpretar como início de drag
+      onMousedown: (e) => e.stopPropagation(),
+      onTouchstart: (e) => e.stopPropagation(),
       onClick: (e) => { e.stopPropagation(); openCardActions(e.currentTarget, t); },
     }, '⋯'),
     isPinned && el('span', {
@@ -3211,14 +3224,13 @@ async function openTournament(tid) {
   const isLost = boletoExpired || (registrationClosed && !inscribedFinal);
   const showTravelTools = isFuture && !isLost;
 
-  // Lazy-fetch full details (hotels, venues, observations) and merge — only when relevant
-  let details = null;
-  if (isFuture) {
-    try { details = await api.tournamentDetails(tid); } catch {}
-  }
+  // Lazy-fetch detalhes + voo em paralelo — antes era sequencial e dobrava
+  // o tempo de abertura do modal (cada um leva ~500-800ms).
+  const [details, flightInfo] = await Promise.all([
+    isFuture ? api.tournamentDetails(tid).catch(() => null) : Promise.resolve(null),
+    showTravelTools ? api.flightUrl(state.activeProfileId, tid).catch(() => ({ error: true })) : Promise.resolve(null),
+  ]);
   const merged = details ? { ...t, hotels: details.hotels || t.hotels || [], venues: details.venues || t.venues || [], observations: details.observations || t.observations, cancelDeadline: details.cancelDeadline || t.cancelDeadline, prices: details.prices || t.prices } : t;
-
-  const flightInfo = showTravelTools ? await api.flightUrl(state.activeProfileId, tid).catch(err => ({ error: true })) : null;
 
   const notes = t.notes || {};
   const root = $('modal-root');

@@ -201,16 +201,23 @@ function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function renderSharePage(tournament) {
+function renderSharePage(tournament, details) {
   const t = tournament;
+  const merged = details
+    ? { ...t, hotels: details.hotels || t.hotels || [], venues: details.venues || t.venues || [], observations: details.observations || t.observations, cancelDeadline: details.cancelDeadline || t.cancelDeadline }
+    : t;
   const name = escapeHtml(t.name || 'Torneio');
-  const where = [t.city, t.state].filter(Boolean).join('/');
+  const where = [t.city, t.state].filter(Boolean).join(' / ');
   const dates = t.startDate
     ? (t.endDate && t.endDate !== t.startDate ? `${t.startDate} a ${t.endDate}` : t.startDate)
     : null;
   const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
   const regStatus = t.registrationStatus || null;
   const regOpen = /Aberto|aberta/i.test(regStatus || '');
+  const regDate = (regStatus || '').match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
+  const regLine = regDate
+    ? (regOpen ? `Inscrições abertas até ${regDate}` : `Inscrições encerraram em ${regDate}`)
+    : (regStatus ? `Inscrições: ${regStatus}` : null);
   const ogDesc = [dates, where, tiers.join(' · ')].filter(Boolean).join(' · ');
 
   return `<!doctype html>
@@ -226,7 +233,7 @@ function renderSharePage(tournament) {
 <meta property="og:site_name" content="Tennis Flow" />
 <link rel="icon" href="/icon-192.svg" />
 <style>
-  :root { --navy:#0e3a4d; --navy-dark:#0a2e3d; --teal:#1f5b75; --cyan:#22d3ee; --cyan-deep:#00a3e0; --slate-100:#f1f5f9; --slate-200:#e2e8f0; --slate-500:#64748b; --slate-600:#475569; --slate-700:#334155; --slate-900:#0f172a; }
+  :root { --navy:#0e3a4d; --navy-dark:#0a2e3d; --teal:#1f5b75; --cyan:#22d3ee; --cyan-deep:#00a3e0; --emerald:#10b981; --slate-100:#f1f5f9; --slate-200:#e2e8f0; --slate-300:#cbd5e1; --slate-500:#64748b; --slate-600:#475569; --slate-700:#334155; --slate-900:#0f172a; }
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; }
   body {
@@ -234,7 +241,7 @@ function renderSharePage(tournament) {
     background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--teal) 100%);
     background-attachment: fixed;
     color: var(--slate-900);
-    min-height: 100vh;
+    min-height: 100vh; line-height: 1.5;
   }
   body::before, body::after {
     content:'🎾'; position:fixed; font-size:14rem; opacity:0.05; pointer-events:none; z-index:0;
@@ -242,21 +249,20 @@ function renderSharePage(tournament) {
   body::before { top:-3rem; left:-3rem; transform:rotate(-15deg); }
   body::after { bottom:-3rem; right:-3rem; transform:rotate(20deg); }
   .wrap {
-    max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem 2rem;
+    max-width: 720px; margin: 0 auto; padding: 1.25rem 1rem 2rem;
     position: relative; z-index: 1;
   }
+  /* Brand bar */
   .brand-bar {
     display:flex; align-items:center; justify-content:center; gap:0.6rem;
-    color: white; padding: 1rem 0 1.5rem; opacity: 0.95;
+    color: white; padding: 0.5rem 0 1rem; opacity: 0.95;
   }
   .brand-mark {
     width: 36px; height: 36px; background: var(--navy-dark); border-radius: 8px;
     display:inline-flex; align-items:center; justify-content:center;
     font-size: 18px; position: relative;
   }
-  .brand-mark .tf {
-    position:absolute; bottom:1px; right:1px; font-size:9px; font-weight:900; line-height:1; letter-spacing:-0.5px;
-  }
+  .brand-mark .tf { position:absolute; bottom:1px; right:1px; font-size:9px; font-weight:900; line-height:1; letter-spacing:-0.5px; }
   .brand-mark .tf .t { color:white; }
   .brand-mark .tf .f { color: var(--cyan); }
   .brand-name { font-weight: 800; font-size: 1.1rem; }
@@ -265,55 +271,88 @@ function renderSharePage(tournament) {
     text-align:center; color: rgba(255,255,255,0.75); font-size:0.85rem;
     margin-bottom: 1rem;
   }
-  /* Card */
-  .card {
-    background: white; border-radius: 16px; padding: 1.25rem;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  /* Modal-like card */
+  .modal-card {
+    background: white; border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    overflow: hidden;
     margin-bottom: 1rem;
   }
-  .badges { display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.75rem; }
-  .badge {
-    font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px;
-    font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+  .modal-header {
+    background: var(--navy);
+    padding: 0.75rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    color: white;
   }
-  .badge-tier { background: var(--navy); color: white; }
-  .badge-open { background: #d1fae5; color: #047857; }
-  .badge-closed { background: var(--slate-100); color: var(--slate-600); }
-  .card h1 {
-    margin: 0 0 0.6rem; font-size: 1.35rem; line-height: 1.25; color: var(--navy);
+  .modal-header .col-pill {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+    padding: 0.35rem 0.85rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 0.4rem;
   }
-  .meta-row {
-    display:flex; align-items:center; gap:0.55rem; padding: 0.5rem 0;
-    border-top: 1px solid var(--slate-100); font-size: 0.95rem; color: var(--slate-700);
+  .modal-header .ti-link {
+    color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.85rem;
+    white-space: nowrap;
   }
-  .meta-row:first-of-type { border-top: none; }
-  .meta-icon { font-size: 1.1rem; width: 1.5rem; text-align: center; }
-  .meta-label { color: var(--slate-500); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 0.25rem; }
-  .meta-value { font-weight: 600; }
-  .ti-link {
-    display:block; text-align:center; padding: 0.6rem;
-    background: var(--slate-100); color: var(--slate-700);
-    text-decoration: none; border-radius: 10px;
-    font-size: 0.85rem; margin-top: 0.75rem;
+  .modal-header .ti-link:hover { color: white; text-decoration: underline; }
+  .title-block {
+    padding: 1rem 1.25rem; border-bottom: 1px solid var(--slate-200);
   }
-  .ti-link:hover { background: var(--slate-200); }
+  .title-block h1 {
+    margin: 0 0 0.25rem; font-size: 1.25rem; line-height: 1.3; color: var(--navy);
+    font-weight: 700;
+  }
+  .title-block .loc { color: var(--slate-600); font-size: 0.95rem; margin: 0; }
+  .body { padding: 1rem 1.25rem; }
+  .section { margin-bottom: 1.25rem; }
+  .section:last-child { margin-bottom: 0; }
+  .section-title {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--slate-600); margin: 0 0 0.4rem;
+  }
+  /* Tier badges */
+  .tier-badges { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .tier-badge {
+    background: var(--emerald); color: white; font-size: 0.75rem;
+    font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 4px;
+    letter-spacing: 0.02em;
+  }
+  /* Datas */
+  .dates-main { font-size: 1.05rem; color: var(--slate-900); }
+  .dates-sub { font-size: 0.85rem; color: var(--slate-600); margin-top: 0.15rem; }
+  .dates-sub.open { color: #047857; font-weight: 600; }
+  /* Lists (hotels, venues) */
+  .info-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .info-item {
+    border: 1px solid var(--slate-200); border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+  }
+  .info-item .name { font-weight: 600; font-size: 0.95rem; color: var(--slate-900); }
+  .info-item .addr { font-size: 0.8rem; color: var(--slate-600); margin-top: 0.15rem; }
+  .info-item .meta { font-size: 0.78rem; color: var(--slate-500); margin-top: 0.15rem; }
+  /* Observations */
+  details.obs { background: var(--slate-100); border-radius: 8px; padding: 0.6rem 0.85rem; }
+  details.obs summary { cursor: pointer; font-size: 0.85rem; color: var(--slate-700); font-weight: 600; }
+  details.obs pre {
+    margin: 0.5rem 0 0; white-space: pre-wrap; font-family: inherit;
+    font-size: 0.82rem; color: var(--slate-700); max-height: 240px; overflow-y: auto;
+  }
   /* CTA */
   .cta {
-    background: white; border-radius: 16px; padding: 1.5rem 1.25rem;
+    background: white; border-radius: 14px; padding: 1.5rem 1.25rem;
     text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
   }
-  .cta h2 {
-    margin: 0 0 0.5rem; color: var(--navy); font-size: 1.15rem;
+  .cta h2 { margin: 0 0 0.5rem; color: var(--navy); font-size: 1.2rem; }
+  .cta .cta-lead { margin: 0 0 1.25rem; color: var(--slate-600); font-size: 0.95rem; }
+  .why { list-style: none; padding: 0; margin: 1rem 0 1.25rem; text-align: left; }
+  .why li {
+    display: grid; grid-template-columns: 24px 1fr; gap: 0.5rem;
+    padding: 0.35rem 0; font-size: 0.88rem; color: var(--slate-700);
   }
-  .cta p {
-    margin: 0 0 1.25rem; color: var(--slate-600); font-size: 0.92rem;
-    line-height: 1.5;
-  }
+  .why li::before { content:'✓'; color: var(--cyan-deep); font-weight: 800; }
   .cta-btn {
     display:block; width:100%; padding: 0.85rem;
     background: var(--cyan-deep); color: white; text-decoration: none;
     border-radius: 10px; font-weight: 700; font-size: 1rem;
-    transition: background 0.15s;
   }
   .cta-btn:hover { background: var(--navy); }
   .cta-btn-secondary {
@@ -322,16 +361,6 @@ function renderSharePage(tournament) {
     font-size: 0.9rem; margin-top: 0.5rem;
   }
   .cta-btn-secondary:hover { text-decoration: underline; }
-  /* Bullet list */
-  .why {
-    list-style: none; padding: 0; margin: 1rem 0 1.25rem;
-    text-align: left;
-  }
-  .why li {
-    display: grid; grid-template-columns: 24px 1fr; gap: 0.5rem;
-    padding: 0.35rem 0; font-size: 0.88rem; color: var(--slate-700);
-  }
-  .why li::before { content:'✓'; color: var(--cyan-deep); font-weight: 800; }
   .footer {
     text-align:center; color: rgba(255,255,255,0.6); font-size: 0.78rem;
     margin-top: 1.25rem;
@@ -342,47 +371,87 @@ function renderSharePage(tournament) {
 <div class="wrap">
 
   <div class="brand-bar">
-    <span class="brand-mark">
-      🎾<span class="tf"><span class="t">T</span><span class="f">F</span></span>
-    </span>
+    <span class="brand-mark">🎾<span class="tf"><span class="t">T</span><span class="f">F</span></span></span>
     <span class="brand-name">Tennis<span class="f">Flow</span></span>
   </div>
 
   <div class="shared-by">Compartilhado via Tennis Flow</div>
 
-  <div class="card">
-    <div class="badges">
-      ${tiers.map(t => `<span class="badge badge-tier">${escapeHtml(t)}</span>`).join('')}
-      ${regStatus ? `<span class="badge ${regOpen ? 'badge-open' : 'badge-closed'}">${escapeHtml(regStatus)}</span>` : ''}
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="col-pill">${regOpen ? '🌟 Inscrições Abertas' : (regStatus ? '🔒 ' + escapeHtml(regStatus) : '🎾 Torneio')}</span>
+      ${t.url ? `<a class="ti-link" href="${escapeHtml(t.url)}" target="_blank" rel="noopener">Ver no Tênis Integrado ↗</a>` : ''}
     </div>
-    <h1>${name}</h1>
 
-    ${dates ? `
-    <div class="meta-row">
-      <span class="meta-icon">📅</span>
-      <span class="meta-value">${escapeHtml(dates)}</span>
-    </div>` : ''}
+    <div class="title-block">
+      <h1>${name}</h1>
+      ${where ? `<p class="loc">${escapeHtml(where)}</p>` : ''}
+    </div>
 
-    ${where ? `
-    <div class="meta-row">
-      <span class="meta-icon">📍</span>
-      <span class="meta-value">${escapeHtml(where)}</span>
-    </div>` : ''}
+    <div class="body">
 
-    ${t.url ? `
-    <a class="ti-link" href="${escapeHtml(t.url)}" target="_blank" rel="noopener">
-      Ver no Tênis Integrado →
-    </a>` : ''}
+      ${tiers.length ? `
+      <section class="section">
+        <h3 class="section-title">Etiquetas</h3>
+        <div class="tier-badges">
+          ${tiers.map(x => `<span class="tier-badge">${escapeHtml(x)}</span>`).join('')}
+        </div>
+      </section>` : ''}
+
+      ${dates ? `
+      <section class="section">
+        <h3 class="section-title">Datas</h3>
+        <div class="dates-main">${escapeHtml(dates)}</div>
+        ${regLine ? `<div class="dates-sub ${regOpen ? 'open' : ''}">${escapeHtml(regLine)}</div>` : ''}
+        ${merged.cancelDeadline ? `<div class="dates-sub">Cancelamento até ${escapeHtml(merged.cancelDeadline)}</div>` : ''}
+      </section>` : ''}
+
+      ${(merged.hotels && merged.hotels.length) ? `
+      <section class="section">
+        <h3 class="section-title">🏨 Hotéis oficiais (${merged.hotels.length})</h3>
+        <ul class="info-list">
+          ${merged.hotels.map(h => `
+            <li class="info-item">
+              <div class="name">${escapeHtml(h.name || '')}</div>
+              ${h.address ? `<div class="addr">${escapeHtml(h.address)}</div>` : ''}
+              ${(h.phone || h.email) ? `<div class="meta">${escapeHtml([h.phone, h.email].filter(Boolean).join(' · '))}</div>` : ''}
+            </li>`).join('')}
+        </ul>
+      </section>` : ''}
+
+      ${(merged.venues && merged.venues.length) ? `
+      <section class="section">
+        <h3 class="section-title">📍 Locais dos jogos</h3>
+        <ul class="info-list">
+          ${merged.venues.map(v => `
+            <li class="info-item">
+              <div class="name">${escapeHtml(v.name || '')}</div>
+              ${v.address ? `<div class="addr">${escapeHtml(v.address)}</div>` : ''}
+              ${(v.phone || v.surface) ? `<div class="meta">${escapeHtml([v.phone, v.surface].filter(Boolean).join(' · '))}</div>` : ''}
+            </li>`).join('')}
+        </ul>
+      </section>` : ''}
+
+      ${merged.observations ? `
+      <section class="section">
+        <details class="obs">
+          <summary>Observações do torneio ▾</summary>
+          <pre>${escapeHtml(merged.observations)}</pre>
+        </details>
+      </section>` : ''}
+
+    </div>
   </div>
 
   <div class="cta">
-    <h2>Organize a sua agenda também</h2>
-    <p>Tennis Flow lê o Tênis Integrado, organiza tudo num quadro Kanban e avisa de boletos, inscrições e mudanças no ranking.</p>
+    <h2>Quer organizar a agenda do seu atleta também?</h2>
+    <p class="cta-lead">Tennis Flow lê o Tênis Integrado e organiza tudo num quadro Kanban com alertas de boletos, inscrições, mudanças de ranking e agenda integrada.</p>
     <ul class="why">
-      <li>Sincronização automática a cada 6h</li>
+      <li>Sincronização automática a cada 6 horas</li>
       <li>Boletos detectados com lembrete de vencimento</li>
-      <li>Agenda integrada (iPhone e Google)</li>
-      <li>Compartilhamento em família</li>
+      <li>Agenda integrada (iPhone, Google, Outlook)</li>
+      <li>Quadro compartilhado com o resto da família</li>
+      <li>Alertas customizados (novos torneios, ranking)</li>
     </ul>
     <a class="cta-btn" href="/manual">Conhecer o Tennis Flow</a>
     <a class="cta-btn-secondary" href="/">Já tenho conta</a>
@@ -406,13 +475,17 @@ app.post('/api/profiles/:id/tournaments/:tid/share', requireAuth, ensureOwnedPro
   res.json({ token: link.token, url: `${proto}://${host}/share/${link.token}` });
 });
 
-app.get('/share/:token', (req, res) => {
+app.get('/share/:token', async (req, res) => {
   const link = getShareLink(req.params.token);
   if (!link) return res.status(404).type('html').send('<h1>Link inválido ou expirado</h1>');
   const data = getSyncedData(link.profileId);
   const t = (data?.tournaments || []).find(x => x.id === link.tournamentId);
   if (!t) return res.status(404).type('html').send('<h1>Torneio não encontrado</h1>');
-  res.type('html').send(renderSharePage(t));
+  // Tenta buscar detalhes (hotéis, locais, observações) do TI — mesmo cache
+  // do endpoint de detalhes. Falha silenciosa se TI offline.
+  let details = null;
+  try { details = await loadTournamentDetailsCached(t.id); } catch {}
+  res.type('html').send(renderSharePage(t, details));
 });
 
 // Profiles — escopados pela household do usuário
@@ -568,16 +641,16 @@ app.patch('/api/profiles/:id/tournaments/:tid/notes', requireAuth, ensureOwnedPr
 // Lazy-load full tournament details (hotels, venues, observations) — public endpoint, with cache
 const detailsCache = new Map(); // tid -> { data, ts }
 const DETAILS_TTL = 6 * 60 * 60 * 1000; // 6h
-app.get('/api/tournament-details/:tid', async (req, res) => {
-  const tid = req.params.tid;
+async function loadTournamentDetailsCached(tid) {
   const cached = detailsCache.get(tid);
-  if (cached && Date.now() - cached.ts < DETAILS_TTL) {
-    return res.json(cached.data);
-  }
+  if (cached && Date.now() - cached.ts < DETAILS_TTL) return cached.data;
+  const data = await fetchTournamentDetails(tid);
+  detailsCache.set(tid, { data, ts: Date.now() });
+  return data;
+}
+app.get('/api/tournament-details/:tid', async (req, res) => {
   try {
-    const data = await fetchTournamentDetails(tid);
-    detailsCache.set(tid, { data, ts: Date.now() });
-    res.json(data);
+    res.json(await loadTournamentDetailsCached(req.params.tid));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
