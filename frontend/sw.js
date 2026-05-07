@@ -1,9 +1,12 @@
-// Service worker — cache simples do shell estático para funcionar offline
-const CACHE = 'agenda-tenis-v66';
-const SHELL = ['/', '/app.js', '/manifest.webmanifest', '/icon-192.svg', '/icon-512.svg'];
+// Service worker — network-first pra HTML e app.js (sempre serve a versão
+// nova quando online; cai pro cache só offline). Stale-while-revalidate
+// pra ícones / manifest / assets pesados que mudam pouco.
+const CACHE = 'agenda-tenis-v67';
+const SHELL_OFFLINE = ['/', '/app.js', '/manifest.webmanifest', '/icon-192.svg', '/icon-512.svg'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
+  // Pré-cacheia o shell pra ter fallback offline desde o primeiro carregamento
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL_OFFLINE).catch(() => null)));
   self.skipWaiting();
 });
 
@@ -12,11 +15,32 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+const NETWORK_FIRST_PATHS = new Set(['/', '/app.js', '/index.html']);
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Always go to network for API calls
   if (url.pathname.startsWith('/api/')) return;
-  // Stale-while-revalidate for static assets
+
+  if (NETWORK_FIRST_PATHS.has(url.pathname)) {
+    // Network-first: tenta rede; se falhar (offline), serve cache
+    e.respondWith((async () => {
+      try {
+        const res = await fetch(e.request);
+        if (res.ok) {
+          const cache = await caches.open(CACHE);
+          cache.put(e.request, res.clone());
+        }
+        return res;
+      } catch {
+        const cache = await caches.open(CACHE);
+        const cached = await cache.match(e.request);
+        return cached || new Response('Offline', { status: 503 });
+      }
+    })());
+    return;
+  }
+
+  // Stale-while-revalidate pra outros assets (ícones, etc)
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(e.request);
