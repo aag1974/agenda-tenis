@@ -41,10 +41,14 @@ export async function syncProfile(profileId) {
       // Migration detection — don't mark anything as "new" if:
       //   - First-ever sync (no previous data), OR
       //   - Previous data had no firstSeenAt at all, OR
-      //   - >= 80% of previous firstSeenAt cluster within a 5-min window (= they were
-      //     all set together, meaning a previous sync was the baseline)
+      //   - >= 80% de firstSeenAt REAIS clusterizam em 5 min (sugere que foram
+      //     todos setados juntos, ou seja, sync anterior foi a baseline)
+      // FAR_PAST é o sentinel "já baselinado" — não conta como cluster real,
+      // senão toda sync subsequente parece baseline (bug).
+      const FAR_PAST_MS = new Date(FAR_PAST).getTime();
       const times = [...firstSeenById.values()]
         .map(ts => new Date(ts).getTime())
+        .filter(ts => ts !== FAR_PAST_MS)
         .sort((a, b) => a - b);
       const WINDOW_MS = 5 * 60 * 1000;
       let maxCluster = 0;

@@ -1217,6 +1217,10 @@ async function togglePinCard(t) {
 }
 
 function buildShareText(t, { includeUrl = true, shareUrl = null } = {}) {
+  // Sem emojis no corpo: alguns dispositivos/cadeias (Safari→WhatsApp,
+  // wa.me, etc) corrompem caracteres fora do BMP e renderizam "?" ou "�".
+  // Layout limpo com labels também escala melhor em fonte pequena.
+  // O preview rico (via og:tags do /share) é o que entrega o visual.
   const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
   const where = [t.city, t.state].filter(Boolean).join(' / ');
   const dates = t.startDate
@@ -1226,14 +1230,14 @@ function buildShareText(t, { includeUrl = true, shareUrl = null } = {}) {
   const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
   const regOpen = /Aberto|aberta/i.test(regStatus);
   const regLine = regDate
-    ? (regOpen ? `Inscrições até ${regDate}` : `Inscrições encerraram em ${regDate}`)
+    ? (regOpen ? `abertas até ${regDate}` : `encerraram em ${regDate}`)
     : (regStatus || null);
   const lines = [];
-  lines.push(`🎾 *${t.name || 'Torneio'}*`);
-  if (where) lines.push(`📍 ${where}`);
-  if (dates) lines.push(`📅 ${dates}`);
-  if (tiers.length) lines.push(`🏆 ${tiers.join(' · ')}`);
-  if (regLine) lines.push(`📝 ${regLine}`);
+  lines.push(`*${t.name || 'Torneio'}*`);
+  if (where) lines.push(`Local: ${where}`);
+  if (dates) lines.push(`Datas: ${dates}`);
+  if (tiers.length) lines.push(`Chave: ${tiers.join(' · ')}`);
+  if (regLine) lines.push(`Inscrições: ${regLine}`);
   if (includeUrl) {
     const url = shareUrl || t.url;
     if (url) {
