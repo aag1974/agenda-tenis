@@ -4211,7 +4211,50 @@ function openProfileForm(profile = null) {
 
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  // PWA na home do iPhone fica aberta indefinidamente — sem este check,
+  // o app não detecta novas versões (o page lifecycle não recarrega).
+  // Solução: quando o app fica visível, força registration.update();
+  // se um novo SW assumir (controllerchange), mostra banner pro user
+  // decidir quando recarregar.
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('/sw.js').then((reg) => {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    });
+    // Check imediato no load (caso a primeira visit ao app já tenha
+    // versão nova esperando)
+    reg.update().catch(() => {});
+  }).catch(() => {});
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // Se não havia controller no load inicial, é primeiro registro — não
+    // mostra banner. Só notifica quando uma versão substitui outra.
+    if (!hadController) return;
+    showUpdateBanner();
+  });
+}
+
+function showUpdateBanner() {
+  if (document.getElementById('update-banner')) return;
+  const banner = el('div', {
+    id: 'update-banner',
+    class: 'fixed inset-x-0 bottom-0 z-[80] bg-cyan-600 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-2xl',
+    style: 'padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))',
+  },
+    el('span', { class: 'text-sm font-medium' }, '🎾 Nova versão disponível'),
+    el('div', { class: 'flex gap-2 shrink-0' },
+      el('button', {
+        class: 'text-sm px-3 py-1.5 rounded bg-white text-cyan-700 font-semibold hover:bg-slate-100',
+        onClick: () => window.location.reload(),
+      }, 'Atualizar'),
+      el('button', {
+        class: 'text-white/80 hover:text-white text-xl leading-none px-1',
+        onClick: () => banner.remove(),
+        title: 'Ignorar',
+      }, '×'),
+    ),
+  );
+  document.body.appendChild(banner);
 }
 
 init().catch(err => {
