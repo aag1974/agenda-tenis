@@ -381,6 +381,11 @@ const api = {
     if (!r.ok) throw new Error('Erro ao gerar link');
     return r.json();
   },
+  async resetBoardOverrides(profileId) {
+    const r = await fetch(`/api/profiles/${profileId}/reset-board-overrides`, { method: 'POST' });
+    if (!r.ok) throw new Error('Erro ao resetar');
+    return r.json();
+  },
 };
 
 // ===== Init =====
@@ -2547,6 +2552,7 @@ function toggleGearMenu() {
     isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
     profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
+    profile && { label: 'Resetar movimentações', onClick: () => resetBoardOverrides() },
     { label: 'Manual', onClick: () => window.open('/manual', '_blank') },
     { label: 'Sair', onClick: () => logout() },
   ].filter(Boolean) : [];
@@ -2866,6 +2872,24 @@ function openCalendarSetup() {
       el('li', null, 'No iPhone: Ajustes → Calendário → Contas → Inscritos pra ajustar a frequência de atualização.'),
     ));
   })();
+}
+
+async function resetBoardOverrides() {
+  if (!state.activeProfileId) return;
+  const ok = confirm(
+    'Resetar movimentações manuais?\n\n' +
+    'Todos os cards voltam pra coluna automática (calculada pelos sinais do TI).\n' +
+    'Comentários, etiquetas, anexos, agenda e alertas são mantidos.'
+  );
+  if (!ok) return;
+  try {
+    const r = await api.resetBoardOverrides(state.activeProfileId);
+    await refreshActive();
+    render();
+    alert(`Pronto. ${r.cleared} card(s) voltaram para a coluna automática.`);
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
 }
 
 async function syncNow() {

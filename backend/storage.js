@@ -183,6 +183,25 @@ export function updateTournamentNotes(profileId, tournamentId, patch) {
   return notes[tournamentId];
 }
 
+// Limpa apenas overrides manuais de coluna/ordem — preserva tudo o resto
+// (selected, comments, labels, manualInscribed, manualGiveUp, pinned).
+// Cada card volta a obedecer a regra de auto-placement.
+export function clearColumnOverrides(profileId) {
+  const notes = getNotes(profileId);
+  let changed = 0;
+  for (const tid of Object.keys(notes)) {
+    const n = notes[tid];
+    if (!n) continue;
+    if (n.column != null || n.cardOrder != null) {
+      delete n.column;
+      delete n.cardOrder;
+      changed++;
+    }
+  }
+  if (changed) saveNotes(profileId, notes);
+  return changed;
+}
+
 // ===== Kanban — comments, activity, column =====
 function ensureNoteShape(notes, tournamentId) {
   const cur = notes[tournamentId] || {};

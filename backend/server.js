@@ -12,6 +12,7 @@ import {
   getAlertRules, addAlertRule, updateAlertRule, deleteAlertRule,
   getAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
   findOrCreateShareToken, getShareLink,
+  clearColumnOverrides,
 } from './storage.js';
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn } from './board.js';
 import {
@@ -642,6 +643,13 @@ app.get('/api/profiles/:id/tournaments/:tid', requireAuth, ensureOwnedProfile, (
 app.patch('/api/profiles/:id/tournaments/:tid/notes', requireAuth, ensureOwnedProfile, (req, res) => {
   const updated = updateTournamentNotes(req.params.id, req.params.tid, req.body || {});
   res.json(updated);
+});
+
+// Reset apenas das movimentações manuais (column + cardOrder).
+// Preserva comentários, etiquetas, anexos, agenda, alertas, pin etc.
+app.post('/api/profiles/:id/reset-board-overrides', requireAuth, ensureOwnedProfile, (req, res) => {
+  const cleared = clearColumnOverrides(req.params.id);
+  res.json({ cleared });
 });
 
 // Lazy-load full tournament details (hotels, venues, observations) — public endpoint, with cache
