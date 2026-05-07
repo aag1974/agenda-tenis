@@ -2792,7 +2792,7 @@ function openFiltersPanel() {
   );
 
   const header = el('div', { class: 'sticky top-0 bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between' },
-    el('h3', { class: 'text-base font-semibold text-slate-900' }, '🎚️ Filtros'),
+    el('h3', { class: 'text-base font-semibold text-slate-900' }, 'Filtros'),
     el('button', {
       class: 'text-slate-500 hover:text-slate-900 text-xl leading-none',
       onClick: () => closeFiltersPanel(),

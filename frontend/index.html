@@ -145,6 +145,24 @@
       }
     }
 
+    /* Modais respeitam safe-area no iPhone PWA standalone — caso contrário,
+       o conteúdo invade a área da hora/notch e do home indicator. Cobre os
+       padrões usados pelo app: centered (flex items-center) e bottom-sheet
+       (inset-x-0 bottom-0). */
+    @supports (padding: env(safe-area-inset-top)) {
+      /* Centered modals — both top and bottom respect safe-area */
+      div.fixed.inset-0[class*="items-center"][class*="justify-center"] {
+        padding-top: max(0.5rem, env(safe-area-inset-top)) !important;
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
+      }
+      /* Bottom-sheet style — só aplica se não houver padding-bottom inline
+         (preserva os elementos como o update-banner que já tem safe-area
+         calculado de outra forma). */
+      div.fixed.inset-x-0.bottom-0:not([style*="padding-bottom"]) {
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+      }
+    }
+
     /* Scrollbars invisíveis em todo o app — todo mundo sabe que rola */
     html, body, .kanban-list, .overflow-y-auto, .overflow-x-auto, .overflow-auto {
       scrollbar-width: none;
