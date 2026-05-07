@@ -18,6 +18,16 @@ export const TI_CATEGORIES = [
   { id: 29, name: 'Tennis Kids',   match: /Tennis\s*Kids|Mini\s*T[eê]nis/i },
 ];
 
+// Mapping de detectedCategories ('12F', '14M', etc) pro texto que aparece
+// no anchor da aba Inscrições do torneio ("12 Anos Feminino Simples").
+// Usado pra restringir scan da aba inscritos a uma categoria por torneio.
+export const CATEGORY_HINTS = {
+  '12F': '12 Anos Feminino', '12M': '12 Anos Masculino',
+  '14F': '14 Anos Feminino', '14M': '14 Anos Masculino',
+  '16F': '16 Anos Feminino', '16M': '16 Anos Masculino',
+  '18F': '18 Anos Feminino', '18M': '18 Anos Masculino',
+};
+
 function extractTier(name) {
   if (!name) return null;
   if (/\bG1\+/.test(name)) return 'G1+';
@@ -348,6 +358,9 @@ export async function getAthleteStatusInTournament(tournamentId, athleteId, clie
   if (!athleteId) return null;
   if (!client) return null; // requer auth — fetch público dá 404
   const debug = !!opts.debug;
+  // categoryHint = "12 Anos Feminino" / "14 Anos Masculino" — vindo do
+  // detectedCategories do perfil da atleta. Limita scan a 1 categoria.
+  const categoryHint = opts.categoryHint || null;
   const dbg = (extra) => debug ? { ...extra } : undefined;
   const dbgLog = [];
 
@@ -373,18 +386,23 @@ export async function getAthleteStatusInTournament(tournamentId, athleteId, clie
     }
   });
 
-  // Constrói lista de candidatos: links da página + fallbacks
+  // Filtra anchors. Se temos categoryHint, restringe ao que casa
+  // (ex: "12 Anos Feminino"). Senão, mantém todos (mais lento).
   const normalize = (h) => {
     if (!h) return null;
     if (h.startsWith('http')) return new URL(h).pathname;
     return h.startsWith('/') ? h : '/' + h;
   };
-  const fromPage = insc_anchors.map(a => normalize(a.href)).filter(Boolean);
-  // Adiciona base path se houver per-categoria mas não a geral
-  const hasGeneral = fromPage.some(p => /\/torneio_painel_insc\/index\/\d+\/?$/.test(p));
-  if (!hasGeneral) fromPage.push(`/torneio_painel_insc/index/${tournamentId}`);
-  const candidates = [...new Set(fromPage)];
-  dbgLog.push({ step: 'find-inscritos', anchorsFound: insc_anchors.length, sampleAnchors: insc_anchors.slice(0, 6), candidates });
+  let matchedAnchors = insc_anchors;
+  if (categoryHint) {
+    const hintLower = categoryHint.toLowerCase();
+    const hinted = insc_anchors.filter(a => a.text.toLowerCase().includes(hintLower));
+    if (hinted.length) matchedAnchors = hinted;
+  }
+  const candidates = [...new Set(matchedAnchors.map(a => normalize(a.href)).filter(Boolean))];
+  // Sem candidatos? Tenta path geral
+  if (!candidates.length) candidates.push(`/torneio_painel_insc/index/${tournamentId}`);
+  dbgLog.push({ step: 'find-inscritos', categoryHint, anchorsFound: insc_anchors.length, candidates });
 
   // 3. Cada candidato é uma página (geralmente per-categoria). Scannea
   // todas até achar a atleta. Cap em 12 pra não exagerar nos HTTPs.
@@ -720,14 +738,16 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
     }
   }
 
-  // Source-of-truth: a página /torneio_painel_inscritos do torneio é
-  // canônica pra "atleta inscrita". O perfil dela (/perfil2/inicio +
-  // /perfil2/programa) pode estar atrasado em horas/dias.
-  //
-  // Estratégia: checar TODOS os torneios futuros (próximos 120 dias) ou
-  // recém-passados (últimos 7 dias, pra capturar status final). Concorrência
-  // limitada pra não sobrecarregar o TI.
+  // Source-of-truth: a página /torneio_painel_insc do torneio é canônica
+  // pra "atleta inscrita". O perfil dela pode estar atrasado em horas/dias.
+  // Otimização: passa categoryHint da atleta pra reduzir scan de 8-12
+  // anchors per-categoria pra 1 anchor da categoria correspondente.
   if (client.athleteId) {
+    const hints = (athlete.detectedCategories || [])
+      .map(c => CATEGORY_HINTS[c])
+      .filter(Boolean);
+    const primaryHint = hints[0] || null;
+
     const cutoffPast = new Date(); cutoffPast.setDate(cutoffPast.getDate() - 7);
     const cutoffFuture = new Date(); cutoffFuture.setDate(cutoffFuture.getDate() + 120);
     const inScope = (t) => {
@@ -744,7 +764,7 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
     for (let i = 0; i < candidates.length; i += CONCURRENCY) {
       const batch = candidates.slice(i, i + CONCURRENCY);
       const batchResults = await Promise.all(
-        batch.map(t => getAthleteStatusInTournament(t.id, client.athleteId, client).catch(() => null))
+        batch.map(t => getAthleteStatusInTournament(t.id, client.athleteId, client, { categoryHint: primaryHint }).catch(() => null))
       );
       for (let j = 0; j < batch.length; j++) {
         if (batchResults[j]) results.set(batch[j].id, batchResults[j]);

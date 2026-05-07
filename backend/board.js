@@ -125,11 +125,16 @@ export function computeAutoColumn(t, notes = {}) {
     if (due < today) return 'torneios';
   }
 
-  // Confirmada no TI — situação financeira OK, tudo certo
+  // Boleto pendente (não vencido) tem prioridade sobre "Confirmada" — o
+  // TI às vezes marca isAnnaConfirmada=true mesmo sem pagamento (registro
+  // administrativo). Pra o usuário a ação relevante é pagar o boleto.
+  // Quando user pagar, próxima sync remove pp e card auto-promove pra confirmado.
+  if (inscribed && pp) return 'pagar_inscricao';
+
+  // Confirmada no TI E sem boleto pendente — tudo certo
   if (confirmed) return 'confirmado';
 
-  // Inscrita + boleto pendente OU sem boleto detectado (TI ainda não emitiu)
-  // → ambos os casos demandam ação "pagar quando vier"
+  // Inscrita sem boleto e sem confirmação — esperando TI emitir boleto
   if (inscribed) return 'pagar_inscricao';
 
   // Não inscrita: olha estado da janela

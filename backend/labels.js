@@ -156,10 +156,11 @@ export function deriveAutoLabels(tournament, notes = {}) {
 
   if (boletoExpired) {
     out.push({ autoKey: 'expiredPayment', ...AUTO_LABEL_DEFS.expiredPayment, auto: true });
+  } else if (pp) {
+    // Boleto pendente sobrepõe "Confirmada" — alinha com computeAutoColumn
+    out.push({ autoKey: 'pendingPayment', ...AUTO_LABEL_DEFS.pendingPayment, auto: true });
   } else if (tournament.isAnnaConfirmada) {
     out.push({ autoKey: 'confirmed', ...AUTO_LABEL_DEFS.confirmed, auto: true });
-  } else if (pp) {
-    out.push({ autoKey: 'pendingPayment', ...AUTO_LABEL_DEFS.pendingPayment, auto: true });
   } else if (inscribed) {
     out.push({ autoKey: 'inscribed', ...AUTO_LABEL_DEFS.inscribed, auto: true });
   } else if (status !== 'past') {

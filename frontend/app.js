@@ -1098,6 +1098,9 @@ function autoColumnFor(t) {
     const d = brToDate(pp.dueDate);
     if (d && d < startOfToday()) return 'torneios';
   }
+  // Boleto pendente vence "Confirmada" — TI às vezes marca confirmada
+  // mesmo sem pagamento; ação do user é pagar.
+  if (inscribed && pp) return 'pagar_inscricao';
   if (confirmed) return 'confirmado';
   if (inscribed) return 'pagar_inscricao';
 
