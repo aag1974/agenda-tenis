@@ -1047,20 +1047,27 @@ function orderedKanbanColumns() {
 }
 
 // Mantém em sincronia com backend/board.js#getRegistrationWindowState.
-// registrationDeadline = prazo real de fechamento de inscrições (≠ cancelDeadline).
+// TI fecha inscrições às 16:00 do registrationDeadline e
+// cancelamentos às 23:59 do cancelDeadline.
+function brDateAt(s, hour = 0, min = 0) {
+  if (!s) return null;
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  return new Date(+m[3], +m[2] - 1, +m[1], hour, min);
+}
 function getWindowState(t) {
   if (!t) return 'unknown';
   const s = t.registrationStatus || '';
-  const today = startOfToday();
-  const regDeadline = t.registrationDeadline ? brToDate(t.registrationDeadline) : null;
-  if (regDeadline && regDeadline < today) return 'closed';
+  const now = new Date();
+  const regDeadline = brDateAt(t.registrationDeadline, 16);
+  if (regDeadline && regDeadline <= now) return 'closed';
   if (!regDeadline && t.cancelDeadline) {
-    const d = brToDate(t.cancelDeadline);
-    if (d && d < today) return 'closed';
+    const d = brDateAt(t.cancelDeadline, 23, 59);
+    if (d && d <= now) return 'closed';
   }
   if (regStatusClosed(s)) return 'closed';
-  const regOpens = t.registrationOpensAt ? brToDate(t.registrationOpensAt) : null;
-  if (regOpens && regOpens > today) return 'pending';
+  const regOpens = brDateAt(t.registrationOpensAt);
+  if (regOpens && regOpens > now) return 'pending';
   if (/a\s*iniciar/i.test(s)) return 'pending';
   if (/Aberto|aberta|inicia/i.test(s)) return 'open';
   return 'unknown';
