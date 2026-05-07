@@ -527,10 +527,10 @@ function buildIcsFeed(tournaments, profile) {
     const pp = t.pendingPayment;
     if (!pp?.dueDate) continue;
     const [d, m, y] = pp.dueDate.split('/').map(Number);
-    const due = new Date(y, m - 1, d);
-    const reminder = new Date(due);
-    reminder.setDate(reminder.getDate() - 1);
-    reminder.setHours(9, 0, 0, 0);
+    // Reminder: 09:00 BRT (= 12:00 UTC, BRT é UTC-3 e Brasil não tem mais DST)
+    // do dia anterior ao vencimento. Constrói direto em UTC pra não depender
+    // do timezone do servidor (Render roda em UTC, setHours daria 9 UTC = 6 BRT).
+    const reminder = new Date(Date.UTC(y, m - 1, d - 1, 12, 0, 0));
     const end = new Date(reminder.getTime() + 30 * 60 * 1000);
 
     const desc = [

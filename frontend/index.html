@@ -95,27 +95,21 @@
        (estilo "página"); snap obrigatório com stop-always pra deslizar
        de coluna em coluna sem mostrar pedaço da próxima */
     @media (max-width: 640px) {
-      /* Safe-area top: html navy aparece atrás do status bar translúcido */
+      /* Body navy preenche safe-area-top — efetivamente "estende" o header
+         pra cima atrás da hora/bateria sem pseudo-elemento. */
       html { background: var(--ti-navy); }
       body.kanban-mode {
-        background: var(--ti-board-bg) !important;
+        background: var(--ti-navy) !important;
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
         padding-left: env(safe-area-inset-left);
         padding-right: env(safe-area-inset-right);
         overflow-x: hidden;
       }
-      /* Strip navy fixo no topo cobre safe-area + casa com header */
-      body.kanban-mode::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: env(safe-area-inset-top);
-        background: var(--ti-navy);
-        z-index: 5;
-        pointer-events: none;
+      /* O quadro propriamente dito mantém o board-bg (teal mais claro)
+         pra contrastar com as colunas navy */
+      body.kanban-mode #kanban-board {
+        background: var(--ti-board-bg);
       }
       body.kanban-mode #app {
         padding: 0;
@@ -129,27 +123,29 @@
       }
       body.kanban-mode #kanban-board {
         margin: 0;
-        padding: 0.5rem 0;
+        padding: 0.5rem;
         overflow-x: hidden;
       }
       #kanban-col-row {
         scroll-snap-type: x mandatory !important;
-        gap: 0 !important;
+        gap: 0.75rem !important; /* mesma separação do desktop entre colunas */
         padding: 0 !important;
         margin: 0 !important;
         touch-action: pan-x !important;
+        scroll-padding-left: 0.5rem;
       }
       body.kanban-mode .kanban-list {
         touch-action: pan-y !important;
       }
       body.kanban-mode .kanban-col {
-        flex: 0 0 100vw !important;
-        width: 100vw !important;
-        max-width: 100vw !important;
-        min-width: 100vw !important;
+        /* width = 100vw menos as duas margens laterais do board (0.5rem cada)
+           = espaço útil. Snap ao início garante "uma coluna por página". */
+        flex: 0 0 calc(100vw - 1rem) !important;
+        width: calc(100vw - 1rem) !important;
+        max-width: calc(100vw - 1rem) !important;
+        min-width: calc(100vw - 1rem) !important;
         scroll-snap-stop: always !important;
         scroll-snap-align: start !important;
-        border-radius: 0 !important;
       }
     }
 
