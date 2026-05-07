@@ -1838,86 +1838,112 @@ function openAthleteCard() {
     return (t.isAnnaInscribed || t.notes?.manualInscribed) && d && d.getFullYear() === today.getFullYear();
   }).length;
   const pendingPayments = tournaments.filter(t => t.pendingPayment);
-  const totalPending = pendingPayments.reduce((sum, t) => {
-    return sum + parseBrCurrency(t.pendingPayment?.value);
-  }, 0);
+  const totalPending = pendingPayments.reduce((sum, t) => sum + parseBrCurrency(t.pendingPayment?.value), 0);
 
   const root = $('modal-root');
   root.innerHTML = '';
   const close = () => { root.innerHTML = ''; };
 
-  const sectionTitle = (t) => el('div', { class: 'text-xs font-medium text-slate-500 uppercase tracking-wide' }, t);
-  const kv = (label, value) => el('div', { class: 'flex justify-between gap-3 py-1' },
-    el('span', { class: 'text-sm text-slate-600' }, label),
-    el('span', { class: 'text-sm font-medium text-slate-900 text-right' }, value || '—'),
-  );
-
-  const card = el('div', { class: 'space-y-4' });
-
-  // Identificação
-  card.appendChild(el('div', null,
-    el('h2', { class: 'text-xl font-semibold text-slate-900' }, athlete.name || profile.athleteName || 'Atleta'),
-    el('div', { class: 'text-xs text-slate-500 mt-0.5' },
-      `ID TI ${athlete.id || '—'}`,
-      athlete.about ? ` • ${athlete.about}` : '',
-    ),
-    athlete.profileUrl && el('a', {
-      href: athlete.profileUrl, target: '_blank', rel: 'noopener',
-      class: 'text-xs text-emerald-700 hover:text-emerald-900 underline',
-    }, 'Ver perfil no Tênis Integrado ↗'),
-  ));
-
-  // Rankings
+  const name = athlete.name || profile.athleteName || 'Atleta';
+  const initials = userInitials(name);
   const rankCBT = athlete.rankingNational;
   const rankDF = athlete.rankingDF;
   const wtn = athlete.wtn;
-  if (rankCBT || rankDF || wtn) {
-    const cutoff = rankDF?.cutoffDate;
-    card.appendChild(el('div', { class: 'border-t border-slate-200 pt-3 space-y-1' },
-      sectionTitle(cutoff ? `Rankings (${cutoff})` : 'Rankings'),
-      rankCBT && kv(`Nacional CBT ${rankCBT.year} ${rankCBT.category}`, `${rankCBT.position}º (${rankCBT.points} pts)`),
-      rankDF && rankDF.dfPosition && kv('DF (recorte do nacional)', `${rankDF.dfPosition}º colocado`),
-      wtn && kv('WTN', `${wtn.single} simples / ${wtn.double} duplas`),
-    ));
-  }
+  const cutoff = rankDF?.cutoffDate;
 
-  // Próximo / último torneio
-  card.appendChild(el('div', { class: 'border-t border-slate-200 pt-3 space-y-2' },
-    sectionTitle('Calendário'),
-    next
-      ? el('div', null,
-          el('div', { class: 'text-xs text-slate-500' }, '📅 Próximo torneio'),
-          el('div', { class: 'text-sm font-medium' }, next.name),
-          el('div', { class: 'text-xs text-slate-600' }, `${[next.city, next.state].filter(Boolean).join(' / ')} • ${relativeDateLabel(next)}`),
-        )
-      : el('div', { class: 'text-sm text-slate-500' }, 'Sem torneio futuro inscrito.'),
-    last && el('div', { class: 'mt-2' },
-      el('div', { class: 'text-xs text-slate-500' }, '🏆 Último torneio'),
-      el('div', { class: 'text-sm font-medium' }, last.name),
-      el('div', { class: 'text-xs text-slate-600' }, `${[last.city, last.state].filter(Boolean).join(' / ')} • ${relativeDateLabel(last)}`),
+  const tile = (label, value, hint, accent = 'cyan') => {
+    const accentClass = {
+      cyan:    'border-cyan-200    bg-cyan-50    text-cyan-900',
+      emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+      amber:   'border-amber-200   bg-amber-50   text-amber-900',
+      slate:   'border-slate-200   bg-slate-50   text-slate-900',
+    }[accent];
+    return el('div', { class: `rounded-lg border ${accentClass} p-3` },
+      el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide opacity-70' }, label),
+      el('div', { class: 'text-xl font-bold leading-tight mt-0.5' }, value),
+      hint && el('div', { class: 'text-[11px] opacity-70 mt-0.5' }, hint),
+    );
+  };
+
+  const sectionHeader = (title) => el('h3', {
+    class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2',
+  }, title);
+
+  const tournamentMini = (icon, label, t) => el('div', { class: 'rounded-lg border border-slate-200 bg-white p-3' },
+    el('div', { class: 'flex items-center gap-1.5 text-[11px] text-slate-500 mb-1' }, icon, label),
+    el('div', { class: 'text-sm font-medium text-slate-900 leading-snug' }, t.name),
+    el('div', { class: 'text-xs text-slate-600 mt-0.5' },
+      `${[t.city, t.state].filter(Boolean).join(' / ')} • ${formatCardDate(t)} (${relativeDateLabel(t)})`,
     ),
-  ));
+  );
 
-  // Estatísticas
-  card.appendChild(el('div', { class: 'border-t border-slate-200 pt-3 space-y-1' },
-    sectionTitle(`Resumo ${today.getFullYear()}`),
-    kv('Inscrito em', `${inscribedThisYear} torneios`),
-    kv('Boletos pendentes', pendingPayments.length
-      ? `${pendingPayments.length} (R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})`
-      : '0'),
-  ));
-
-  // Modal frame
-  const overlay = el('div', { class: 'fixed inset-0 bg-black/40 z-40', onClick: close });
-  const content = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 max-h-[90vh] overflow-y-auto bg-white text-slate-900 sm:rounded-2xl rounded-t-2xl z-50 max-w-xl w-full p-5 shadow-xl' },
-    el('div', { class: 'flex items-center justify-between mb-3' },
-      el('h2', { class: 'text-lg font-semibold' }, '👤 Sobre o atleta'),
-      el('button', { class: 'text-slate-400 hover:text-slate-700 text-2xl leading-none px-2', onClick: close }, '×'),
+  const statsGrid = el('div', { class: 'grid grid-cols-2 gap-2' },
+    tile('Inscrito em ' + today.getFullYear(), String(inscribedThisYear), inscribedThisYear === 1 ? 'torneio' : 'torneios', 'cyan'),
+    tile('Boletos pendentes',
+      String(pendingPayments.length),
+      pendingPayments.length
+        ? `R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+        : 'tudo em dia',
+      pendingPayments.length ? 'amber' : 'emerald',
     ),
-    card,
+  );
+
+  const rankingTiles = (rankCBT || rankDF?.dfPosition || wtn) && el('div', null,
+    sectionHeader(cutoff ? `Rankings · recorte ${cutoff}` : 'Rankings'),
+    el('div', { class: 'grid grid-cols-2 gap-2' },
+      rankCBT && tile(
+        `CBT ${rankCBT.year} ${rankCBT.category}`,
+        `${rankCBT.position}º`,
+        `${rankCBT.points} pts`,
+        'slate',
+      ),
+      rankDF?.dfPosition && tile('Recorte DF', `${rankDF.dfPosition}º`, 'no recorte do nacional', 'slate'),
+      wtn && tile('WTN simples', wtn.single, 'world tennis number', 'slate'),
+      wtn && tile('WTN duplas', wtn.double, 'world tennis number', 'slate'),
+    ),
+  );
+
+  const calendarBlock = (next || last) && el('div', null,
+    sectionHeader('Calendário'),
+    el('div', { class: 'space-y-2' },
+      next && tournamentMini('📅', 'Próximo torneio', next),
+      last && tournamentMini('🏆', 'Último torneio', last),
+    ),
+  );
+  const noTournaments = !next && !last && el('div', { class: 'text-sm text-slate-500 text-center py-4 border border-dashed border-slate-200 rounded-lg' },
+    'Nenhum torneio carregado ainda.',
+  );
+
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden',
+  },
+    el('div', { class: 'shrink-0 bg-gradient-to-br from-[#0e3a4d] to-[#1f5b75] text-white px-5 pt-4 pb-5' },
+      el('div', { class: 'flex items-start justify-between gap-3 mb-3' },
+        el('div', { class: 'min-w-0 flex items-center gap-3' },
+          el('span', { class: 'shrink-0 w-12 h-12 rounded-full bg-white/15 border border-white/20 text-white text-base font-semibold flex items-center justify-center' }, initials),
+          el('div', { class: 'min-w-0' },
+            el('h2', { class: 'text-lg font-semibold truncate' }, name),
+            athlete.about && el('div', { class: 'text-xs text-white/70 truncate mt-0.5' }, athlete.about),
+          ),
+        ),
+        el('button', { class: 'shrink-0 text-white/70 hover:text-white text-xl leading-none', onClick: close, title: 'Fechar' }, '×'),
+      ),
+      athlete.profileUrl && el('a', {
+        href: athlete.profileUrl, target: '_blank', rel: 'noopener',
+        class: 'inline-flex items-center gap-1 text-xs text-cyan-200 hover:text-white',
+      }, 'Ver perfil no Tênis Integrado ↗'),
+      athlete.id && !athlete.profileUrl && el('div', { class: 'text-xs text-white/60' }, `ID TI ${athlete.id}`),
+    ),
+    el('div', { class: 'flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4' },
+      statsGrid,
+      rankingTiles,
+      calendarBlock,
+      noTournaments,
+    ),
   );
   root.appendChild(overlay);
-  root.appendChild(content);
+  root.appendChild(card);
 }
 
 function openCalendarSetup() {
@@ -2555,9 +2581,6 @@ async function openTournament(tid) {
         renderNotesForm(t.id, notes),
       ),
 
-      // Checklist fixo: 5 itens — primeiros 2 auto pelo TI, últimos 3 manuais
-      renderChecklist(t),
-
       receiptsBlock(t),
   );
 
@@ -2600,59 +2623,6 @@ async function openTournament(tid) {
 
   root.appendChild(overlay);
   root.appendChild(panel);
-}
-
-// ===== Checklist fixo de 5 itens =====
-const CHECKLIST_ITEMS = [
-  { key: 'inscrito',  label: 'Inscrito no Tênis Integrado', auto: true },
-  { key: 'pago',      label: 'Pagamento confirmado',          auto: true },
-  { key: 'voo',       label: 'Voo / passagem comprada',       auto: false },
-  { key: 'hotel',     label: 'Hospedagem reservada',          auto: false },
-  { key: 'documentos', label: 'Documentos prontos (RG, autorização)', auto: false },
-];
-
-function renderChecklist(t) {
-  const notes = t.notes || {};
-  const cl = notes.checklist || {};
-  const inscribed = !notes.manualGiveUp && (t.isAnnaInscribed || notes.manualInscribed);
-  const paid = inscribed && !t.pendingPayment;
-
-  const computeChecked = (item) => {
-    if (item.key === 'inscrito') return !!inscribed;
-    if (item.key === 'pago') return !!paid;
-    return !!cl[item.key];
-  };
-
-  const wrapper = el('section', null,
-    el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '✅ Checklist'),
-  );
-  const list = el('ul', { class: 'space-y-1.5' });
-  for (const item of CHECKLIST_ITEMS) {
-    const checked = computeChecked(item);
-    const li = el('li', { class: 'flex items-center gap-2 text-sm' });
-    const cb = el('input', { type: 'checkbox', class: 'h-4 w-4 cursor-pointer', disabled: item.auto ? 'disabled' : false });
-    cb.checked = checked;
-    if (!item.auto) {
-      cb.onchange = async () => {
-        const newCl = { ...(notes.checklist || {}), [item.key]: cb.checked };
-        notes.checklist = newCl;
-        try {
-          await api.updateNotes(state.activeProfileId, t.id, { checklist: newCl });
-        } catch (err) {
-          cb.checked = !cb.checked;
-          alert('Erro: ' + err.message);
-        }
-      };
-    }
-    li.append(
-      cb,
-      el('span', { class: `${checked ? 'line-through text-slate-400' : 'text-slate-700'}` }, item.label),
-      item.auto && el('span', { class: 'text-xs text-slate-400 italic' }, '(auto)'),
-    );
-    list.appendChild(li);
-  }
-  wrapper.appendChild(list);
-  return wrapper;
 }
 
 // ===== Atividade & Comentários =====
