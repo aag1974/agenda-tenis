@@ -188,6 +188,15 @@ const state = {
 
 const api = {
   async me() { return (await fetch('/api/auth/me')).json(); },
+  async getBoardConfig() { return (await fetch('/api/household/board-config')).json(); },
+  async updateBoardConfig(patch) {
+    const r = await fetch('/api/household/board-config', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
   async listInvites() { return (await fetch('/api/household/invites')).json(); },
   async createInvite(label) {
     const r = await fetch('/api/household/invites', {
@@ -375,9 +384,49 @@ async function init() {
     state.activeProfileId = state.profiles[0].id;
     localStorage.setItem('activeProfileId', state.activeProfileId);
   }
+  await loadBoardConfig();
   await refreshActive();
   render();
   pollSyncStatus();
+}
+
+// Configuração do board (labels + ordem de colunas) é compartilhada na household.
+// Carrega do servidor; se localStorage tiver valores antigos e o servidor estiver
+// vazio, faz upload uma vez e limpa o localStorage.
+async function loadBoardConfig() {
+  try {
+    const remote = await api.getBoardConfig();
+    const localOrder = localStorage.getItem('columnOrder');
+    const localLabels = localStorage.getItem('columnLabels');
+    const remoteEmpty = (!remote.columnOrder || remote.columnOrder.length === 0)
+      && (!remote.columnLabels || Object.keys(remote.columnLabels).length === 0);
+    if (remoteEmpty && (localOrder || localLabels)) {
+      // Migra localStorage pro servidor
+      const patch = {};
+      try { const v = JSON.parse(localOrder || 'null'); if (Array.isArray(v) && v.length) patch.columnOrder = v; } catch {}
+      try { const v = JSON.parse(localLabels || '{}'); if (v && typeof v === 'object' && Object.keys(v).length) patch.columnLabels = v; } catch {}
+      if (Object.keys(patch).length) {
+        const saved = await api.updateBoardConfig(patch);
+        state.columnOrder = saved.columnOrder;
+        state.columnLabels = saved.columnLabels || {};
+      } else {
+        state.columnOrder = remote.columnOrder;
+        state.columnLabels = remote.columnLabels || {};
+      }
+      localStorage.removeItem('columnOrder');
+      localStorage.removeItem('columnLabels');
+    } else {
+      state.columnOrder = remote.columnOrder;
+      state.columnLabels = remote.columnLabels || {};
+      // Se o servidor tem config, descarta localStorage antigo
+      if (!remoteEmpty) {
+        localStorage.removeItem('columnOrder');
+        localStorage.removeItem('columnLabels');
+      }
+    }
+  } catch (e) {
+    console.warn('[board-config] fallback pra defaults', e);
+  }
 }
 
 function renderAuth() {
@@ -970,12 +1019,13 @@ function renderEditableColumnLabel(col) {
     if (e.key === 'Enter') { e.preventDefault(); span.blur(); }
     if (e.key === 'Escape') { span.textContent = current; span.blur(); }
   });
-  span.addEventListener('blur', () => {
+  span.addEventListener('blur', async () => {
     const next = span.textContent.trim();
     if (!next || next === current) { span.textContent = current; return; }
     if (next === col.label) delete state.columnLabels[col.id];
     else state.columnLabels[col.id] = next.slice(0, 40);
-    localStorage.setItem('columnLabels', JSON.stringify(state.columnLabels));
+    try { await api.updateBoardConfig({ columnLabels: state.columnLabels }); }
+    catch (err) { alert('Erro ao salvar nome: ' + err.message); }
   });
   return span;
 }
@@ -1431,10 +1481,11 @@ function wireKanbanSortable(container) {
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       draggable: '.kanban-col',
-      onEnd: () => {
+      onEnd: async () => {
         const ids = [...colRow.querySelectorAll('.kanban-col')].map(c => c.dataset.columnId).filter(Boolean);
         state.columnOrder = ids;
-        localStorage.setItem('columnOrder', JSON.stringify(ids));
+        try { await api.updateBoardConfig({ columnOrder: ids }); }
+        catch (err) { alert('Erro ao salvar ordem: ' + err.message); }
       },
     });
   }

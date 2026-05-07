@@ -13,6 +13,10 @@ const USERS_FILE = join(DATA_DIR, 'users.json');
 const PROFILES_FILE = join(DATA_DIR, 'profiles.json');
 const INVITES_FILE = join(DATA_DIR, 'invites.json');
 
+function householdBoardFile(householdId) {
+  return join(DATA_DIR, `household-${householdId}-board.json`);
+}
+
 mkdirSync(DATA_DIR, { recursive: true });
 
 function readJson(file, def) {
@@ -95,6 +99,33 @@ export function profileBelongsToHousehold(profile, householdId) {
   if (!profile) return false;
   if (profile.householdId) return profile.householdId === householdId;
   return profile.userId === householdId;
+}
+
+// ===== Configuração do board (compartilhada entre membros da household) =====
+
+export function getHouseholdBoardConfig(householdId) {
+  const file = householdBoardFile(householdId);
+  if (!existsSync(file)) return { columnLabels: {}, columnOrder: null };
+  try {
+    const v = JSON.parse(readFileSync(file, 'utf8'));
+    return {
+      columnLabels: v?.columnLabels && typeof v.columnLabels === 'object' ? v.columnLabels : {},
+      columnOrder: Array.isArray(v?.columnOrder) ? v.columnOrder : null,
+    };
+  } catch { return { columnLabels: {}, columnOrder: null }; }
+}
+
+export function setHouseholdBoardConfig(householdId, patch) {
+  const cur = getHouseholdBoardConfig(householdId);
+  const next = { ...cur };
+  if (patch && Object.prototype.hasOwnProperty.call(patch, 'columnLabels') && patch.columnLabels && typeof patch.columnLabels === 'object') {
+    next.columnLabels = patch.columnLabels;
+  }
+  if (patch && Object.prototype.hasOwnProperty.call(patch, 'columnOrder')) {
+    next.columnOrder = Array.isArray(patch.columnOrder) ? patch.columnOrder : null;
+  }
+  writeJson(householdBoardFile(householdId), next);
+  return next;
 }
 
 // ===== Invites =====

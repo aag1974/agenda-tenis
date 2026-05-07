@@ -30,6 +30,7 @@ import {
   migrateHouseholdsOnBoot, listHouseholdMembers, profileBelongsToHousehold,
   createInvite, getInvite, listInvitesByHousehold, revokeInvite, acceptInvite,
   removeHouseholdMember,
+  getHouseholdBoardConfig, setHouseholdBoardConfig,
 } from './household.js';
 import * as admin from './admin-cli.js';
 
@@ -96,6 +97,14 @@ app.post('/api/auth/logout', (req, res) => {
 // ===== Household / convites =====
 app.get('/api/household/members', requireAuth, (req, res) => {
   res.json({ members: listHouseholdMembers(req.householdId) });
+});
+
+app.get('/api/household/board-config', requireAuth, (req, res) => {
+  res.json(getHouseholdBoardConfig(req.householdId));
+});
+
+app.patch('/api/household/board-config', requireAuth, (req, res) => {
+  res.json(setHouseholdBoardConfig(req.householdId, req.body || {}));
 });
 
 app.delete('/api/household/members/:userId', requireAuth, (req, res) => {
