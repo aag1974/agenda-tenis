@@ -2609,11 +2609,25 @@ async function openTournament(tid) {
         ),
       ),
 
-      el('section', null,
-        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Datas'),
-        el('p', { class: 'text-sm' }, `${t.startDate || '—'} a ${t.endDate || '—'}`),
-        merged.cancelDeadline && el('p', { class: 'text-xs text-slate-500 mt-0.5' }, `Cancelamento até ${merged.cancelDeadline}`),
-      ),
+      (() => {
+        // Extrai data de encerramento/abertura do registrationStatus do TI
+        // (ex: "Aberto até 19/05/2026", "Encerrada em 14/05/2026")
+        const regStatus = t.registrationStatus || '';
+        const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
+        const isOpen = /Aberto|aberta/i.test(regStatus);
+        let regLine = null;
+        if (regDate) {
+          regLine = isOpen ? `Inscrições abertas até ${regDate}` : `Inscrições encerraram em ${regDate}`;
+        } else if (regStatus) {
+          regLine = `Inscrições: ${regStatus}`;
+        }
+        return el('section', null,
+          el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Datas'),
+          el('p', { class: 'text-sm' }, `${t.startDate || '—'} a ${t.endDate || '—'}`),
+          regLine && el('p', { class: 'text-xs text-slate-500 mt-0.5' }, regLine),
+          merged.cancelDeadline && el('p', { class: 'text-xs text-slate-500 mt-0.5' }, `Cancelamento até ${merged.cancelDeadline}`),
+        );
+      })(),
 
       flightInfo && flightInfo.sameCity && el('section', null,
         el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '🏠 Deslocamento'),

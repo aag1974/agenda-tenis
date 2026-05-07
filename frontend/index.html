@@ -91,20 +91,29 @@
     .sortable-ghost { opacity: 0.4; }
     .sortable-chosen { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
 
-    /* Mobile: colunas ocupam quase a viewport inteira + snap obrigatório */
+    /* Mobile: colunas ocupam ~88vw (deixa o canto da próxima coluna visível
+       como dica visual de que dá pra rolar) + snap obrigatório */
     @media (max-width: 640px) {
       body.kanban-mode .kanban-col {
-        width: calc(100vw - 1.5rem);
-        max-width: calc(100vw - 1.5rem);
+        width: 88vw !important;
+        max-width: 88vw !important;
+        min-width: 88vw !important;
       }
       #kanban-col-row {
         scroll-snap-type: x mandatory !important;
+        gap: 0.5rem !important;
       }
-      body.kanban-mode #app { padding: 0.5rem; }
+      body.kanban-mode #app {
+        padding: 0.5rem;
+        overflow-x: hidden;
+      }
       body.kanban-mode #header-bar {
         margin: -0.5rem -0.5rem 0;
         padding: 0.5rem;
       }
+      /* Garante que nada vaze horizontalmente */
+      body.kanban-mode { overflow-x: hidden; }
+      body.kanban-mode #kanban-board { overflow-x: hidden; }
     }
 
     /* Scrollbars invisíveis em todo o app — todo mundo sabe que rola */
