@@ -2868,10 +2868,10 @@ function toggleGearMenu() {
     { label: `Sobre ${athleteFirstName}`, onClick: () => openAthleteCard() },
     { label: 'Credenciais TI', onClick: () => openProfileForm(profile) },
   ] : [];
-  // Mobile: "Convidar membro" no menu. Desktop: "+" no header (memberStack)
-  const isMobile = window.matchMedia('(max-width: 640px)').matches;
+  // "Convidar membro" sempre visível no menu (desktop tem o "+" no header
+  // também, mas redundância aqui melhora descoberta).
   const accountActions = state.user ? [
-    isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
+    { label: 'Convidar membro', onClick: () => openInviteModal() },
     profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
     { label: 'Manual', onClick: () => window.open('/manual', '_blank') },
@@ -2898,7 +2898,7 @@ function toggleGearMenu() {
         onClick: () => { menu.remove(); it.onClick(); },
       }, it.label)),
     ),
-    accountActions.length > 0 && el('div', { class: 'border-t border-slate-200 py-1' },
+    accountActions.length > 0 && el('div', { class: 'py-1' },
       ...accountActions.map(it => el('button', {
         class: 'block w-full text-left px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#1f5b75] hover:bg-slate-100',
         onClick: () => { menu.remove(); it.onClick(); },
