@@ -1,5 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
   <rect width="192" height="192" fill="#0e3a4d"/>
-  <text x="96" y="148" font-size="150" text-anchor="middle"
+  <text x="96" y="138" font-size="140" text-anchor="middle"
         font-family="'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif">🎾</text>
+  <!-- TF no canto inferior direito -->
+  <text x="178" y="178" font-size="34" font-weight="900" text-anchor="end" letter-spacing="-1.5"
+        font-family="-apple-system, system-ui, 'Segoe UI', sans-serif">
+    <tspan fill="#ffffff">T</tspan><tspan fill="#22d3ee">F</tspan>
+  </text>
 </svg>
