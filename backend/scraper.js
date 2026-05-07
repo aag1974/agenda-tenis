@@ -528,18 +528,29 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
   }
 
   // Enrich starred (todos: passados ou futuros) + inscritos/pendentes futuros com detalhes
-  // (hoteis, preços, tiers reais). ~1 HTTP request por torneio. Limitado a 30 pra não atrapalhar.
+  // (hoteis, preços, tiers reais, cancelDeadline). ~1 HTTP request por torneio.
+  // Limitado a 60 pra não atrapalhar — aumenta cobertura sem explodir tempo de sync.
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const isFutureWithStartDate = (t) => {
+    if (!t.startDate) return false;
+    const [d, m, y] = t.startDate.split('/').map(Number);
+    return new Date(y, m - 1, d) >= today;
+  };
   const enrichSet = new Set([
     ...starredIds,
-    // também enriquece inscrita futura sem estrela ainda
+    // inscritos/pendentes futuros sem estrela ainda
     ...tournaments
       .filter(t => (t.isAnnaInscribed || !!t.pendingPayment) && t.startDate)
+      .map(t => t.id),
+    // "Iniciado" — precisa de cancelDeadline pra saber se inscrição ainda abre
+    ...tournaments
+      .filter(t => /inicia/i.test(t.registrationStatus || '') && isFutureWithStartDate(t))
       .map(t => t.id),
   ]);
   const tournamentsById = new Map(tournaments.map(t => [t.id, t]));
   const toEnrich = [...enrichSet]
     .filter(id => tournamentsById.has(id))
-    .slice(0, 30);
+    .slice(0, 60);
 
   if (toEnrich.length) {
     const enrichResults = await Promise.all(

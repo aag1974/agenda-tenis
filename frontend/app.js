@@ -1277,7 +1277,13 @@ function buildShareText(t, { includeUrl = true, shareUrl = null } = {}) {
   const regStatus = t.registrationStatus || '';
   const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
   const regOpen = regStatusOpen(t);
-  const regClosed = regStatusClosed(regStatus);
+  const explicitClosed = regStatusClosed(regStatus);
+  const cancelPast = (() => {
+    if (!t.cancelDeadline) return false;
+    const d = brToDate(t.cancelDeadline);
+    return d && d < startOfToday();
+  })();
+  const regClosed = explicitClosed || (!regOpen && cancelPast);
   // Só mostra "Inscrições" se for info real de janela (aberta/encerrada).
   // Status do atleta tipo "Confirmado", "Pendente" não cabem aqui — são
   // privados e confundem quem recebe o link.
@@ -3375,12 +3381,18 @@ async function openTournament(tid) {
     showTravelTools ? api.flightUrl(state.activeProfileId, tid).catch(() => ({ error: true })) : Promise.resolve(null),
   ]);
   // Une tiers locais + os detalhes pra etiquetas refletirem todas as chaves
-  // imediatamente (sem precisar refresh)
-  if (details && Array.isArray(details.tiers) && details.tiers.length) {
-    const tierUnion = [...new Set([...(t.tiers || []), ...details.tiers])];
-    if (tierUnion.length !== (t.tiers || []).length) {
-      t.tiers = tierUnion;
-      if (!t.tier) t.tier = tierUnion[0];
+  // imediatamente (sem precisar refresh). Também copia cancelDeadline pra
+  // a coluna re-derivar correto quando user fechar o modal.
+  if (details) {
+    if (Array.isArray(details.tiers) && details.tiers.length) {
+      const tierUnion = [...new Set([...(t.tiers || []), ...details.tiers])];
+      if (tierUnion.length !== (t.tiers || []).length) {
+        t.tiers = tierUnion;
+        if (!t.tier) t.tier = tierUnion[0];
+      }
+    }
+    if (details.cancelDeadline && t.cancelDeadline !== details.cancelDeadline) {
+      t.cancelDeadline = details.cancelDeadline;
     }
   }
   const merged = details ? { ...t, hotels: details.hotels || t.hotels || [], venues: details.venues || t.venues || [], observations: details.observations || t.observations, cancelDeadline: details.cancelDeadline || t.cancelDeadline, prices: details.prices || t.prices } : t;
@@ -3474,10 +3486,19 @@ async function openTournament(tid) {
         const regStatus = t.registrationStatus || '';
         const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
         const isOpen = regStatusOpen(merged);
-        const isClosed = regStatusClosed(regStatus);
+        const explicitClosed = regStatusClosed(regStatus);
+        // cancelDeadline já passou? Se sim, considera fechada mesmo sem
+        // palavra explícita ("Iniciado" depois do prazo, etc).
+        const cancelPast = (() => {
+          if (!merged.cancelDeadline) return false;
+          const d = brToDate(merged.cancelDeadline);
+          return d && d < startOfToday();
+        })();
+        const isClosed = explicitClosed || (!isOpen && cancelPast);
+        const closedDate = regDate || (isClosed ? merged.cancelDeadline : null);
         let regLine = null;
         if (regDate && isOpen) regLine = `Inscrições abertas até ${regDate}`;
-        else if (regDate && isClosed) regLine = `Inscrições encerraram em ${regDate}`;
+        else if (closedDate && isClosed) regLine = `Inscrições encerraram em ${closedDate}`;
         else if (isOpen) regLine = 'Inscrições abertas';
         else if (isClosed) regLine = 'Inscrições encerradas';
         else if (regStatus) regLine = `Inscrições: ${regStatus}`;
