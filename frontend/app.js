@@ -3433,7 +3433,7 @@ function renderReceiptsGallery(container, t, data) {
 
   // Upload row
   const fileCamera = el('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'hidden' });
-  const fileGallery = el('input', { type: 'file', accept: 'image/*', class: 'hidden' });
+  const fileGallery = el('input', { type: 'file', accept: 'image/*,application/pdf', class: 'hidden' });
   fileCamera.onchange = (e) => handleUpload(e.target.files?.[0]);
   fileGallery.onchange = (e) => handleUpload(e.target.files?.[0]);
 
@@ -3441,12 +3441,20 @@ function renderReceiptsGallery(container, t, data) {
     if (!file) return;
     const category = await pickCategory();
     if (!category) return;
-    const status = el('div', { class: 'text-xs text-slate-500 mt-1' }, '🔄 Comprimindo...');
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+    const status = el('div', { class: 'text-xs text-slate-500 mt-1' }, isPdf ? '⬆ Enviando PDF...' : '🔄 Comprimindo...');
     container.appendChild(status);
     try {
-      const blob = await compressImage(file);
-      status.textContent = '⬆ Enviando...';
-      const dataUrl = await blobToDataUrl(blob);
+      let dataUrl;
+      if (isPdf) {
+        // PDF não é comprimido — limite de 5MB no backend
+        if (file.size > 5 * 1024 * 1024) throw new Error('PDF maior que 5MB');
+        dataUrl = await blobToDataUrl(file);
+      } else {
+        const blob = await compressImage(file);
+        status.textContent = '⬆ Enviando...';
+        dataUrl = await blobToDataUrl(blob);
+      }
       await api.uploadReceipt(profileId, t.id, { category, dataUrl, originalName: file.name });
       // Reload
       const fresh = await api.listReceipts(profileId, t.id);
@@ -3502,12 +3510,18 @@ function renderReceiptsGallery(container, t, data) {
       const cell = el('div', {
         class: 'relative group aspect-square overflow-hidden rounded border border-slate-200 hover:border-emerald-400',
       });
-      // Imagem clicável — abre o viewer
+      const isPdf = r.mime === 'application/pdf';
+      // Imagem (ou placeholder PDF) clicável — abre o viewer
       cell.appendChild(el('button', {
-        class: 'block w-full h-full',
+        class: 'block w-full h-full bg-slate-50',
         onClick: () => openReceiptViewer(t, r, items),
       },
-        el('img', { src: r.viewUrl, alt: '', class: 'w-full h-full object-cover', loading: 'lazy' }),
+        isPdf
+          ? el('div', { class: 'w-full h-full flex flex-col items-center justify-center gap-1 text-slate-700 px-1' },
+              el('span', { class: 'text-3xl' }, '📄'),
+              el('span', { class: 'text-[10px] font-semibold' }, 'PDF'),
+            )
+          : el('img', { src: r.viewUrl, alt: '', class: 'w-full h-full object-cover', loading: 'lazy' }),
       ));
       // Faixa da categoria (não clicável)
       cell.appendChild(el('div', {
@@ -3574,12 +3588,35 @@ function openReceiptViewer(t, current, all) {
   if (idx < 0) idx = 0;
 
   const overlay = el('div', { class: 'fixed inset-0 bg-black/90 z-[60] flex flex-col' });
-  const img = el('img', { class: 'flex-1 min-h-0 max-w-full max-h-full object-contain' });
+  // Container do conteúdo — img pra imagem, iframe pra PDF.
+  const contentSlot = el('div', { class: 'flex-1 min-h-0 flex items-center justify-center overflow-hidden' });
   const meta = el('div', { class: 'text-white text-sm px-4 py-2 flex items-center justify-between gap-3' });
 
   function show() {
     const r = all[idx];
-    img.src = r.viewUrl;
+    const isPdf = r.mime === 'application/pdf';
+    contentSlot.innerHTML = '';
+    if (isPdf) {
+      // PDF nativo do browser — viewer do iOS Safari/Chrome lida bem
+      contentSlot.appendChild(el('iframe', {
+        src: r.viewUrl,
+        class: 'w-full h-full bg-white',
+        style: 'border:0',
+      }));
+    } else {
+      const img = el('img', {
+        src: r.viewUrl,
+        class: 'max-w-full max-h-full object-contain',
+      });
+      // Tap esquerda/direita pra navegar — só faz sentido em imagem
+      img.onclick = (e) => {
+        const rect = img.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        if (x < rect.width / 2 && idx > 0) { idx--; show(); }
+        else if (x >= rect.width / 2 && idx < all.length - 1) { idx++; show(); }
+      };
+      contentSlot.appendChild(img);
+    }
     const m = RECEIPT_CATEGORY_META[r.category] || { icon: '📋', label: r.category };
     meta.innerHTML = '';
     meta.append(
@@ -3617,14 +3654,7 @@ function openReceiptViewer(t, current, all) {
   }
   function close() { overlay.remove(); }
 
-  overlay.append(meta, img);
-  // Tap left/right halves to navigate
-  img.onclick = (e) => {
-    const rect = img.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    if (x < rect.width / 2 && idx > 0) { idx--; show(); }
-    else if (x >= rect.width / 2 && idx < all.length - 1) { idx++; show(); }
-  };
+  overlay.append(meta, contentSlot);
   show();
   root.appendChild(overlay);
 }

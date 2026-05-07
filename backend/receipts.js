@@ -87,19 +87,25 @@ export function addReceipt(profileId, tournamentId, { category, dataUrl, origina
   if (!RECEIPT_CATEGORIES.includes(category)) {
     throw new Error('Categoria inválida');
   }
-  const m = (dataUrl || '').match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,(.+)$/);
-  if (!m) throw new Error('Imagem inválida (esperado image/jpeg, png ou webp em base64)');
+  const m = (dataUrl || '').match(/^data:(image\/(?:jpeg|jpg|png|webp)|application\/pdf);base64,(.+)$/);
+  if (!m) throw new Error('Arquivo inválido (esperado JPEG, PNG, WebP ou PDF em base64)');
   const mime = m[1];
   const buffer = Buffer.from(m[2], 'base64');
-  if (buffer.length === 0) throw new Error('Imagem vazia');
-  if (buffer.length > 2 * 1024 * 1024) throw new Error('Imagem maior que 2MB — comprime antes');
+  if (buffer.length === 0) throw new Error('Arquivo vazio');
+  // PDF tende a ser maior que imagem comprimida — limite generoso
+  const maxBytes = mime === 'application/pdf' ? 5 * 1024 * 1024 : 2 * 1024 * 1024;
+  if (buffer.length > maxBytes) {
+    const limitMB = Math.round(maxBytes / 1048576);
+    throw new Error(`Arquivo maior que ${limitMB}MB — reduza o tamanho`);
+  }
 
   const used = getProfileStorageBytes(profileId);
   if (used + buffer.length > QUOTA_BYTES) {
     throw new Error(`Limite de armazenamento atingido (${Math.round(QUOTA_BYTES / 1048576)}MB). Exporte e exclua comprovantes antigos.`);
   }
 
-  const ext = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
+  const extMap = { 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
+  const ext = extMap[mime] || 'jpg';
   const id = randomBytes(8).toString('hex');
   const filename = `${id}.${ext}`;
 
