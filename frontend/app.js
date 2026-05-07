@@ -1575,9 +1575,9 @@ function renderHeaderEl() {
     onClick: (e) => { e.stopPropagation(); toggleGearMenu(); },
   }, initials);
 
-  // Bolinhas dos membros da household + botão "+" pra convidar
+  // Bolinhas dos membros + botão "+" — só desktop (mobile usa item do menu)
   const otherMembers = (state.user?.members || []).filter(m => m.id !== state.user?.id);
-  const memberStack = state.user && el('div', { class: 'flex items-center -space-x-2 shrink-0' },
+  const memberStack = state.user && el('div', { class: 'hidden md:flex items-center -space-x-2 shrink-0' },
     ...otherMembers.slice(0, 4).map(m => el('button', {
       class: 'w-8 h-8 rounded-full bg-emerald-600 text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-[#0e3a4d] hover:bg-emerald-500',
       title: m.email,
@@ -1827,10 +1827,12 @@ function toggleGearMenu() {
     { label: `TI de ${athleteFirstName}`, onClick: () => openProfileForm(profile) },
     { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
   ] : [];
+  // Mobile: "Convidar membro" no menu. Desktop: "+" no header (memberStack)
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
   const accountActions = state.user ? [
-    { label: 'Convidar membro', onClick: () => openInviteModal() },
+    isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
     { label: 'Sair', onClick: () => logout() },
-  ] : [];
+  ].filter(Boolean) : [];
 
   const menu = el('div', {
     id: 'gear-menu',
