@@ -1582,74 +1582,30 @@ function renderHeaderEl() {
   );
 
   // Busca livre — vive no header e filtra por nome/cidade/UF/etiqueta/chave
-  const makeSearchInput = (extraClass = '') => {
-    const inp = el('input', {
-      id: 'header-search',
-      type: 'search',
-      placeholder: 'Buscar por nome, cidade, etiqueta…',
-      value: state.searchQuery || '',
-      class: `w-full text-sm bg-white/10 hover:bg-white/15 focus:bg-white/20 text-white placeholder-white/50 border border-white/20 rounded px-3 py-1.5 outline-none focus:border-cyan-300 ${extraClass}`,
-    });
-    inp.oninput = (e) => {
+  const searchInput = profile && el('input', {
+    id: 'header-search',
+    type: 'search',
+    placeholder: 'Buscar…',
+    value: state.searchQuery || '',
+    class: 'w-full text-sm bg-white/10 hover:bg-white/15 focus:bg-white/20 text-white placeholder-white/50 border border-white/20 rounded px-3 py-1.5 outline-none focus:border-cyan-300',
+  });
+  if (searchInput) {
+    searchInput.oninput = (e) => {
       state.searchQuery = e.target.value;
       rerenderBody();
       const live = $('header-search');
       if (live && document.activeElement !== live) live.focus();
     };
-    return inp;
-  };
-
-  const desktopSearch = profile && el('div', { class: 'hidden md:block flex-1 min-w-0 max-w-md mx-auto' },
-    makeSearchInput(),
-  );
-
-  // Mobile: ícone de busca que expande pra um overlay com input full-width
-  const mobileSearchToggle = profile && el('button', {
-    id: 'mobile-search-toggle',
-    class: 'md:hidden w-9 h-9 flex items-center justify-center rounded text-white/80 hover:text-white hover:bg-white/10',
-    title: 'Buscar',
-    onClick: (e) => {
-      e.stopPropagation();
-      const bar = $('mobile-search-bar');
-      if (bar) {
-        bar.classList.toggle('hidden');
-        if (!bar.classList.contains('hidden')) {
-          const inp = bar.querySelector('input');
-          if (inp) setTimeout(() => inp.focus(), 0);
-        }
-      }
-    },
-  }, '🔍');
-
-  const mobileSearchBar = profile && el('div', {
-    id: 'mobile-search-bar',
-    class: (state.searchQuery ? '' : 'hidden ') + 'md:hidden absolute inset-x-0 top-full left-0 right-0 mt-1 px-3 z-30',
-  },
-    el('div', { class: 'bg-[#0e3a4d] border border-white/15 rounded-lg p-2 shadow-xl flex items-center gap-2' },
-      makeSearchInput(),
-      el('button', {
-        class: 'shrink-0 w-8 h-8 flex items-center justify-center rounded text-white/70 hover:text-white text-lg leading-none',
-        onClick: () => {
-          state.searchQuery = '';
-          rerenderBody();
-          const bar = $('mobile-search-bar');
-          if (bar) bar.classList.add('hidden');
-        },
-      }, '×'),
-    ),
-  );
+  }
 
   return el('header', { id: 'header-bar', class: 'flex items-center gap-2 sm:gap-3 pb-2 border-b border-slate-200 relative' },
     logo,
-    desktopSearch,
-    el('div', { class: 'flex-1 md:hidden' }), // spacer mobile
+    profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchInput),
     el('div', { class: 'flex items-center gap-1 sm:gap-2 shrink-0' },
-      mobileSearchToggle,
       memberStack,
       profile && renderSyncIndicator(),
       avatarButton,
     ),
-    mobileSearchBar,
   );
 }
 
