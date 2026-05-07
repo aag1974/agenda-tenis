@@ -2674,17 +2674,14 @@ function toggleGearMenu() {
       el('span', { class: 'text-xs text-slate-400 shrink-0' }, state.athleteSwitcherOpen ? '▴' : '▾'),
     ),
     state.athleteSwitcherOpen && el('div', { class: 'mt-1 space-y-0.5' },
-      ...state.profiles.map(p => el('button', {
-        class: `w-full text-left text-sm px-2 py-1.5 rounded flex items-center gap-2 ${p.id === state.activeProfileId ? 'bg-cyan-50 text-cyan-900' : 'hover:bg-slate-100 text-slate-700'}`,
+      ...state.profiles.filter(p => p.id !== state.activeProfileId).map(p => el('button', {
+        class: 'w-full text-left text-sm px-2 py-1.5 rounded hover:bg-slate-100 text-slate-700 truncate',
         onClick: () => {
           state.athleteSwitcherOpen = false;
           const m = $('gear-menu'); if (m) m.remove();
           switchProfile(p.id);
         },
-      },
-        el('span', { class: 'shrink-0 w-4 text-center' }, p.id === state.activeProfileId ? '✓' : ''),
-        el('span', { class: 'truncate' }, p.athleteName || p.tiEmail || 'Atleta'),
-      )),
+      }, p.athleteName || p.tiEmail || 'Atleta')),
       el('button', {
         class: 'w-full text-left text-sm px-2 py-1.5 rounded text-cyan-700 hover:bg-cyan-50',
         onClick: () => {
@@ -2700,7 +2697,7 @@ function toggleGearMenu() {
   const athleteFirstName = (profile?.athleteName || profile?.tiEmail || 'Atleta').split(/\s+/)[0];
   const athleteActions = profile ? [
     { label: `Sobre ${athleteFirstName}`, onClick: () => openAthleteCard() },
-    { label: `TI de ${athleteFirstName}`, onClick: () => openProfileForm(profile) },
+    { label: 'Credenciais TI', onClick: () => openProfileForm(profile) },
   ] : [];
   // Mobile: "Convidar membro" no menu. Desktop: "+" no header (memberStack)
   const isMobile = window.matchMedia('(max-width: 640px)').matches;
