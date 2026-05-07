@@ -306,14 +306,32 @@
     .cta {
       background: linear-gradient(135deg, var(--navy) 0%, var(--teal) 100%);
       color: white;
-      padding: 1.75rem;
+      padding: 2rem 1.5rem;
       border-radius: 16px;
       text-align: center;
-      margin: 2rem 0 1rem;
+      margin: 2.5rem 0 1rem;
       page-break-inside: avoid;
     }
-    .cta h3 { color: white; margin: 0 0 0.5rem; font-size: 1.4rem; }
-    .cta p { margin: 0; opacity: 0.9; }
+    .cta h3 { color: white; margin: 0 0 0.5rem; font-size: 1.5rem; letter-spacing: -0.01em; }
+    .cta p { margin: 0 0 1.25rem; opacity: 0.9; font-size: 1rem; }
+    .cta-btn-big {
+      display: inline-block;
+      background: var(--cyan);
+      color: var(--navy);
+      font-weight: 800;
+      font-size: 1.05rem;
+      padding: 0.9rem 2rem;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: transform 0.1s, background 0.15s;
+    }
+    .cta-btn-big:hover { background: white; transform: translateY(-1px); }
+    .cta-fineprint {
+      margin: 1rem 0 0 !important;
+      font-size: 0.8rem !important;
+      opacity: 0.7 !important;
+    }
+    .cta-final { margin-top: 3rem; }
 
     /* Print rules */
     @media print {
@@ -361,37 +379,6 @@
     }
     .print-bar button:hover { background: white; }
 
-    /* Profile selector */
-    .profile-bar {
-      background: var(--slate-100);
-      border-bottom: 1px solid var(--slate-200);
-      padding: 0.6rem 1rem;
-      display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
-      justify-content: center;
-    }
-    .profile-bar-label {
-      font-size: 0.8rem; color: var(--slate-600); font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.05em;
-      margin-right: 0.5rem;
-    }
-    .profile-pill {
-      background: white;
-      border: 1px solid var(--slate-300);
-      color: var(--slate-700);
-      padding: 0.4rem 0.9rem;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      cursor: pointer;
-      font-weight: 500;
-    }
-    .profile-pill.active {
-      background: var(--navy);
-      color: white;
-      border-color: var(--navy);
-    }
-    .profile-pill:hover:not(.active) {
-      background: var(--slate-200);
-    }
   </style>
 </head>
 <body>
@@ -402,12 +389,6 @@
   <button onclick="window.print()">Salvar como PDF</button>
 </div>
 
-<div class="profile-bar no-print">
-  <span class="profile-bar-label">Visão:</span>
-  <button class="profile-pill" data-profile="universal">Universal</button>
-  <button class="profile-pill" data-profile="juvenil">Família juvenil</button>
-  <button class="profile-pill" data-profile="pro">Atleta profissional</button>
-</div>
 
 <!-- ============== CAPA ============== -->
 <section class="cover">
@@ -415,7 +396,7 @@
     🎾<span class="tf"><span class="t">T</span><span class="f">F</span></span>
   </div>
   <h1>Tennis<span class="accent">Flow</span></h1>
-  <p class="tagline" data-slot="tagline">A agenda de torneios do atleta — organizada num quadro Kanban que entende o calendário do tênis brasileiro.</p>
+  <p class="tagline">A agenda de torneios do atleta — organizada num quadro Kanban que entende o calendário do tênis brasileiro.</p>
   <div class="pills">
     <span class="pill">Sincroniza com Tênis Integrado</span>
     <span class="pill">Boletos detectados</span>
@@ -428,10 +409,10 @@
 
   <!-- ============== POR QUE ============== -->
   <h2><span class="num">1</span>Por que existe</h2>
-  <p class="lead" data-slot="why-lead">Quem organiza a agenda de um atleta de tênis sabe: o calendário é caótico.</p>
-  <p data-slot="why-body">O Tênis Integrado tem tudo, mas quem precisa transformar aquilo em <strong>plano de viagem, lembrete de boleto e decisão da semana</strong> é você. Cada rodada é um copia-e-cola entre o site, o Google Calendar, mensagens com o treinador e o boleto que vence amanhã.</p>
+  <p class="lead">Quem organiza a agenda de um atleta de tênis sabe: o calendário é caótico.</p>
+  <p>O Tênis Integrado tem tudo, mas quem precisa transformar aquilo em <strong>plano de viagem, lembrete de boleto e decisão da semana</strong> é você. Cada rodada é um copia-e-cola entre o site, o Google Calendar, mensagens com o treinador e o boleto que vence amanhã.</p>
 
-  <div class="quote" data-slot="quote">
+  <div class="quote">
     "A inscrição abriu ontem e fechou hoje. Acabei descobrindo no grupo do clube — depois que a vaga já tinha esgotado."
   </div>
 
@@ -577,7 +558,7 @@
     <div class="card">
       <span class="icon">🔔</span>
       <div class="title">Alertas configuráveis</div>
-      <p class="desc">"Avise quando aparecer torneio em DF", "quando o ranking nacional mudar", "quando aparecer chave G1". Você define as regras.</p>
+      <p class="desc">"Avise quando aparecer torneio na minha UF", "quando o ranking nacional mudar", "quando aparecer chave G1". Você define as regras.</p>
     </div>
     <div class="card">
       <span class="icon">👥</span>
@@ -603,7 +584,31 @@
 
   <!-- ============== PRA QUEM É ============== -->
   <h2><span class="num">5</span>Pra quem é</h2>
-  <div class="grid-3" data-slot="audience"></div>
+  <div class="grid-3">
+    <div class="card">
+      <span class="icon">👨‍👩‍👧</span>
+      <div class="title">Famílias com atleta juvenil</div>
+      <p class="desc">Pais, mães e treinadores que acompanham crianças e adolescentes na rotina de torneios.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🏆</span>
+      <div class="title">Atletas profissionais</div>
+      <p class="desc">Quem joga circuitos e precisa decidir entre 3-4 torneios por semana com logística e boletos no fio.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🎾</span>
+      <div class="title">Treinadores e equipes</div>
+      <p class="desc">Que acompanham vários atletas e precisam de uma visão única do calendário de cada um.</p>
+    </div>
+  </div>
+
+  <!-- ============== CTA INTERMEDIÁRIO — assinatura grátis ============== -->
+  <div class="cta cta-signup">
+    <h3>Cadastre-se grátis e comece agora</h3>
+    <p>Teste tudo por 15 dias, sem cartão de crédito. Sincroniza com seu Tênis Integrado em ~30 segundos.</p>
+    <a href="/" class="cta-btn-big">Criar conta grátis →</a>
+    <p class="cta-fineprint">15 dias de Pro completo · sem cartão · cancele quando quiser</p>
+  </div>
 
   <!-- ============== COMO COMEÇAR ============== -->
   <h2><span class="num">6</span>Como começar</h2>
@@ -614,95 +619,28 @@
     <li><strong>Marque os torneios que interessam.</strong> Estrelinha → cai em "No radar" e entra na agenda.</li>
     <li><strong>Conecte sua agenda.</strong> No menu, "Conectar agenda" → mostra um link que você cola no calendário do iPhone (ou Google). Atualiza sozinho dali em diante.</li>
     <li><strong>Convide a família (opcional).</strong> No menu, "Convidar membro". Eles vêem o mesmo quadro — incluindo quem comentou e quem anexou o quê.</li>
-    <li><strong>Configure alertas (opcional).</strong> Menu → "Criar alertas". Defina regras como "novo torneio em DF" ou "qualquer mudança no ranking nacional".</li>
+    <li><strong>Configure alertas (opcional).</strong> Menu → "Criar alertas". Defina regras como "novo torneio na minha UF", "novo torneio em chave G1" ou "qualquer mudança no ranking nacional".</li>
   </ol>
 
   <!-- ============== CTA FINAL ============== -->
-  <div class="cta">
-    <h3>Tennis Flow</h3>
-    <p data-slot="cta">Pra quem vive de tênis gastar tempo com tênis, não com planilha.</p>
+  <div class="cta cta-final">
+    <h3>Pronto pra organizar a agenda do seu atleta?</h3>
+    <p>Cadastre-se em segundos e teste 15 dias com tudo desbloqueado.</p>
+    <a href="/" class="cta-btn-big">Cadastre-se grátis →</a>
+    <p class="cta-fineprint">
+      Após o trial: plano grátis (1 atleta, 30 dias à frente) ou
+      Pro vitalício R$297 — preço de fundador.
+    </p>
   </div>
 
   <div class="footer">
     <div class="brand">Tennis<span class="f">Flow</span></div>
-    <div style="margin-top: 0.4rem">Manual gerado em <span id="today"></span></div>
+    <div style="margin-top: 0.4rem">Atualizado em <span id="today"></span></div>
   </div>
 </div>
 
 <script>
   document.getElementById('today').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-
-  // === Variantes de público — texto neutro por padrão; pílulas customizam ===
-  const VARIANTS = {
-    universal: {
-      tagline: 'A agenda de torneios do atleta — organizada num quadro Kanban que entende o calendário do tênis brasileiro.',
-      whyLead: 'Quem organiza a agenda de um atleta de tênis sabe: o calendário é caótico.',
-      whyBody: 'O Tênis Integrado tem tudo, mas quem precisa transformar aquilo em <strong>plano de viagem, lembrete de boleto e decisão da semana</strong> é você. Cada rodada é um copia-e-cola entre o site, o Google Calendar, mensagens com o treinador e o boleto que vence amanhã.',
-      quote: '"A inscrição abriu ontem e fechou hoje. Acabei descobrindo depois que a vaga já tinha esgotado."',
-      cta: 'Pra quem vive de tênis gastar tempo com tênis, não com planilha.',
-      audience: [
-        { icon: '👨‍👩‍👧', title: 'Famílias com atleta juvenil', desc: 'Pais, mães e treinadores que acompanham crianças e adolescentes na rotina de torneios.' },
-        { icon: '🏆', title: 'Atletas profissionais', desc: 'Quem joga circuitos e precisa decidir entre 3-4 torneios por semana com logística e boletos no fio.' },
-        { icon: '🎾', title: 'Treinadores e equipes', desc: 'Que acompanham vários atletas e precisam de uma visão única do calendário de cada um.' },
-      ],
-    },
-    juvenil: {
-      tagline: 'A agenda de torneios da família atleta — organizada num quadro Kanban que entende o calendário do tênis brasileiro.',
-      whyLead: 'Quem é pai, mãe ou treinador de criança que joga torneio sabe: o calendário é caótico.',
-      whyBody: 'O Tênis Integrado tem tudo, mas quem precisa transformar aquilo em <strong>plano de viagem, lembrete de boleto e mensagem no grupo da família</strong> é você. Cada semana é um copia-e-cola entre o site, o Google Calendar, o WhatsApp do treinador e o boleto que vence amanhã.',
-      quote: '"A inscrição abriu ontem e fechou hoje. Acabei descobrindo no grupo do clube — depois que a vaga já tinha esgotado."',
-      cta: 'Pra a família atleta gastar tempo com tênis, não com planilha.',
-      audience: [
-        { icon: '👨‍👩‍👧', title: 'Pais e mães', desc: 'Que querem saber quando abre inscrição, quanto custa o boleto, e quando vai ser a próxima viagem — sem ficar refrescando o site.' },
-        { icon: '🎾', title: 'Treinadores', desc: 'Que acompanham vários atletas e precisam de uma visão única do calendário de cada um.' },
-        { icon: '🏠', title: 'Famílias multi-tela', desc: 'Quando avó, padrasto, irmão mais velho — todo mundo opina na decisão de jogar e quer ver o mesmo quadro.' },
-      ],
-    },
-    pro: {
-      tagline: 'A agenda de torneios do atleta profissional — Kanban que substitui a planilha do calendário e o WhatsApp do staff.',
-      whyLead: 'Quem vive de tênis sabe: cada semana é uma decisão entre 3-4 torneios, com boletos, deslocamento e logística que precisam estar resolvidos com antecedência.',
-      whyBody: 'O Tênis Integrado mostra a lista, mas <strong>decidir o que jogar, fechar a logística e dividir isso com staff (treinador, preparador, agente)</strong> mora em outro lugar — geralmente uma planilha que ninguém atualiza no momento certo.',
-      quote: '"Descobri o boleto no dia do vencimento. Pago, e o WTN cai porque o torneio que eu queria já tinha lotado."',
-      cta: 'Pra atleta profissional focar no jogo, não na logística.',
-      audience: [
-        { icon: '🏆', title: 'O próprio atleta', desc: 'Visão única do calendário, decisões da semana e status de cada inscrição — no celular, sem dependência do staff.' },
-        { icon: '🎾', title: 'Treinador / preparador', desc: 'Acompanha o cronograma, comenta nos cards de cada torneio e ajusta a estratégia da temporada com a família ou o atleta.' },
-        { icon: '💼', title: 'Agente / manager', desc: 'Vê o pipeline de torneios, deadlines de inscrição e logística (viagem comprada, hotel) sem precisar pedir update toda semana.' },
-      ],
-    },
-  };
-
-  function applyVariant(name) {
-    const v = VARIANTS[name] || VARIANTS.universal;
-    document.querySelector('[data-slot="tagline"]').textContent = v.tagline;
-    document.querySelector('[data-slot="why-lead"]').textContent = v.whyLead;
-    document.querySelector('[data-slot="why-body"]').innerHTML = v.whyBody;
-    document.querySelector('[data-slot="quote"]').textContent = v.quote;
-    document.querySelector('[data-slot="cta"]').textContent = v.cta;
-    const audienceRoot = document.querySelector('[data-slot="audience"]');
-    audienceRoot.innerHTML = v.audience.map(a => `
-      <div class="card">
-        <span class="icon">${a.icon}</span>
-        <div class="title">${a.title}</div>
-        <p class="desc">${a.desc}</p>
-      </div>`).join('');
-    // Atualiza estado dos botões
-    document.querySelectorAll('.profile-pill').forEach(b => {
-      b.classList.toggle('active', b.dataset.profile === name);
-    });
-    // Persiste na URL pra compartilhar
-    const url = new URL(location.href);
-    if (name === 'universal') url.searchParams.delete('p');
-    else url.searchParams.set('p', name);
-    history.replaceState(null, '', url.toString());
-  }
-
-  document.querySelectorAll('.profile-pill').forEach(btn => {
-    btn.addEventListener('click', () => applyVariant(btn.dataset.profile));
-  });
-
-  const initial = new URLSearchParams(location.search).get('p') || 'universal';
-  applyVariant(initial);
 </script>
 
 </body>
