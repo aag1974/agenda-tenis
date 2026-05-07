@@ -14,7 +14,7 @@ import {
   findOrCreateShareToken, getShareLink,
   clearColumnOverrides, saveSyncedData, resetProfileData,
 } from './storage.js';
-import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed } from './board.js';
+import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed, getRegistrationWindowState } from './board.js';
 import {
   listReceipts, addReceipt, getReceiptFile, updateReceiptCategory, deleteReceipt,
   getQuotaInfo, RECEIPT_CATEGORIES, daysUntilCleanup, CLEANUP_DAYS_AFTER_END,
@@ -217,17 +217,15 @@ function renderSharePage(tournament, details) {
     ? (t.endDate && t.endDate !== t.startDate ? `${t.startDate} a ${t.endDate}` : t.startDate)
     : null;
   const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
-  const regStatus = t.registrationStatus || null;
-  const regOpen = isRegistrationOpen(merged);
-  const regClosed = isRegistrationClosed(regStatus);
-  const regDate = (regStatus || '').match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
-  // Só info de janela (aberta/encerrada). Status privado do atleta
-  // ("Confirmado", "Pendente") não vai pra página pública.
+  const win = getRegistrationWindowState(merged);
+  const regOpen = win === 'open';
+  const regClosed = win === 'closed';
+  const regDateText = (t.registrationStatus || '').match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
+  const closeDate = merged.registrationDeadline || regDateText || merged.cancelDeadline;
   let regLine = null;
-  if (regDate && regOpen) regLine = `Inscrições abertas até ${regDate}`;
-  else if (regDate && regClosed) regLine = `Inscrições encerraram em ${regDate}`;
-  else if (regOpen) regLine = 'Inscrições abertas';
-  else if (regClosed) regLine = 'Inscrições encerradas';
+  if (regOpen) regLine = closeDate ? `Inscrições abertas até ${closeDate}` : 'Inscrições abertas';
+  else if (regClosed) regLine = closeDate ? `Inscrições encerraram em ${closeDate}` : 'Inscrições encerradas';
+  else if (win === 'pending') regLine = merged.registrationOpensAt ? `Inscrições abrem em ${merged.registrationOpensAt}` : 'Inscrições a iniciar';
   const ogDesc = [dates, where, tiers.join(' · ')].filter(Boolean).join(' · ');
 
   return `<!doctype html>
@@ -699,6 +697,14 @@ app.get('/api/tournament-details/:tid', async (req, res) => {
           }
           if (data?.cancelDeadline && t.cancelDeadline !== data.cancelDeadline) {
             t.cancelDeadline = data.cancelDeadline;
+            changed = true;
+          }
+          if (data?.registrationOpensAt && t.registrationOpensAt !== data.registrationOpensAt) {
+            t.registrationOpensAt = data.registrationOpensAt;
+            changed = true;
+          }
+          if (data?.registrationDeadline && t.registrationDeadline !== data.registrationDeadline) {
+            t.registrationDeadline = data.registrationDeadline;
             changed = true;
           }
           if (changed) saveSyncedData(pid, synced);

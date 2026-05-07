@@ -34,30 +34,50 @@ export function isRegistrationOpen(t) {
   return getRegistrationWindowState(t) === 'open';
 }
 
+// Helper: parse "DD/MM/YYYY" → Date ou null
+function parseBrDate(s) {
+  if (!s) return null;
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+}
+
 // Estado da janela de inscrição.
-// 'closed' — venceu o prazo ou status TI explícito (Encerrada/Finalizado)
-// 'pending' — janela ainda vai abrir (status "A iniciar" / "Confirmado" sem dados claros)
-// 'open' — janela aberta (status "Aberta" ou "Iniciado" + cancelDeadline futuro)
+// 'closed' — passou o prazo ou status TI explícito (Encerrada/Finalizado)
+// 'pending' — janela ainda vai abrir (status "A iniciar" / "Confirmado" + regOpensAt futuro)
+// 'open' — janela aberta agora
 // 'unknown' — sem informação suficiente
+//
+// Prioridade dos sinais:
+// 1. registrationDeadline ≠ cancelDeadline. registrationDeadline é o
+//    prazo real de fechamento de inscrições. cancelDeadline é prazo
+//    de cancelamento de inscrição já feita (geralmente 1 dia depois).
+//    Se registrationDeadline disponível, usa ele.
+// 2. Texto explícito do TI ("Encerrada", "Aberta", etc)
+// 3. registrationOpensAt no futuro → pending
 export function getRegistrationWindowState(t) {
   if (!t) return 'unknown';
   const s = t.registrationStatus || '';
-  // Prioridade 1: cancelDeadline já passou → ENCERRADA (data manda mais que texto)
-  if (t.cancelDeadline) {
-    const [d, m, y] = t.cancelDeadline.split('/').map(Number);
-    const cancel = new Date(y, m - 1, d);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    if (cancel < today) return 'closed';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  // Prioridade 1: prazo de inscrição (registrationDeadline) já passou
+  const regDeadline = parseBrDate(t.registrationDeadline);
+  if (regDeadline && regDeadline < today) return 'closed';
+  // Prioridade 2: cancelDeadline já passou (fallback quando não temos
+  // registrationDeadline). Geralmente 1 dia após o regDeadline real.
+  if (!regDeadline) {
+    const cancel = parseBrDate(t.cancelDeadline);
+    if (cancel && cancel < today) return 'closed';
   }
-  // Prioridade 2: texto explícito de fechamento
+  // Prioridade 3: texto explícito de fechamento
   if (isRegistrationClosed(s)) return 'closed';
-  // Prioridade 3: "a iniciar" — janela ainda vai abrir
+  // Prioridade 4: registrationOpensAt no futuro → pending (ainda vai abrir)
+  const regOpens = parseBrDate(t.registrationOpensAt);
+  if (regOpens && regOpens > today) return 'pending';
+  // Prioridade 5: "a iniciar" textual
   if (/a\s*iniciar/i.test(s)) return 'pending';
-  // Prioridade 4: aberta explícita
-  if (/Aberto|aberta/i.test(s)) return 'open';
-  // Prioridade 5: "Iniciado" — janela aberta (cancelDeadline já tratado em #1)
-  if (/inicia/i.test(s)) return 'open';
-  // Resto: "Confirmado" sem cancelDeadline confiável, vazio, etc → desconhecida
+  // Prioridade 6: aberta explícita ou "Iniciado" (já passou pelos checks de prazo)
+  if (/Aberto|aberta|inicia/i.test(s)) return 'open';
+  // Resto: "Confirmado" sem datas confiáveis, vazio, etc → desconhecida
   return 'unknown';
 }
 

@@ -1046,18 +1046,23 @@ function orderedKanbanColumns() {
   return [...ordered, ...remaining];
 }
 
-// Mantém em sincronia com backend/board.js#getRegistrationWindowState
+// Mantém em sincronia com backend/board.js#getRegistrationWindowState.
+// registrationDeadline = prazo real de fechamento de inscrições (≠ cancelDeadline).
 function getWindowState(t) {
   if (!t) return 'unknown';
   const s = t.registrationStatus || '';
-  if (t.cancelDeadline) {
+  const today = startOfToday();
+  const regDeadline = t.registrationDeadline ? brToDate(t.registrationDeadline) : null;
+  if (regDeadline && regDeadline < today) return 'closed';
+  if (!regDeadline && t.cancelDeadline) {
     const d = brToDate(t.cancelDeadline);
-    if (d && d < startOfToday()) return 'closed';
+    if (d && d < today) return 'closed';
   }
   if (regStatusClosed(s)) return 'closed';
+  const regOpens = t.registrationOpensAt ? brToDate(t.registrationOpensAt) : null;
+  if (regOpens && regOpens > today) return 'pending';
   if (/a\s*iniciar/i.test(s)) return 'pending';
-  if (/Aberto|aberta/i.test(s)) return 'open';
-  if (/inicia/i.test(s)) return 'open';
+  if (/Aberto|aberta|inicia/i.test(s)) return 'open';
   return 'unknown';
 }
 
@@ -1306,24 +1311,18 @@ function buildShareText(t, { includeUrl = true, shareUrl = null } = {}) {
   const dates = t.startDate
     ? (t.endDate && t.endDate !== t.startDate ? `${t.startDate} a ${t.endDate}` : t.startDate)
     : null;
-  const regStatus = t.registrationStatus || '';
-  const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
-  const regOpen = regStatusOpen(t);
-  const explicitClosed = regStatusClosed(regStatus);
-  const cancelPast = (() => {
-    if (!t.cancelDeadline) return false;
-    const d = brToDate(t.cancelDeadline);
-    return d && d < startOfToday();
-  })();
-  const regClosed = explicitClosed || (!regOpen && cancelPast);
+  const win = getWindowState(t);
+  const regDateText = (t.registrationStatus || '').match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
+  const closeDate = t.registrationDeadline || regDateText || t.cancelDeadline;
+  const regOpen = win === 'open';
+  const regClosed = win === 'closed';
   // Só mostra "Inscrições" se for info real de janela (aberta/encerrada).
   // Status do atleta tipo "Confirmado", "Pendente" não cabem aqui — são
   // privados e confundem quem recebe o link.
   let regLine = null;
-  if (regDate && regOpen) regLine = `abertas até ${regDate}`;
-  else if (regDate && regClosed) regLine = `encerraram em ${regDate}`;
-  else if (regOpen) regLine = 'abertas';
-  else if (regClosed) regLine = 'encerradas';
+  if (regOpen) regLine = closeDate ? `abertas até ${closeDate}` : 'abertas';
+  else if (regClosed) regLine = closeDate ? `encerraram em ${closeDate}` : 'encerradas';
+  else if (win === 'pending') regLine = t.registrationOpensAt ? `abrem em ${t.registrationOpensAt}` : 'a iniciar';
   const lines = [];
   lines.push(`*${t.name || 'Torneio'}*`);
   if (where) lines.push(`Local: ${where}`);
@@ -3426,8 +3425,23 @@ async function openTournament(tid) {
     if (details.cancelDeadline && t.cancelDeadline !== details.cancelDeadline) {
       t.cancelDeadline = details.cancelDeadline;
     }
+    if (details.registrationOpensAt && t.registrationOpensAt !== details.registrationOpensAt) {
+      t.registrationOpensAt = details.registrationOpensAt;
+    }
+    if (details.registrationDeadline && t.registrationDeadline !== details.registrationDeadline) {
+      t.registrationDeadline = details.registrationDeadline;
+    }
   }
-  const merged = details ? { ...t, hotels: details.hotels || t.hotels || [], venues: details.venues || t.venues || [], observations: details.observations || t.observations, cancelDeadline: details.cancelDeadline || t.cancelDeadline, prices: details.prices || t.prices } : t;
+  const merged = details ? {
+    ...t,
+    hotels: details.hotels || t.hotels || [],
+    venues: details.venues || t.venues || [],
+    observations: details.observations || t.observations,
+    cancelDeadline: details.cancelDeadline || t.cancelDeadline,
+    registrationOpensAt: details.registrationOpensAt || t.registrationOpensAt,
+    registrationDeadline: details.registrationDeadline || t.registrationDeadline,
+    prices: details.prices || t.prices,
+  } : t;
 
   const notes = t.notes || {};
   const root = $('modal-root');
@@ -3515,25 +3529,22 @@ async function openTournament(tid) {
       (() => {
         // Extrai data de encerramento/abertura do registrationStatus do TI
         // (ex: "Aberta até 19/05/2026", "Iniciado", "Encerrada em 14/05/2026")
-        const regStatus = t.registrationStatus || '';
-        const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
-        const isOpen = regStatusOpen(merged);
-        const explicitClosed = regStatusClosed(regStatus);
-        // cancelDeadline já passou? Se sim, considera fechada mesmo sem
-        // palavra explícita ("Iniciado" depois do prazo, etc).
-        const cancelPast = (() => {
-          if (!merged.cancelDeadline) return false;
-          const d = brToDate(merged.cancelDeadline);
-          return d && d < startOfToday();
-        })();
-        const isClosed = explicitClosed || (!isOpen && cancelPast);
-        const closedDate = regDate || (isClosed ? merged.cancelDeadline : null);
+        const win = getWindowState(merged);
+        // Prefere registrationDeadline (prazo real) sobre cancelDeadline.
+        // regDate fallback: data extraída do texto (ex: "Aberta até DD/MM/YYYY").
+        const regDateText = (t.registrationStatus || '').match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
+        const closeDate = merged.registrationDeadline || regDateText || merged.cancelDeadline;
+        const opensDate = merged.registrationOpensAt;
         let regLine = null;
-        if (regDate && isOpen) regLine = `Inscrições abertas até ${regDate}`;
-        else if (closedDate && isClosed) regLine = `Inscrições encerraram em ${closedDate}`;
-        else if (isOpen) regLine = 'Inscrições abertas';
-        else if (isClosed) regLine = 'Inscrições encerradas';
-        else if (regStatus) regLine = `Inscrições: ${regStatus}`;
+        if (win === 'open') {
+          regLine = closeDate ? `Inscrições abertas até ${closeDate}` : 'Inscrições abertas';
+        } else if (win === 'closed') {
+          regLine = closeDate ? `Inscrições encerraram em ${closeDate}` : 'Inscrições encerradas';
+        } else if (win === 'pending') {
+          regLine = opensDate ? `Inscrições abrem em ${opensDate}` : 'Inscrições a iniciar';
+        } else if (t.registrationStatus) {
+          regLine = `Inscrições: ${t.registrationStatus}`;
+        }
         return el('section', null,
           el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Datas'),
           el('p', { class: 'text-sm' }, `${t.startDate || '—'} a ${t.endDate || '—'}`),

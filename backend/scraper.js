@@ -375,6 +375,23 @@ function parseDetailsHtml(html, id, url) {
   const cancelLine = lineAfter('Cancelamentos até');
   const cancelDeadline = cancelLine?.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
 
+  // Prazo de fechamento das inscrições (≠ cancelDeadline). Texto típico:
+  // "Inscrições abertas até 04/05/2026 e cancelamentos até 05/05/2026"
+  // OU badge "(13/01/2026 a 04/05/2026)" próximo do status
+  let registrationOpensAt = null;
+  let registrationDeadline = null;
+  const inscrFraseMatch = text.match(/Inscri[cç][oõ]es\s+abertas?\s+at[ée]\s+(\d{2}\/\d{2}\/\d{4})/i);
+  if (inscrFraseMatch) registrationDeadline = inscrFraseMatch[1];
+  // Fallback: padrão "(DD/MM/YYYY a DD/MM/YYYY)" perto da palavra "Inscrições"
+  if (!registrationDeadline) {
+    const idx = text.search(/Inscri[cç][oõ]es/i);
+    if (idx >= 0) {
+      const window = text.slice(idx, idx + 200);
+      const m = window.match(/\((\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})\)/);
+      if (m) { registrationOpensAt = m[1]; registrationDeadline = m[2]; }
+    }
+  }
+
   const prices = {};
   for (const m of text.matchAll(/(NORMAL|COM\/DESCONTO|PROMOCIONAL)\s*\n?\s*(R\$\s*[\d.,]+)/gi)) {
     prices[m[1].toUpperCase()] = m[2];
@@ -407,7 +424,8 @@ function parseDetailsHtml(html, id, url) {
     name: name || $('title').text().trim(),
     city, state, cityState: localText,
     startDate, endDate,
-    cancelDeadline, prices, hotels, venues, observations,
+    cancelDeadline, registrationOpensAt, registrationDeadline,
+    prices, hotels, venues, observations,
     tiers,
   };
 }
@@ -566,6 +584,8 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
       t.prices = det.prices && Object.keys(det.prices).length ? det.prices : (t.prices || {});
       if (det.observations) t.observations = det.observations;
       if (det.cancelDeadline) t.cancelDeadline = det.cancelDeadline;
+      if (det.registrationOpensAt) t.registrationOpensAt = det.registrationOpensAt;
+      if (det.registrationDeadline) t.registrationDeadline = det.registrationDeadline;
       // Tiers: union of catalog tiers + details tiers
       const all = new Set([...(t.tiers || []), ...(det.tiers || [])]);
       if (all.size) {
