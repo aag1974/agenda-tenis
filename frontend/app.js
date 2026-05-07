@@ -186,6 +186,12 @@ const state = {
       return v && typeof v === 'object' ? v : {};
     } catch { return {}; }
   })(),
+  hiddenColumns: (() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('hiddenColumns') || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch { return []; }
+  })(),
 };
 
 const api = {
@@ -1131,13 +1137,15 @@ function renderKanban(allTournaments) {
   document.body.classList.add('kanban-mode');
   const tournaments = applyHeaderFilters(allTournaments);
 
-  // Resolve a ordem das colunas conforme preferência do usuário
-  const orderedColumns = state.columnOrder
+  // Resolve a ordem das colunas conforme preferência do usuário, depois
+  // filtra as ocultas (cards continuam agrupados pra reaparecer ao mostrar)
+  const allOrderedColumns = state.columnOrder
     ? [
         ...state.columnOrder.map(id => KANBAN_COLUMNS.find(c => c.id === id)).filter(Boolean),
         ...KANBAN_COLUMNS.filter(c => !state.columnOrder.includes(c.id)),
       ]
     : KANBAN_COLUMNS;
+  const orderedColumns = allOrderedColumns.filter(c => !state.hiddenColumns.includes(c.id));
 
   // Group by column
   const cardsByColumn = Object.fromEntries(KANBAN_COLUMN_IDS.map(c => [c, []]));
@@ -1960,10 +1968,30 @@ function renderHeaderEl() {
     profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchInput),
     el('div', { class: 'flex items-center gap-1 sm:gap-2 shrink-0' },
       memberStack,
+      profile && renderFiltersButton(),
       profile && renderAlertsBell(),
       profile && renderSyncIndicator(),
       avatarButton,
     ),
+  );
+}
+
+function renderFiltersButton() {
+  const activeCount =
+    (state.filterUFs?.length || 0) +
+    (state.filterYears?.length || 0) +
+    (state.filterTiers?.length || 0) +
+    (state.hiddenColumns?.length || 0);
+  return el('button', {
+    id: 'filters-button',
+    class: 'relative w-9 h-9 rounded-full flex items-center justify-center text-white/85 hover:text-white hover:bg-white/10',
+    title: activeCount ? `Filtros (${activeCount} ativos)` : 'Filtros',
+    onClick: (e) => { e.stopPropagation(); openFiltersPanel(); },
+  },
+    el('span', { class: 'text-base' }, '🎚️'),
+    activeCount > 0 && el('span', {
+      class: 'absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-cyan-500 text-white text-[10px] font-bold flex items-center justify-center',
+    }, String(activeCount)),
   );
 }
 
@@ -2566,10 +2594,13 @@ function openAlertsListModal({ onlyUnseen = false } = {}) {
   reload();
 }
 
-function toggleGearMenu() {
-  const existing = $('gear-menu');
-  if (existing) { existing.remove(); return; }
-  const profile = state.profiles.find(p => p.id === state.activeProfileId);
+// Painel de filtros (UF / Ano / Chave / Colunas) — substitui as pillRows
+// que viviam dentro do gear menu. Mobile: bottom sheet. Desktop: popover
+// ancorado no botão 🎚️ do header.
+function openFiltersPanel() {
+  const existing = $('filters-panel');
+  if (existing) { closeFiltersPanel(); return; }
+
   const tournaments = state.data?.tournaments || [];
   const ufs = [...new Set(tournaments.map(t => t.state).filter(Boolean))].sort();
   const tiersInData = new Set();
@@ -2579,22 +2610,64 @@ function toggleGearMenu() {
   const tierOptions = TIER_ORDER.filter(x => tiersInData.has(x));
   const yearOptions = [...new Set(tournaments.map(t => startYearOf(t)).filter(Boolean))].sort();
 
-  const pillRow = (label, options, isSelected, onTogglePill, onClearAll) => {
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
+
+  const overlay = el('div', {
+    id: 'filters-overlay',
+    class: 'fixed inset-0 bg-black/30 z-[58]',
+    onClick: () => closeFiltersPanel(),
+  });
+
+  const panel = el('div', {
+    id: 'filters-panel',
+    class: isMobile
+      ? 'fixed left-0 right-0 bottom-0 z-[59] bg-white rounded-t-2xl shadow-2xl max-h-[85dvh] overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]'
+      : 'fixed z-[59] bg-white border border-slate-200 rounded-lg shadow-xl w-80 max-w-[calc(100vw-1rem)] max-h-[80dvh] overflow-y-auto overscroll-contain',
+    onClick: (e) => e.stopPropagation(),
+  });
+
+  const rerender = () => {
+    const oldPanel = $('filters-panel');
+    const oldOverlay = $('filters-overlay');
+    if (oldPanel) oldPanel.remove();
+    if (oldOverlay) oldOverlay.remove();
+    openFiltersPanel();
+  };
+
+  const pill = (text, active, onClick) => el('button', {
+    class: `text-xs px-2.5 py-1 rounded-full border ${active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'}`,
+    onClick: (e) => { e.preventDefault(); onClick(); },
+  }, text);
+
+  const section = (label, options, isSelected, onTogglePill, onClearAll) => {
+    if (!options.length) return null;
     const allActive = !options.some(isSelected);
-    const pill = (text, active, onClick) => el('button', {
-      class: `text-xs px-2.5 py-1 rounded-full border ${active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'}`,
-      onClick: (e) => { e.preventDefault(); onClick(); },
-    }, text);
-    return el('div', { class: 'px-3 py-2' },
-      el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5' }, label),
+    return el('div', { class: 'px-4 py-3 border-b border-slate-100 last:border-b-0' },
+      el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2' }, label),
       el('div', { class: 'flex flex-wrap gap-1.5' },
-        pill('Todos', allActive, onClearAll),
-        ...options.map(v => pill(v, isSelected(v), () => onTogglePill(v))),
+        pill('Todos', allActive, () => { onClearAll(); rerender(); rerenderBody(); renderHeader(); }),
+        ...options.map(v => pill(v, isSelected(v), () => { onTogglePill(v); rerender(); rerenderBody(); renderHeader(); })),
       ),
     );
   };
 
-  const yearPillRow = yearOptions.length > 1 && pillRow(
+  const ufSection = section(
+    'UF',
+    ufs,
+    (uf) => state.filterUFs.includes(uf),
+    (uf) => {
+      const idx = state.filterUFs.indexOf(uf);
+      if (idx >= 0) state.filterUFs.splice(idx, 1);
+      else state.filterUFs.push(uf);
+      localStorage.setItem('filterUFs', JSON.stringify(state.filterUFs));
+    },
+    () => {
+      state.filterUFs = [];
+      localStorage.setItem('filterUFs', '[]');
+    },
+  );
+
+  const yearSection = yearOptions.length > 1 ? section(
     'Ano',
     yearOptions.map(String),
     (y) => state.filterYears.includes(Number(y)),
@@ -2604,20 +2677,14 @@ function toggleGearMenu() {
       if (idx >= 0) state.filterYears.splice(idx, 1);
       else state.filterYears.push(yn);
       localStorage.setItem('filterYears', JSON.stringify(state.filterYears));
-      rerenderBody();
-      const oldMenu = $('gear-menu');
-      if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
     },
     () => {
       state.filterYears = [];
       localStorage.setItem('filterYears', '[]');
-      rerenderBody();
-      const oldMenu = $('gear-menu');
-      if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
     },
-  );
+  ) : null;
 
-  const tierPillRow = pillRow(
+  const tierSection = section(
     'Chave',
     tierOptions,
     (t) => state.filterTiers.includes(t),
@@ -2626,18 +2693,96 @@ function toggleGearMenu() {
       if (idx >= 0) state.filterTiers.splice(idx, 1);
       else state.filterTiers.push(t);
       localStorage.setItem('filterTiers', JSON.stringify(state.filterTiers));
-      rerenderBody();
-      const oldMenu = $('gear-menu');
-      if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
     },
     () => {
       state.filterTiers = [];
       localStorage.setItem('filterTiers', '[]');
-      rerenderBody();
-      const oldMenu = $('gear-menu');
-      if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
     },
   );
+
+  // Colunas — toggle visibilidade. Cards continuam agrupados pra reaparecer
+  // ao mostrar a coluna.
+  const columnsSection = el('div', { class: 'px-4 py-3' },
+    el('div', { class: 'flex items-center justify-between mb-2' },
+      el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500' }, 'Colunas'),
+      state.hiddenColumns.length > 0 && el('button', {
+        class: 'text-[11px] text-cyan-700 hover:underline',
+        onClick: (e) => {
+          e.preventDefault();
+          state.hiddenColumns = [];
+          localStorage.setItem('hiddenColumns', '[]');
+          rerender(); rerenderBody(); renderHeader();
+        },
+      }, 'Mostrar todas'),
+    ),
+    el('div', { class: 'space-y-1' },
+      ...KANBAN_COLUMNS.map(col => {
+        const hidden = state.hiddenColumns.includes(col.id);
+        const customLabel = state.columnLabels[col.id] || col.label;
+        return el('label', { class: 'flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-50 cursor-pointer' },
+          el('input', {
+            type: 'checkbox',
+            checked: !hidden,
+            class: 'w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer',
+            onChange: (e) => {
+              if (e.target.checked) {
+                state.hiddenColumns = state.hiddenColumns.filter(id => id !== col.id);
+              } else {
+                if (!state.hiddenColumns.includes(col.id)) state.hiddenColumns.push(col.id);
+              }
+              localStorage.setItem('hiddenColumns', JSON.stringify(state.hiddenColumns));
+              rerenderBody(); renderHeader();
+            },
+          }),
+          el('span', { class: 'text-base' }, col.icon),
+          el('span', { class: `text-sm ${hidden ? 'text-slate-400 line-through' : 'text-slate-800'}` }, customLabel),
+        );
+      }),
+    ),
+  );
+
+  const header = el('div', { class: 'sticky top-0 bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between' },
+    el('h3', { class: 'text-base font-semibold text-slate-900' }, '🎚️ Filtros'),
+    el('button', {
+      class: 'text-slate-500 hover:text-slate-900 text-xl leading-none',
+      onClick: () => closeFiltersPanel(),
+    }, '×'),
+  );
+
+  panel.append(
+    header,
+    ufSection,
+    yearSection,
+    tierSection,
+    columnsSection,
+  );
+
+  document.body.appendChild(overlay);
+  document.body.appendChild(panel);
+
+  if (!isMobile) {
+    const anchor = $('filters-button');
+    if (anchor) {
+      const rect = anchor.getBoundingClientRect();
+      const top = rect.bottom + 6;
+      panel.style.top = `${top}px`;
+      panel.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+      panel.style.maxHeight = `calc(100dvh - ${top + 8}px - env(safe-area-inset-bottom))`;
+    }
+  }
+}
+
+function closeFiltersPanel() {
+  const p = $('filters-panel');
+  const o = $('filters-overlay');
+  if (p) p.remove();
+  if (o) o.remove();
+}
+
+function toggleGearMenu() {
+  const existing = $('gear-menu');
+  if (existing) { existing.remove(); return; }
+  const profile = state.profiles.find(p => p.id === state.activeProfileId);
 
   // Cabeçalho do menu (estilo Trello): avatar + nome + email
   const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
@@ -2729,31 +2874,6 @@ function toggleGearMenu() {
         onClick: () => { menu.remove(); it.onClick(); },
       }, it.label)),
     ),
-    profile && el('div', { class: 'border-t border-slate-200' }),
-    profile && pillRow(
-      'UF',
-      ufs,
-      (uf) => state.filterUFs.includes(uf),
-      (uf) => {
-        const idx = state.filterUFs.indexOf(uf);
-        if (idx >= 0) state.filterUFs.splice(idx, 1);
-        else state.filterUFs.push(uf);
-        localStorage.setItem('filterUFs', JSON.stringify(state.filterUFs));
-        rerenderBody();
-        // re-render the menu to update the pill colors
-        const oldMenu = $('gear-menu');
-        if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
-      },
-      () => {
-        state.filterUFs = [];
-        localStorage.setItem('filterUFs', '[]');
-        rerenderBody();
-        const oldMenu = $('gear-menu');
-        if (oldMenu) { oldMenu.remove(); toggleGearMenu(); }
-      },
-    ),
-    profile && yearPillRow,
-    profile && tierPillRow,
     accountActions.length > 0 && el('div', { class: 'border-t border-slate-200 py-1' },
       ...accountActions.map(it => el('button', {
         class: 'block w-full text-left px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#1f5b75] hover:bg-slate-100',
