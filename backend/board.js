@@ -4,14 +4,18 @@
 
 import { deriveStatus } from './scraper.js';
 
+// IDs dos colunas se mantêm pra preservar compatibilidade com notes existentes.
+// Labels mudaram conforme spec (07/05/2026):
+// - 'torneios' → "Concluídos" (inclui janela encerrada + boleto vencido + givenUp)
+// - 'vou_jogar' → "Monitorar" (manual + auto pra A_INICIAR/UNKNOWN)
 export const COLUMNS = [
-  { id: 'torneios',            label: 'Inscrições Encerradas', icon: '🔒', auto: true,  manual: true },
-  { id: 'inscricoes_abertas', label: 'Inscrições Abertas',   icon: '🌟', auto: true,  manual: true },
-  { id: 'vou_jogar',           label: 'No radar',            icon: '⭐', auto: false, manual: true },
-  { id: 'pagar_inscricao',     label: 'Pagar inscrição',     icon: '💰', auto: true,  manual: true },
-  { id: 'confirmado',          label: 'Confirmado',          icon: '✅', auto: true,  manual: true },
-  { id: 'viagem_comprada',     label: 'Viagem comprada',     icon: '✈️', auto: false, manual: true },
-  { id: 'historico',           label: 'Encerrados',          icon: '🎾', auto: true,  manual: true },
+  { id: 'torneios',            label: 'Concluídos',         icon: '🔒', auto: true,  manual: true },
+  { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟', auto: true,  manual: true },
+  { id: 'vou_jogar',           label: 'Monitorar',          icon: '⭐', auto: true,  manual: true },
+  { id: 'pagar_inscricao',     label: 'Pagar inscrição',    icon: '💰', auto: true,  manual: true },
+  { id: 'confirmado',          label: 'Confirmado',         icon: '✅', auto: true,  manual: true },
+  { id: 'viagem_comprada',     label: 'Viagem comprada',    icon: '✈️', auto: false, manual: true },
+  { id: 'historico',           label: 'Encerrados',         icon: '🎾', auto: true,  manual: true },
 ];
 
 export const COLUMN_IDS = COLUMNS.map(c => c.id);
@@ -25,62 +29,80 @@ export function isRegistrationClosed(status) {
   return /encerrad|finalizad/i.test(status);
 }
 
-// "Iniciado" no TI = período de inscrição começou, MAS pode já ter
-// terminado (se cancelDeadline ou startDate passaram). Recebe o torneio
-// inteiro pra olhar essas datas.
+// Convenience: "está aberta?" — wrapper sobre getRegistrationWindowState
 export function isRegistrationOpen(t) {
-  if (!t) return false;
-  const s = typeof t === 'string' ? t : (t.registrationStatus || '');
-  if (isRegistrationClosed(s)) return false;
-  if (/Aberto|aberta/i.test(s)) {
-    // Explícito aberta — checa cancelDeadline pra confirmar
-    if (typeof t === 'object' && t.cancelDeadline) {
-      const [d, m, y] = t.cancelDeadline.split('/').map(Number);
-      const cancel = new Date(y, m - 1, d);
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      if (cancel < today) return false;
-    }
-    return true;
-  }
-  if (/inicia/i.test(s)) {
-    // "Iniciado" depende das datas — sem objeto, assume aberta (sem como saber)
-    if (typeof t !== 'object') return true;
+  return getRegistrationWindowState(t) === 'open';
+}
+
+// Estado da janela de inscrição.
+// 'closed' — venceu o prazo ou status TI explícito (Encerrada/Finalizado)
+// 'pending' — janela ainda vai abrir (status "A iniciar" / "Confirmado" sem dados claros)
+// 'open' — janela aberta (status "Aberta" ou "Iniciado" + cancelDeadline futuro)
+// 'unknown' — sem informação suficiente
+export function getRegistrationWindowState(t) {
+  if (!t) return 'unknown';
+  const s = t.registrationStatus || '';
+  // Prioridade 1: cancelDeadline já passou → ENCERRADA (data manda mais que texto)
+  if (t.cancelDeadline) {
+    const [d, m, y] = t.cancelDeadline.split('/').map(Number);
+    const cancel = new Date(y, m - 1, d);
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    if (t.cancelDeadline) {
-      const [d, m, y] = t.cancelDeadline.split('/').map(Number);
-      if (new Date(y, m - 1, d) < today) return false;
-    }
-    if (t.startDate) {
-      const [d, m, y] = t.startDate.split('/').map(Number);
-      if (new Date(y, m - 1, d) < today) return false;
-    }
-    return true;
+    if (cancel < today) return 'closed';
   }
-  return false;
+  // Prioridade 2: texto explícito de fechamento
+  if (isRegistrationClosed(s)) return 'closed';
+  // Prioridade 3: "a iniciar" — janela ainda vai abrir
+  if (/a\s*iniciar/i.test(s)) return 'pending';
+  // Prioridade 4: aberta explícita
+  if (/Aberto|aberta/i.test(s)) return 'open';
+  // Prioridade 5: "Iniciado" — janela aberta (cancelDeadline já tratado em #1)
+  if (/inicia/i.test(s)) return 'open';
+  // Resto: "Confirmado" sem cancelDeadline confiável, vazio, etc → desconhecida
+  return 'unknown';
 }
 
 // Compute the "natural" column based on tournament state alone (TI signals + notes).
 // User can override via notes.column; this function does NOT consider override.
+//
+// Priority order (regra fechada com user em 07/05/2026):
+//   1. status === 'past'                       → historico
+//   2. manualGiveUp                             → torneios (Concluídos)
+//   3. inscrita + boleto vencido                → torneios (Concluídos)
+//   4. inscrita + boleto pendente               → pagar_inscricao
+//   5. inscrita (heurística: confirmada)        → confirmado
+//   6. não inscrita + janela 'open'             → inscricoes_abertas
+//   7. não inscrita + janela 'closed'           → torneios (Concluídos)
+//   8. não inscrita + janela 'pending/unknown'  → vou_jogar (Monitorar)
+//
+// Nota: ideal é scrapar `isAnnaConfirmada` da página do torneio pra
+// distinguir "inscrita esperando boleto" de "confirmada". Por ora, mantém
+// heurística "inscrita + sem boleto = confirmada".
 export function computeAutoColumn(t, notes = {}) {
-  const givenUp = !!notes.manualGiveUp;
-  const pp = givenUp ? null : t.pendingPayment;
-  const inscribed = givenUp ? false : (t.isAnnaInscribed || notes.manualInscribed);
   const status = deriveStatus(t);
-
-  // Past tournaments always go to history
   if (status === 'past') return 'historico';
 
-  // Active payment due → pay
-  if (pp) return 'pagar_inscricao';
+  if (notes.manualGiveUp) return 'torneios';
 
-  // Confirmed (inscribed and paid, future or ongoing)
-  if (inscribed) return 'confirmado';
+  const pp = t.pendingPayment;
+  const inscribed = t.isAnnaInscribed || notes.manualInscribed;
 
-  // Registration open in TI (no Anna registered yet)
-  if (isRegistrationOpen(t)) return 'inscricoes_abertas';
+  // Boleto vencido (com inscrição registrada) — perdeu o prazo
+  if (inscribed && pp?.dueDate) {
+    const [d, m, y] = pp.dueDate.split('/').map(Number);
+    const due = new Date(y, m - 1, d);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (due < today) return 'torneios';
+  }
 
-  // Otherwise: pool of tournaments
-  return 'torneios';
+  if (inscribed && pp) return 'pagar_inscricao';
+  if (inscribed) return 'confirmado'; // heurística — sem boleto = pago/confirmada
+
+  // Não inscrita: olha estado da janela
+  const win = getRegistrationWindowState(t);
+  if (win === 'open') return 'inscricoes_abertas';
+  if (win === 'closed') return 'torneios';
+  // pending / unknown → "Monitorar" (precisa ação manual: aguardar e decidir)
+  return 'vou_jogar';
 }
 
 // Effective column: user override (if set and valid) else auto.

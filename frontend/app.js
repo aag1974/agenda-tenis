@@ -1026,14 +1026,15 @@ function applyHeaderFilters(tournaments) {
 }
 
 // ===== Kanban =====
+// Labels têm que bater com backend/board.js. Mantém ids estáveis.
 const KANBAN_COLUMNS = [
-  { id: 'torneios',            label: 'Inscrições Encerradas', icon: '🔒' },
-  { id: 'inscricoes_abertas', label: 'Inscrições Abertas',   icon: '🌟' },
-  { id: 'vou_jogar',           label: 'No radar',            icon: '⭐' },
-  { id: 'pagar_inscricao',     label: 'Pagar inscrição',     icon: '💰' },
-  { id: 'confirmado',          label: 'Confirmado',          icon: '✅' },
-  { id: 'viagem_comprada',     label: 'Viagem comprada',     icon: '✈️' },
-  { id: 'historico',           label: 'Encerrados',          icon: '🎾' },
+  { id: 'torneios',            label: 'Concluídos',         icon: '🔒' },
+  { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟' },
+  { id: 'vou_jogar',           label: 'Monitorar',          icon: '⭐' },
+  { id: 'pagar_inscricao',     label: 'Pagar inscrição',    icon: '💰' },
+  { id: 'confirmado',          label: 'Confirmado',         icon: '✅' },
+  { id: 'viagem_comprada',     label: 'Viagem comprada',    icon: '✈️' },
+  { id: 'historico',           label: 'Encerrados',         icon: '🎾' },
 ];
 const KANBAN_COLUMN_IDS = KANBAN_COLUMNS.map(c => c.id);
 
@@ -1045,16 +1046,43 @@ function orderedKanbanColumns() {
   return [...ordered, ...remaining];
 }
 
+// Mantém em sincronia com backend/board.js#getRegistrationWindowState
+function getWindowState(t) {
+  if (!t) return 'unknown';
+  const s = t.registrationStatus || '';
+  if (t.cancelDeadline) {
+    const d = brToDate(t.cancelDeadline);
+    if (d && d < startOfToday()) return 'closed';
+  }
+  if (regStatusClosed(s)) return 'closed';
+  if (/a\s*iniciar/i.test(s)) return 'pending';
+  if (/Aberto|aberta/i.test(s)) return 'open';
+  if (/inicia/i.test(s)) return 'open';
+  return 'unknown';
+}
+
+// Auto-coluna — mesma priority order do backend/board.js#computeAutoColumn
 function autoColumnFor(t) {
   const status = t.derivedStatus || 'unknown';
   if (status === 'past') return 'historico';
-  const givenUp = !!t.notes?.manualGiveUp;
-  const pp = givenUp ? null : t.pendingPayment;
-  const inscribed = givenUp ? false : (t.isAnnaInscribed || t.notes?.manualInscribed);
-  if (pp) return 'pagar_inscricao';
+
+  const notes = t.notes || {};
+  if (notes.manualGiveUp) return 'torneios';
+
+  const pp = t.pendingPayment;
+  const inscribed = t.isAnnaInscribed || notes.manualInscribed;
+
+  if (inscribed && pp?.dueDate) {
+    const d = brToDate(pp.dueDate);
+    if (d && d < startOfToday()) return 'torneios';
+  }
+  if (inscribed && pp) return 'pagar_inscricao';
   if (inscribed) return 'confirmado';
-  if (regStatusOpen(t)) return 'inscricoes_abertas';
-  return 'torneios';
+
+  const win = getWindowState(t);
+  if (win === 'open') return 'inscricoes_abertas';
+  if (win === 'closed') return 'torneios';
+  return 'vou_jogar'; // pending / unknown → Monitorar
 }
 
 function effectiveColumnFor(t) {

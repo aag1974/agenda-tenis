@@ -6,7 +6,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
-import { isRegistrationOpen } from './board.js';
+import { getRegistrationWindowState } from './board.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '..', 'data');
@@ -32,10 +32,12 @@ export const DEFAULT_MANUAL_LABELS = [
 // Auto labels — não armazenadas, derivadas por torneio. Cada uma tem um
 // autoKey estável que serve de "id" para fins de display/filtros.
 const AUTO_LABEL_DEFS = {
-  inscribed:           { name: 'Inscrito',              color: 'emerald' },
+  inscribed:           { name: 'Inscrito',               color: 'emerald' },
   pendingPayment:      { name: 'Boleto pendente',        color: 'amber' },
   expiredPayment:      { name: 'Boleto vencido',         color: 'red' },
   closedRegistration:  { name: 'Inscrições encerradas',  color: 'slate' },
+  pendingRegistration: { name: 'A iniciar',              color: 'sky' },
+  unknownRegistration: { name: 'Verificar no TI',        color: 'slate' },
   newlyAdded:          { name: 'Novo',                   color: 'cyan' },
 };
 
@@ -157,10 +159,17 @@ export function deriveAutoLabels(tournament, notes = {}) {
     out.push({ autoKey: 'pendingPayment', ...AUTO_LABEL_DEFS.pendingPayment, auto: true });
   } else if (inscribed) {
     out.push({ autoKey: 'inscribed', ...AUTO_LABEL_DEFS.inscribed, auto: true });
-  } else if (status !== 'past' && !isRegistrationOpen(tournament)) {
-    // Inscrições encerradas: tudo que não está aberto, não tem boleto e não foi inscrito
-    // (mesma regra usada pra montar a coluna "Inscrições Encerradas")
-    out.push({ autoKey: 'closedRegistration', ...AUTO_LABEL_DEFS.closedRegistration, auto: true });
+  } else if (status !== 'past') {
+    // Espelha a coluna automática: cada estado de janela tem etiqueta própria
+    const win = getRegistrationWindowState(tournament);
+    if (win === 'closed') {
+      out.push({ autoKey: 'closedRegistration', ...AUTO_LABEL_DEFS.closedRegistration, auto: true });
+    } else if (win === 'pending') {
+      out.push({ autoKey: 'pendingRegistration', ...AUTO_LABEL_DEFS.pendingRegistration, auto: true });
+    } else if (win === 'unknown') {
+      out.push({ autoKey: 'unknownRegistration', ...AUTO_LABEL_DEFS.unknownRegistration, auto: true });
+    }
+    // win === 'open' → sem etiqueta, a coluna "Inscrições Abertas" já indica
   }
 
   // Novo (últimos 7 dias) — só se não for passado
