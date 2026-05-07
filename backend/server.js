@@ -28,7 +28,7 @@ import { syncProfile, getSyncStatus, startAutoSync } from './sync-manager.js';
 import { deriveStatus, fetchTournamentDetails } from './scraper.js';
 import {
   createUser, authenticate, signCookie, authMiddleware, requireAuth,
-  userCount, listUsers,
+  userCount, listUsers, findUserById, getPlanInfo, migrateUsersAddPlan,
 } from './auth.js';
 import {
   migrateHouseholdsOnBoot, listHouseholdMembers, profileBelongsToHousehold,
@@ -39,6 +39,7 @@ import {
 import * as admin from './admin-cli.js';
 
 migrateHouseholdsOnBoot();
+migrateUsersAddPlan();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -61,12 +62,14 @@ const COOKIE_OPTIONS = (req) => {
 app.get('/api/auth/me', (req, res) => {
   const householdId = req.householdId || null;
   const members = householdId ? listHouseholdMembers(householdId) : [];
+  const user = req.userId ? findUserById(req.userId) : null;
   res.json({
     userId: req.userId || null,
     email: req.userEmail || null,
     householdId,
     members,
     hasUsers: userCount() > 0,
+    plan: user ? getPlanInfo(user) : null,
   });
 });
 
@@ -196,6 +199,7 @@ app.use(express.static(join(__dirname, '..', 'frontend')));
 
 // Alias amigável pro manual público (também acessível em /manual.html)
 app.get('/manual', (req, res) => res.sendFile(join(__dirname, '..', 'frontend', 'manual.html')));
+app.get('/upgrade', (req, res) => res.sendFile(join(__dirname, '..', 'frontend', 'upgrade.html')));
 
 // ===== Card público compartilhado =====
 function escapeHtml(s) {

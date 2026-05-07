@@ -31,7 +31,34 @@ export function listUsers() {
   const users = readJson(USERS_FILE, []);
   return users.map(u => ({
     email: u.email, id: u.id, householdId: u.householdId, createdAt: u.createdAt,
+    plan: u.plan || 'pro', planActivatedAt: u.planActivatedAt, planNote: u.planNote,
+    trialStartedAt: u.trialStartedAt,
   }));
+}
+
+// Ativa Pro vitalício pra um usuário (após confirmação de Pix).
+// Use: node backend/admin-cli.js activate-pro user@email.com "Pix R$297 em 07/05/2026"
+export function activatePro(email, note = null) {
+  const users = readJson(USERS_FILE, []);
+  const u = users.find(x => x.email?.toLowerCase() === email?.toLowerCase());
+  if (!u) throw new Error(`Usuário não encontrado: ${email}`);
+  u.plan = 'pro';
+  u.planActivatedAt = new Date().toISOString();
+  if (note) u.planNote = note;
+  writeJson(USERS_FILE, users);
+  return { email: u.email, plan: u.plan, planActivatedAt: u.planActivatedAt, planNote: u.planNote };
+}
+
+// Volta usuário pra trial (raro — usado em refund ou ajuste manual)
+export function setPlanTrial(email) {
+  const users = readJson(USERS_FILE, []);
+  const u = users.find(x => x.email?.toLowerCase() === email?.toLowerCase());
+  if (!u) throw new Error(`Usuário não encontrado: ${email}`);
+  u.plan = 'trial';
+  u.planActivatedAt = null;
+  u.trialStartedAt = u.trialStartedAt || new Date().toISOString();
+  writeJson(USERS_FILE, users);
+  return { email: u.email, plan: u.plan, trialStartedAt: u.trialStartedAt };
 }
 
 export function deleteUser(email) {
@@ -145,11 +172,19 @@ if (isMain) {
     if (cmd === 'list-users') {
       const list = listUsers();
       console.log(`${list.length} usuário(s):`);
-      list.forEach(u => console.log(`  ${u.email}  id=${u.id}  household=${u.householdId}`));
+      list.forEach(u => {
+        const plan = u.plan === 'pro' ? 'PRO' : (u.plan === 'trial' ? `trial (desde ${u.trialStartedAt?.slice(0,10)})` : u.plan);
+        console.log(`  ${u.email}  [${plan}]  id=${u.id}  household=${u.householdId}`);
+      });
     } else if (cmd === 'delete-user') {
       console.log('✓', deleteUser(arg1));
     } else if (cmd === 'reset-password') {
       console.log('✓', resetPassword(arg1, arg2));
+    } else if (cmd === 'activate-pro') {
+      // node backend/admin-cli.js activate-pro user@email.com "Pix R$297 em 07/05/2026"
+      console.log('✓ Ativado:', activatePro(arg1, arg2));
+    } else if (cmd === 'set-plan-trial') {
+      console.log('✓', setPlanTrial(arg1));
     } else if (cmd === 'show-household') {
       console.log(JSON.stringify(showHousehold(arg1), null, 2));
     } else if (cmd === 'find-tournament') {
@@ -157,7 +192,7 @@ if (isMain) {
     } else if (cmd === 'normalize-activity-logs') {
       console.log('✓', normalizeActivityLogs());
     } else {
-      console.log('Comandos: list-users | delete-user | reset-password | show-household | find-tournament | normalize-activity-logs');
+      console.log('Comandos: list-users | delete-user | reset-password | activate-pro | set-plan-trial | show-household | find-tournament | normalize-activity-logs');
     }
   } catch (err) {
     console.error('Erro:', err.message);

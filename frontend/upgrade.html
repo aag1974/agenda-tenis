@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Tennis Flow — Pro vitalício</title>
+  <meta name="theme-color" content="#0e3a4d" />
+  <link rel="icon" href="/icon-192.svg" />
+  <style>
+    :root {
+      --navy: #0e3a4d; --navy-dark: #0a2e3d; --teal: #1f5b75;
+      --cyan: #22d3ee; --cyan-deep: #00a3e0;
+      --emerald: #10b981; --amber: #f59e0b;
+      --slate-100: #f1f5f9; --slate-200: #e2e8f0; --slate-300: #cbd5e1;
+      --slate-500: #64748b; --slate-600: #475569; --slate-700: #334155;
+      --slate-800: #1e293b; --slate-900: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--teal) 100%);
+      background-attachment: fixed;
+      color: var(--slate-900);
+      min-height: 100vh;
+      line-height: 1.55;
+    }
+    body::before, body::after {
+      content: '🎾'; position: fixed; font-size: 14rem; opacity: 0.05;
+      pointer-events: none; z-index: 0;
+    }
+    body::before { top: -3rem; left: -3rem; transform: rotate(-15deg); }
+    body::after { bottom: -3rem; right: -3rem; transform: rotate(20deg); }
+
+    .topbar {
+      background: var(--navy-dark); color: white;
+      padding: 0.6rem 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: relative; z-index: 1;
+    }
+    .topbar a { color: var(--cyan); text-decoration: none; font-size: 0.9rem; }
+
+    .wrap {
+      max-width: 720px; margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+      position: relative; z-index: 1;
+    }
+
+    .brand-bar {
+      display:flex; align-items:center; justify-content:center; gap:0.6rem;
+      color: white; padding: 1rem 0 1.5rem;
+    }
+    .brand-mark {
+      width: 36px; height: 36px; background: var(--navy-dark); border-radius: 8px;
+      display:inline-flex; align-items:center; justify-content:center;
+      font-size: 18px; position: relative;
+    }
+    .brand-mark .tf {
+      position:absolute; bottom:1px; right:1px; font-size:9px;
+      font-weight:900; line-height:1; letter-spacing:-0.5px;
+    }
+    .brand-mark .tf .t { color:white; }
+    .brand-mark .tf .f { color: var(--cyan); }
+    .brand-name { font-weight: 800; font-size: 1.1rem; color: white; }
+    .brand-name .f { color: var(--cyan); }
+
+    /* Hero */
+    .hero {
+      background: white; border-radius: 16px;
+      padding: 2rem 1.5rem; text-align: center;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+      margin-bottom: 1rem;
+    }
+    .hero .badge-fundador {
+      display: inline-block;
+      background: var(--amber); color: white;
+      font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em;
+      padding: 0.35rem 0.75rem; border-radius: 999px;
+      text-transform: uppercase; margin-bottom: 0.75rem;
+    }
+    .hero h1 {
+      margin: 0 0 0.4rem; color: var(--navy);
+      font-size: 2rem; letter-spacing: -0.02em;
+    }
+    .hero .price {
+      font-size: 3.5rem; font-weight: 900; color: var(--navy);
+      letter-spacing: -0.04em; line-height: 1;
+      margin: 0.75rem 0 0.25rem;
+    }
+    .hero .price .currency { font-size: 1.5rem; vertical-align: top; opacity: 0.7; }
+    .hero .price-note {
+      color: var(--slate-600); font-size: 0.95rem; margin: 0;
+    }
+    .hero .price-future {
+      display: inline-block;
+      margin-top: 0.5rem;
+      color: var(--slate-500); font-size: 0.82rem;
+    }
+    .hero .price-future s { color: var(--slate-400); }
+
+    /* Section */
+    .card {
+      background: white; border-radius: 16px;
+      padding: 1.5rem 1.25rem;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+      margin-bottom: 1rem;
+    }
+    .card h2 {
+      margin: 0 0 1rem; color: var(--navy);
+      font-size: 1.25rem;
+    }
+
+    /* Comparison table */
+    .compare {
+      width: 100%; border-collapse: collapse;
+    }
+    .compare th, .compare td {
+      padding: 0.65rem 0.5rem; text-align: left;
+      border-bottom: 1px solid var(--slate-200);
+      font-size: 0.92rem;
+    }
+    .compare th {
+      font-size: 0.75rem; font-weight: 700;
+      color: var(--slate-500); text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .compare th:nth-child(2), .compare td:nth-child(2) { text-align: center; color: var(--slate-600); width: 30%; }
+    .compare th:nth-child(3), .compare td:nth-child(3) { text-align: center; color: var(--navy); width: 30%; font-weight: 600; background: rgba(0, 163, 224, 0.04); }
+    .compare th:nth-child(3) { background: rgba(0, 163, 224, 0.08); color: var(--cyan-deep); }
+    .compare td:first-child { font-weight: 500; color: var(--slate-700); }
+
+    /* Pix block */
+    .pix-block {
+      background: var(--slate-100); border-radius: 12px;
+      padding: 1.25rem;
+      border: 2px dashed var(--slate-300);
+      text-align: center;
+    }
+    .pix-block .label {
+      font-size: 0.72rem; font-weight: 700;
+      color: var(--slate-500); text-transform: uppercase;
+      letter-spacing: 0.06em; margin-bottom: 0.4rem;
+    }
+    .pix-key {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: white; border: 1px solid var(--slate-300);
+      border-radius: 8px; padding: 0.65rem 0.85rem;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 1rem; font-weight: 600; color: var(--navy);
+      justify-content: space-between;
+      margin: 0.25rem 0;
+    }
+    .copy-btn {
+      background: var(--cyan-deep); color: white;
+      border: none; padding: 0.4rem 0.85rem;
+      border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .copy-btn:hover { background: var(--navy); }
+    .copy-btn.copied { background: var(--emerald); }
+
+    .pix-amount {
+      margin-top: 0.5rem;
+      color: var(--slate-700); font-size: 0.95rem;
+    }
+    .pix-amount strong { color: var(--navy); font-size: 1.15rem; }
+
+    /* Steps after pix */
+    .next-steps {
+      list-style: none; padding: 0; margin: 1.25rem 0 0;
+      counter-reset: step;
+    }
+    .next-steps li {
+      counter-increment: step; padding: 0.6rem 0 0.6rem 2.5rem;
+      position: relative; font-size: 0.9rem; color: var(--slate-700);
+      border-bottom: 1px solid var(--slate-200);
+    }
+    .next-steps li:last-child { border-bottom: none; }
+    .next-steps li::before {
+      content: counter(step);
+      position: absolute; left: 0; top: 0.55rem;
+      width: 1.75rem; height: 1.75rem;
+      background: var(--cyan); color: var(--navy);
+      border-radius: 50%; text-align: center; line-height: 1.75rem;
+      font-weight: 800;
+    }
+    .next-steps strong { color: var(--navy); }
+    .next-steps a { color: var(--cyan-deep); text-decoration: none; }
+
+    /* Guarantees */
+    .guarantees {
+      list-style: none; padding: 0; margin: 0;
+    }
+    .guarantees li {
+      display: grid; grid-template-columns: 1.5rem 1fr;
+      gap: 0.5rem; padding: 0.4rem 0;
+      font-size: 0.92rem; color: var(--slate-700);
+    }
+    .guarantees li::before {
+      content: '✓'; color: var(--emerald); font-weight: 800; font-size: 1.1rem;
+    }
+    .guarantees strong { color: var(--navy); }
+
+    .footer {
+      text-align: center; color: rgba(255,255,255,0.6);
+      font-size: 0.8rem; margin-top: 1.5rem;
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 1.6rem; }
+      .hero .price { font-size: 2.75rem; }
+      .compare th, .compare td { padding: 0.5rem 0.35rem; font-size: 0.82rem; }
+      .pix-key { font-size: 0.85rem; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/">← Voltar pro app</a>
+  <span style="font-size:0.85rem; opacity:0.8; color:white;">Tennis Flow Pro</span>
+  <a href="/manual">Sobre o app</a>
+</div>
+
+<div class="wrap">
+
+  <div class="brand-bar">
+    <span class="brand-mark">🎾<span class="tf"><span class="t">T</span><span class="f">F</span></span></span>
+    <span class="brand-name">Tennis<span class="f">Flow</span></span>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <span class="badge-fundador">Preço de fundador</span>
+    <h1>Pro vitalício</h1>
+    <div class="price"><span class="currency">R$</span>297</div>
+    <p class="price-note">Pagamento único. Sem mensalidade.</p>
+    <span class="price-future">Preço sobe pra <s>R$697</s> após os primeiros 100 clientes.</span>
+  </div>
+
+  <!-- PIX -->
+  <div class="card">
+    <h2>Como pagar</h2>
+    <div class="pix-block">
+      <div class="label">Chave Pix (e-mail)</div>
+      <div class="pix-key">
+        <span id="pix-key-text">alexandre@opiniao.inf.br</span>
+        <button class="copy-btn" id="copy-btn" onclick="copyPix()">Copiar</button>
+      </div>
+      <div class="pix-amount">Valor: <strong>R$ 297,00</strong></div>
+    </div>
+
+    <ol class="next-steps">
+      <li><strong>Pague R$297 via Pix</strong> usando a chave acima.</li>
+      <li><strong>Mande o comprovante</strong> pra <a href="mailto:alexandre@opiniao.inf.br?subject=Tennis%20Flow%20Pro%20-%20Comprovante">alexandre@opiniao.inf.br</a> (anexo da imagem ou screenshot).</li>
+      <li><strong>Inclua o e-mail da conta</strong> Tennis Flow que você quer ativar.</li>
+      <li><strong>Ativação em até 24h.</strong> Você recebe confirmação no mesmo e-mail e a conta vira Pro.</li>
+    </ol>
+  </div>
+
+  <!-- COMPARISON -->
+  <div class="card">
+    <h2>O que muda</h2>
+    <table class="compare">
+      <thead>
+        <tr>
+          <th>Recurso</th>
+          <th>Free</th>
+          <th>Pro</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Atletas no quadro</td><td>1</td><td>Ilimitado</td></tr>
+        <tr><td>Torneios futuros visíveis</td><td>30 dias</td><td>Calendário completo</td></tr>
+        <tr><td>Sincronização automática</td><td>—</td><td>A cada 6h</td></tr>
+        <tr><td>Sincronização manual</td><td>✓</td><td>✓</td></tr>
+        <tr><td>Alertas configuráveis</td><td>—</td><td>✓</td></tr>
+        <tr><td>Agenda iPhone / Google</td><td>—</td><td>✓</td></tr>
+        <tr><td>Compartilhar com a família</td><td>—</td><td>✓</td></tr>
+        <tr><td>Comentários e anexos</td><td>Leitura</td><td>Edição completa</td></tr>
+        <tr><td>Histórico de torneios</td><td>✓</td><td>✓</td></tr>
+        <tr><td>Compartilhar card no WhatsApp</td><td>✓</td><td>✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- GUARANTIES -->
+  <div class="card">
+    <h2>Garantias</h2>
+    <ul class="guarantees">
+      <li><strong>15 dias de garantia.</strong> Se não gostar, devolvo o valor integral via Pix sem perguntas.</li>
+      <li><strong>Vitalício de verdade.</strong> Sem mensalidade, sem renovação, sem upsell.</li>
+      <li><strong>Acesso permanente.</strong> Use o quanto quiser, em quantos dispositivos quiser.</li>
+      <li><strong>Sem cobrança automática.</strong> Pix é pagamento único, autorizado por você.</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    🎾 Tennis Flow — Suporte: <a style="color:rgba(255,255,255,0.85);" href="mailto:alexandre@opiniao.inf.br">alexandre@opiniao.inf.br</a>
+  </div>
+</div>
+
+<script>
+  function copyPix() {
+    const text = document.getElementById('pix-key-text').textContent;
+    const btn = document.getElementById('copy-btn');
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copiado!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copiar';
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(() => {
+      // Fallback: select & copy
+      const range = document.createRange();
+      range.selectNodeContents(document.getElementById('pix-key-text'));
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+  }
+</script>
+
+</body>
+</html>

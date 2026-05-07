@@ -93,16 +93,83 @@ export function createUser({ email, password }) {
     throw new Error('Já existe uma conta com este email');
   }
   const id = randomBytes(8).toString('hex');
+  const now = new Date().toISOString();
+  const isFirstUser = users.length === 0;
   const user = {
     id,
     email: email.toLowerCase(),
     passwordHash: hashPassword(password),
     householdId: id, // solo household por default — invite muda isso
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    // Plano de acesso. Primeiro usuário (admin) entra Pro permanente;
+    // demais entram em trial de 15 dias.
+    plan: isFirstUser ? 'pro' : 'trial',
+    trialStartedAt: now,
+    planActivatedAt: isFirstUser ? now : null,
+    planNote: isFirstUser ? 'admin (founder)' : null,
   };
   users.push(user);
   writeUsers(users);
-  return { id, email: user.email, householdId: user.householdId, createdAt: user.createdAt, isFirst: users.length === 1 };
+  return { id, email: user.email, householdId: user.householdId, createdAt: user.createdAt, isFirst: isFirstUser };
+}
+
+// ===== Planos =====
+export const TRIAL_DAYS = 15;
+
+// Calcula o estado real considerando trial vs pro vs free degradado.
+export function effectivePlan(user) {
+  if (!user) return 'free';
+  if (user.plan === 'pro') return 'pro';
+  if (user.plan === 'trial' && user.trialStartedAt) {
+    const elapsed = Date.now() - new Date(user.trialStartedAt).getTime();
+    const limit = TRIAL_DAYS * 24 * 60 * 60 * 1000;
+    if (elapsed < limit) return 'trial';
+  }
+  return 'free';
+}
+
+// Info completa pro UI (banner, menu "Meu plano", etc)
+export function getPlanInfo(user) {
+  if (!user) return null;
+  const effective = effectivePlan(user);
+  const info = { plan: user.plan, effective, planActivatedAt: user.planActivatedAt };
+  if (user.plan === 'trial' && user.trialStartedAt) {
+    const trialEnd = new Date(user.trialStartedAt).getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000;
+    info.trialStartedAt = user.trialStartedAt;
+    info.trialEndsAt = new Date(trialEnd).toISOString();
+    info.trialDaysLeft = Math.max(0, Math.ceil((trialEnd - Date.now()) / (24 * 60 * 60 * 1000)));
+  }
+  return info;
+}
+
+// Migração: adiciona campos de plano em users existentes (sem plan field).
+// Roda no boot do server. Usuários antigos viram 'pro' automaticamente
+// porque foram criados antes da monetização — não seria justo cobrá-los.
+export function migrateUsersAddPlan() {
+  const users = readUsers();
+  let changed = false;
+  const now = new Date().toISOString();
+  for (const u of users) {
+    if (!u.plan) {
+      u.plan = 'pro';
+      u.planActivatedAt = now;
+      u.planNote = 'pre-monetization grandfather';
+      u.trialStartedAt = u.createdAt || now;
+      changed = true;
+    }
+  }
+  if (changed) writeUsers(users);
+}
+
+export function activateProByEmail(email, note = null) {
+  const users = readUsers();
+  const u = users.find(x => x.email.toLowerCase() === (email || '').toLowerCase());
+  if (!u) throw new Error(`Usuário não encontrado: ${email}`);
+  u.plan = 'pro';
+  u.planActivatedAt = new Date().toISOString();
+  if (note) u.planNote = note;
+  writeUsers(users);
+  return { id: u.id, email: u.email, plan: u.plan, planActivatedAt: u.planActivatedAt, planNote: u.planNote };
 }
 
 export function authenticate(email, password) {

@@ -397,6 +397,7 @@ async function init() {
   state.user = me.userId ? {
     id: me.userId, email: me.email,
     householdId: me.householdId, members: me.members || [],
+    plan: me.plan || null,
   } : null;
   state.hasUsers = !!me.hasUsers;
 
@@ -2548,11 +2549,19 @@ function toggleGearMenu() {
   ] : [];
   // Mobile: "Convidar membro" no menu. Desktop: "+" no header (memberStack)
   const isMobile = window.matchMedia('(max-width: 640px)').matches;
+  const planLabel = (() => {
+    const p = state.user?.plan;
+    if (!p) return 'Meu plano';
+    if (p.effective === 'pro') return 'Plano: Pro vitalício';
+    if (p.effective === 'trial') return `Plano: Trial · ${p.trialDaysLeft}d restantes`;
+    return 'Plano: Free · fazer upgrade';
+  })();
   const accountActions = state.user ? [
     isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
     profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
     profile && { label: 'Resetar movimentações', onClick: () => resetBoardOverrides() },
+    { label: planLabel, onClick: () => window.open('/upgrade', '_blank') },
     { label: 'Manual', onClick: () => window.open('/manual', '_blank') },
     { label: 'Sair', onClick: () => logout() },
   ].filter(Boolean) : [];
