@@ -161,64 +161,68 @@ export function ensureNotesShape(existing) {
 
 // Diff between two synced tournament snapshots → returns activity entries.
 // Used by sync-manager to log changes automatically.
+// Cada event vai pro log do card (notes.activity) E é contado no
+// summary do sync (eventCounts) pra aparecer no modal pós-sync.
 export function diffTournamentForActivity(prev, curr) {
   const events = [];
+  const now = new Date().toISOString();
+  const evt = (type, message) => events.push({ id: newId(), type, message, createdAt: now, auto: true });
+
   const prevPP = prev?.pendingPayment;
   const currPP = curr?.pendingPayment;
 
-  // Boleto detected (new pendingPayment)
   if (!prevPP && currPP) {
     const value = currPP.value || 's/valor';
     const due = currPP.dueDate || '?';
-    events.push({
-      id: newId(),
-      type: 'boleto_detected',
-      message: `💰 Boleto detectado: ${value}, vence ${due}`,
-      createdAt: new Date().toISOString(),
-      auto: true,
-    });
+    evt('boleto_detected', `💰 Boleto detectado: ${value}, vence ${due}`);
   }
+  if (prevPP && !currPP) evt('boleto_cleared', `✅ Pagamento confirmado pelo Tênis Integrado`);
 
-  // Boleto cleared (was pendingPayment, now isn't)
-  if (prevPP && !currPP) {
-    events.push({
-      id: newId(),
-      type: 'boleto_cleared',
-      message: `✅ Pagamento confirmado pelo Tênis Integrado`,
-      createdAt: new Date().toISOString(),
-      auto: true,
-    });
-  }
-
-  // isAnnaInscribed transitions
   if (!prev?.isAnnaInscribed && curr?.isAnnaInscribed) {
-    events.push({
-      id: newId(),
-      type: 'inscribed',
-      message: `✓ Inscrição confirmada pelo Tênis Integrado`,
-      createdAt: new Date().toISOString(),
-      auto: true,
-    });
+    evt('inscribed', `✓ Inscrição confirmada pelo Tênis Integrado`);
   }
   if (prev?.isAnnaInscribed && !curr?.isAnnaInscribed) {
-    events.push({
-      id: newId(),
-      type: 'uninscribed',
-      message: `Inscrição removida do Tênis Integrado`,
-      createdAt: new Date().toISOString(),
-      auto: true,
-    });
+    evt('uninscribed', `Inscrição removida do Tênis Integrado`);
   }
 
-  // First time appearing
-  if (!prev) {
-    events.push({
-      id: newId(),
-      type: 'discovered',
-      message: `🆕 Torneio descoberto na sincronização`,
-      createdAt: new Date().toISOString(),
-      auto: true,
-    });
+  if (!prev) evt('discovered', `🆕 Torneio descoberto na sincronização`);
+
+  // Datas da janela de inscrição (registrationDeadline / registrationOpensAt /
+  // cancelDeadline) — primeira detecção ou mudança.
+  if (prev) {
+    if (curr?.registrationDeadline && curr.registrationDeadline !== prev.registrationDeadline) {
+      const verb = prev.registrationDeadline ? 'atualizado' : 'detectado';
+      evt('reg_deadline_changed', `📅 Prazo de inscrição ${verb}: ${curr.registrationDeadline}`);
+    }
+    if (curr?.registrationOpensAt && curr.registrationOpensAt !== prev.registrationOpensAt) {
+      const verb = prev.registrationOpensAt ? 'atualizada' : 'detectada';
+      evt('reg_opens_changed', `📅 Abertura de inscrições ${verb}: ${curr.registrationOpensAt}`);
+    }
+    if (curr?.cancelDeadline && curr.cancelDeadline !== prev.cancelDeadline) {
+      const verb = prev.cancelDeadline ? 'atualizado' : 'detectado';
+      evt('cancel_deadline_changed', `📅 Prazo de cancelamento ${verb}: ${curr.cancelDeadline}`);
+    }
+
+    // Mudança no estado da janela (open ↔ closed ↔ pending ↔ unknown)
+    const prevWin = getRegistrationWindowState(prev);
+    const currWin = getRegistrationWindowState(curr);
+    if (prevWin !== currWin) {
+      const labels = { open: 'abertas', closed: 'encerradas', pending: 'a iniciar', unknown: 'status incerto' };
+      evt('window_changed', `📌 Inscrições: ${labels[prevWin]} → ${labels[currWin]}`);
+    }
+
+    // Chaves (tiers) adicionadas — detecção de torneio multi-chave
+    const prevTiers = new Set(prev.tiers || (prev.tier ? [prev.tier] : []));
+    const currTiers = new Set(curr?.tiers || (curr?.tier ? [curr.tier] : []));
+    const addedTiers = [...currTiers].filter(t => !prevTiers.has(t));
+    if (addedTiers.length) {
+      evt('tiers_added', `🏆 Chave${addedTiers.length > 1 ? 's' : ''} adicionada${addedTiers.length > 1 ? 's' : ''}: ${addedTiers.join(', ')}`);
+    }
+
+    // Registration status text mudou (caso útil pra debug)
+    if (curr?.registrationStatus && prev.registrationStatus !== curr.registrationStatus) {
+      evt('reg_status_changed', `📋 Status TI: "${prev.registrationStatus || '—'}" → "${curr.registrationStatus}"`);
+    }
   }
 
   return events;

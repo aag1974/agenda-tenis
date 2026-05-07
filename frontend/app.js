@@ -2134,11 +2134,17 @@ function refreshSyncProgressModal() {
       el('span', { class: 'font-semibold' }, String(n)),
       el('span', { class: 'text-slate-600' }, label),
     );
+    const winChanged = ec.window_changed || 0;
+    const datesChanged = (ec.reg_deadline_changed || 0) + (ec.reg_opens_changed || 0) + (ec.cancel_deadline_changed || 0);
     const evList = el('div', { class: 'space-y-1 mb-3' },
       evLine('💰', ec.boleto_detected || 0, 'boletos novos detectados'),
       evLine('✅', ec.boleto_cleared || 0, 'pagamentos confirmados'),
       evLine('✓',  ec.inscribed || 0,      'inscrições confirmadas no TI'),
       evLine('↩︎', ec.uninscribed || 0,    'inscrições removidas no TI'),
+      evLine('📌', winChanged,             `mudança${winChanged !== 1 ? 's' : ''} no estado de inscrição`),
+      evLine('📅', datesChanged,           `data${datesChanged !== 1 ? 's' : ''} de inscrição/cancelamento atualizada${datesChanged !== 1 ? 's' : ''}`),
+      evLine('🏆', ec.tiers_added || 0,    'chaves adicionadas (multi-categoria)'),
+      evLine('📋', ec.reg_status_changed || 0, `status TI atualizado${(ec.reg_status_changed || 0) !== 1 ? 's' : ''}`),
       s.newAlerts > 0 && el('button', {
         class: 'flex items-center gap-2 text-sm text-cyan-700 hover:underline',
         onClick: () => { close(); openAlertsListModal({ onlyUnseen: true }); },
