@@ -2831,7 +2831,7 @@ function toggleGearMenu() {
   const reopen = () => { const m = $('gear-menu'); if (m) { m.remove(); toggleGearMenu(); } };
   const hasMultipleAthletes = state.profiles.length > 1;
   const athleteHeader = profile && el('div', { class: 'px-3 py-2.5 border-b border-slate-200' },
-    el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1' }, 'Atleta'),
+    el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-[#1f5b75] mb-1' }, 'Atleta'),
     el('button', {
       class: 'w-full flex items-center justify-between gap-2 text-left rounded px-2 py-1.5 hover:bg-slate-100',
       onClick: () => { state.athleteSwitcherOpen = !state.athleteSwitcherOpen; reopen(); },
