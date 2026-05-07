@@ -91,8 +91,9 @@
     .sortable-ghost { opacity: 0.4; }
     .sortable-chosen { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
 
-    /* Mobile: navy preenche safe areas (notch / status bar / home bar)
-       e ocupa altura útil do device sem deixar gaps em qualquer aparelho */
+    /* Mobile: navy preenche safe areas; cada coluna ocupa 100% da viewport
+       (estilo "página"); snap obrigatório com stop-always pra deslizar
+       de coluna em coluna sem mostrar pedaço da próxima */
     @media (max-width: 640px) {
       html { background: var(--ti-navy); }
       body.kanban-mode {
@@ -104,25 +105,35 @@
         overflow-x: hidden;
       }
       body.kanban-mode #app {
-        padding: 0.5rem;
+        padding: 0;
         height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         overflow-x: hidden;
       }
       body.kanban-mode #header-bar {
-        margin: -0.5rem -0.5rem 0;
-        padding: 0.5rem;
+        margin: 0;
+        padding: 0.5rem 0.75rem;
       }
-      body.kanban-mode .kanban-col {
-        width: 88vw !important;
-        max-width: 88vw !important;
-        min-width: 88vw !important;
+      body.kanban-mode #kanban-board {
+        margin: 0;
+        padding: 0.5rem 0;
+        overflow-x: hidden;
       }
       #kanban-col-row {
         scroll-snap-type: x mandatory !important;
-        gap: 0.5rem !important;
+        gap: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
-      body.kanban-mode #kanban-board { overflow-x: hidden; }
+      body.kanban-mode .kanban-col {
+        flex: 0 0 100vw !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        min-width: 100vw !important;
+        scroll-snap-stop: always !important;
+        scroll-snap-align: start !important;
+        border-radius: 0 !important;
+      }
     }
 
     /* Scrollbars invisíveis em todo o app — todo mundo sabe que rola */
