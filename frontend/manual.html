@@ -360,6 +360,38 @@
       font-size: 0.9rem;
     }
     .print-bar button:hover { background: white; }
+
+    /* Profile selector */
+    .profile-bar {
+      background: var(--slate-100);
+      border-bottom: 1px solid var(--slate-200);
+      padding: 0.6rem 1rem;
+      display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
+      justify-content: center;
+    }
+    .profile-bar-label {
+      font-size: 0.8rem; color: var(--slate-600); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin-right: 0.5rem;
+    }
+    .profile-pill {
+      background: white;
+      border: 1px solid var(--slate-300);
+      color: var(--slate-700);
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .profile-pill.active {
+      background: var(--navy);
+      color: white;
+      border-color: var(--navy);
+    }
+    .profile-pill:hover:not(.active) {
+      background: var(--slate-200);
+    }
   </style>
 </head>
 <body>
@@ -370,13 +402,20 @@
   <button onclick="window.print()">Salvar como PDF</button>
 </div>
 
+<div class="profile-bar no-print">
+  <span class="profile-bar-label">Visão:</span>
+  <button class="profile-pill" data-profile="universal">Universal</button>
+  <button class="profile-pill" data-profile="juvenil">Família juvenil</button>
+  <button class="profile-pill" data-profile="pro">Atleta profissional</button>
+</div>
+
 <!-- ============== CAPA ============== -->
 <section class="cover">
   <div class="cover-mark">
     🎾<span class="tf"><span class="t">T</span><span class="f">F</span></span>
   </div>
   <h1>Tennis<span class="accent">Flow</span></h1>
-  <p class="tagline">A agenda de torneios da família atleta — organizada num quadro Kanban que entende o calendário do tênis brasileiro.</p>
+  <p class="tagline" data-slot="tagline">A agenda de torneios do atleta — organizada num quadro Kanban que entende o calendário do tênis brasileiro.</p>
   <div class="pills">
     <span class="pill">Sincroniza com Tênis Integrado</span>
     <span class="pill">Boletos detectados</span>
@@ -389,14 +428,14 @@
 
   <!-- ============== POR QUE ============== -->
   <h2><span class="num">1</span>Por que existe</h2>
-  <p class="lead">Quem é pai, mãe ou treinador de criança que joga torneio sabe: o calendário é caótico.</p>
-  <p>O Tênis Integrado tem tudo, mas quem precisa transformar aquilo em <strong>plano de viagem, lembrete de boleto e mensagem no grupo da família</strong> é você. Cada semana é um copia-e-cola entre o site, o Google Calendar, o WhatsApp do treinador e o boleto que vence amanhã.</p>
+  <p class="lead" data-slot="why-lead">Quem organiza a agenda de um atleta de tênis sabe: o calendário é caótico.</p>
+  <p data-slot="why-body">O Tênis Integrado tem tudo, mas quem precisa transformar aquilo em <strong>plano de viagem, lembrete de boleto e decisão da semana</strong> é você. Cada rodada é um copia-e-cola entre o site, o Google Calendar, mensagens com o treinador e o boleto que vence amanhã.</p>
 
-  <div class="quote">
+  <div class="quote" data-slot="quote">
     "A inscrição abriu ontem e fechou hoje. Acabei descobrindo no grupo do clube — depois que a vaga já tinha esgotado."
   </div>
 
-  <p>O Tennis Flow nasceu pra resolver isso. Ele <strong>lê o Tênis Integrado por você</strong>, organiza tudo num quadro Kanban familiar, avisa de boletos pendentes, manda os torneios pra agenda do celular e divide tudo com quem precisa acompanhar.</p>
+  <p>O Tennis Flow nasceu pra resolver isso. Ele <strong>lê o Tênis Integrado por você</strong>, organiza tudo num quadro Kanban claro, avisa de boletos pendentes, manda os torneios pra agenda do celular e divide tudo com quem precisa acompanhar.</p>
 
   <!-- ============== COMO FUNCIONA EM 3 PASSOS ============== -->
   <h2><span class="num">2</span>Como funciona, em 3 passos</h2>
@@ -564,23 +603,7 @@
 
   <!-- ============== PRA QUEM É ============== -->
   <h2><span class="num">5</span>Pra quem é</h2>
-  <div class="grid-3">
-    <div class="card">
-      <span class="icon">👨‍👩‍👧</span>
-      <div class="title">Pais e mães</div>
-      <p class="desc">Que querem saber quando abre inscrição, quanto custa o boleto, e quando vai ser a próxima viagem — sem ficar refrescando o site.</p>
-    </div>
-    <div class="card">
-      <span class="icon">🎾</span>
-      <div class="title">Treinadores</div>
-      <p class="desc">Que acompanham vários atletas e precisam de uma visão única do calendário de cada um.</p>
-    </div>
-    <div class="card">
-      <span class="icon">🏠</span>
-      <div class="title">Famílias multi-tela</div>
-      <p class="desc">Quando avó, padrasto, irmão mais velho — todo mundo opina na decisão de jogar e quer ver o mesmo quadro.</p>
-    </div>
-  </div>
+  <div class="grid-3" data-slot="audience"></div>
 
   <!-- ============== COMO COMEÇAR ============== -->
   <h2><span class="num">6</span>Como começar</h2>
@@ -597,7 +620,7 @@
   <!-- ============== CTA FINAL ============== -->
   <div class="cta">
     <h3>Tennis Flow</h3>
-    <p>Pra a família atleta gastar tempo com tênis, não com planilha.</p>
+    <p data-slot="cta">Pra quem vive de tênis gastar tempo com tênis, não com planilha.</p>
   </div>
 
   <div class="footer">
@@ -608,6 +631,78 @@
 
 <script>
   document.getElementById('today').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // === Variantes de público — texto neutro por padrão; pílulas customizam ===
+  const VARIANTS = {
+    universal: {
+      tagline: 'A agenda de torneios do atleta — organizada num quadro Kanban que entende o calendário do tênis brasileiro.',
+      whyLead: 'Quem organiza a agenda de um atleta de tênis sabe: o calendário é caótico.',
+      whyBody: 'O Tênis Integrado tem tudo, mas quem precisa transformar aquilo em <strong>plano de viagem, lembrete de boleto e decisão da semana</strong> é você. Cada rodada é um copia-e-cola entre o site, o Google Calendar, mensagens com o treinador e o boleto que vence amanhã.',
+      quote: '"A inscrição abriu ontem e fechou hoje. Acabei descobrindo depois que a vaga já tinha esgotado."',
+      cta: 'Pra quem vive de tênis gastar tempo com tênis, não com planilha.',
+      audience: [
+        { icon: '👨‍👩‍👧', title: 'Famílias com atleta juvenil', desc: 'Pais, mães e treinadores que acompanham crianças e adolescentes na rotina de torneios.' },
+        { icon: '🏆', title: 'Atletas profissionais', desc: 'Quem joga circuitos e precisa decidir entre 3-4 torneios por semana com logística e boletos no fio.' },
+        { icon: '🎾', title: 'Treinadores e equipes', desc: 'Que acompanham vários atletas e precisam de uma visão única do calendário de cada um.' },
+      ],
+    },
+    juvenil: {
+      tagline: 'A agenda de torneios da família atleta — organizada num quadro Kanban que entende o calendário do tênis brasileiro.',
+      whyLead: 'Quem é pai, mãe ou treinador de criança que joga torneio sabe: o calendário é caótico.',
+      whyBody: 'O Tênis Integrado tem tudo, mas quem precisa transformar aquilo em <strong>plano de viagem, lembrete de boleto e mensagem no grupo da família</strong> é você. Cada semana é um copia-e-cola entre o site, o Google Calendar, o WhatsApp do treinador e o boleto que vence amanhã.',
+      quote: '"A inscrição abriu ontem e fechou hoje. Acabei descobrindo no grupo do clube — depois que a vaga já tinha esgotado."',
+      cta: 'Pra a família atleta gastar tempo com tênis, não com planilha.',
+      audience: [
+        { icon: '👨‍👩‍👧', title: 'Pais e mães', desc: 'Que querem saber quando abre inscrição, quanto custa o boleto, e quando vai ser a próxima viagem — sem ficar refrescando o site.' },
+        { icon: '🎾', title: 'Treinadores', desc: 'Que acompanham vários atletas e precisam de uma visão única do calendário de cada um.' },
+        { icon: '🏠', title: 'Famílias multi-tela', desc: 'Quando avó, padrasto, irmão mais velho — todo mundo opina na decisão de jogar e quer ver o mesmo quadro.' },
+      ],
+    },
+    pro: {
+      tagline: 'A agenda de torneios do atleta profissional — Kanban que substitui a planilha do calendário e o WhatsApp do staff.',
+      whyLead: 'Quem vive de tênis sabe: cada semana é uma decisão entre 3-4 torneios, com boletos, deslocamento e logística que precisam estar resolvidos com antecedência.',
+      whyBody: 'O Tênis Integrado mostra a lista, mas <strong>decidir o que jogar, fechar a logística e dividir isso com staff (treinador, preparador, agente)</strong> mora em outro lugar — geralmente uma planilha que ninguém atualiza no momento certo.',
+      quote: '"Descobri o boleto no dia do vencimento. Pago, e o WTN cai porque o torneio que eu queria já tinha lotado."',
+      cta: 'Pra atleta profissional focar no jogo, não na logística.',
+      audience: [
+        { icon: '🏆', title: 'O próprio atleta', desc: 'Visão única do calendário, decisões da semana e status de cada inscrição — no celular, sem dependência do staff.' },
+        { icon: '🎾', title: 'Treinador / preparador', desc: 'Acompanha o cronograma, comenta nos cards de cada torneio e ajusta a estratégia da temporada com a família ou o atleta.' },
+        { icon: '💼', title: 'Agente / manager', desc: 'Vê o pipeline de torneios, deadlines de inscrição e logística (viagem comprada, hotel) sem precisar pedir update toda semana.' },
+      ],
+    },
+  };
+
+  function applyVariant(name) {
+    const v = VARIANTS[name] || VARIANTS.universal;
+    document.querySelector('[data-slot="tagline"]').textContent = v.tagline;
+    document.querySelector('[data-slot="why-lead"]').textContent = v.whyLead;
+    document.querySelector('[data-slot="why-body"]').innerHTML = v.whyBody;
+    document.querySelector('[data-slot="quote"]').textContent = v.quote;
+    document.querySelector('[data-slot="cta"]').textContent = v.cta;
+    const audienceRoot = document.querySelector('[data-slot="audience"]');
+    audienceRoot.innerHTML = v.audience.map(a => `
+      <div class="card">
+        <span class="icon">${a.icon}</span>
+        <div class="title">${a.title}</div>
+        <p class="desc">${a.desc}</p>
+      </div>`).join('');
+    // Atualiza estado dos botões
+    document.querySelectorAll('.profile-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.profile === name);
+    });
+    // Persiste na URL pra compartilhar
+    const url = new URL(location.href);
+    if (name === 'universal') url.searchParams.delete('p');
+    else url.searchParams.set('p', name);
+    history.replaceState(null, '', url.toString());
+  }
+
+  document.querySelectorAll('.profile-pill').forEach(btn => {
+    btn.addEventListener('click', () => applyVariant(btn.dataset.profile));
+  });
+
+  const initial = new URLSearchParams(location.search).get('p') || 'universal';
+  applyVariant(initial);
 </script>
 
 </body>
