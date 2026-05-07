@@ -1575,9 +1575,9 @@ function renderHeaderEl() {
     onClick: (e) => { e.stopPropagation(); toggleGearMenu(); },
   }, initials);
 
-  // Bolinhas dos membros da household — só desktop (mobile vê no menu)
+  // Bolinhas dos membros da household + botão "+" pra convidar
   const otherMembers = (state.user?.members || []).filter(m => m.id !== state.user?.id);
-  const memberStack = state.user && el('div', { class: 'hidden md:flex items-center -space-x-2 shrink-0' },
+  const memberStack = state.user && el('div', { class: 'flex items-center -space-x-2 shrink-0' },
     ...otherMembers.slice(0, 4).map(m => el('button', {
       class: 'w-8 h-8 rounded-full bg-emerald-600 text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-[#0e3a4d] hover:bg-emerald-500',
       title: m.email,
