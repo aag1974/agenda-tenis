@@ -1028,13 +1028,13 @@ function applyHeaderFilters(tournaments) {
 // ===== Kanban =====
 // Labels têm que bater com backend/board.js. Mantém ids estáveis.
 const KANBAN_COLUMNS = [
-  { id: 'torneios',            label: 'Concluídos',         icon: '🔒' },
+  { id: 'torneios',            label: 'Não vou jogar',      icon: '🔒' },
   { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟' },
   { id: 'vou_jogar',           label: 'Monitorar',          icon: '⭐' },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',    icon: '💰' },
   { id: 'confirmado',          label: 'Confirmado',         icon: '✅' },
   { id: 'viagem_comprada',     label: 'Viagem comprada',    icon: '✈️' },
-  { id: 'historico',           label: 'Encerrados',         icon: '🎾' },
+  { id: 'historico',           label: 'Arquivados',         icon: '🎾' },
 ];
 const KANBAN_COLUMN_IDS = KANBAN_COLUMNS.map(c => c.id);
 
@@ -2164,7 +2164,6 @@ function refreshSyncProgressModal() {
       evLine('📌', winChanged,             `mudança${winChanged !== 1 ? 's' : ''} no estado de inscrição`),
       evLine('📅', datesChanged,           `data${datesChanged !== 1 ? 's' : ''} de inscrição/cancelamento atualizada${datesChanged !== 1 ? 's' : ''}`),
       evLine('🏆', ec.tiers_added || 0,    'chaves adicionadas (multi-categoria)'),
-      evLine('📋', ec.reg_status_changed || 0, `status TI atualizado${(ec.reg_status_changed || 0) !== 1 ? 's' : ''}`),
       s.newAlerts > 0 && el('button', {
         class: 'flex items-center gap-2 text-sm text-cyan-700 hover:underline',
         onClick: () => { close(); openAlertsListModal({ onlyUnseen: true }); },

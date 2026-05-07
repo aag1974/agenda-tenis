@@ -9,13 +9,13 @@ import { deriveStatus } from './scraper.js';
 // - 'torneios' → "Concluídos" (inclui janela encerrada + boleto vencido + givenUp)
 // - 'vou_jogar' → "Monitorar" (manual + auto pra A_INICIAR/UNKNOWN)
 export const COLUMNS = [
-  { id: 'torneios',            label: 'Concluídos',         icon: '🔒', auto: true,  manual: true },
+  { id: 'torneios',            label: 'Não vou jogar',      icon: '🔒', auto: true,  manual: true },
   { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟', auto: true,  manual: true },
   { id: 'vou_jogar',           label: 'Monitorar',          icon: '⭐', auto: true,  manual: true },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',    icon: '💰', auto: true,  manual: true },
   { id: 'confirmado',          label: 'Confirmado',         icon: '✅', auto: true,  manual: true },
   { id: 'viagem_comprada',     label: 'Viagem comprada',    icon: '✈️', auto: false, manual: true },
-  { id: 'historico',           label: 'Encerrados',         icon: '🎾', auto: true,  manual: true },
+  { id: 'historico',           label: 'Arquivados',         icon: '🎾', auto: true,  manual: true },
 ];
 
 export const COLUMN_IDS = COLUMNS.map(c => c.id);
@@ -232,10 +232,8 @@ export function diffTournamentForActivity(prev, curr) {
       evt('tiers_added', `🏆 Chave${addedTiers.length > 1 ? 's' : ''} adicionada${addedTiers.length > 1 ? 's' : ''}: ${addedTiers.join(', ')}`);
     }
 
-    // Registration status text mudou (caso útil pra debug)
-    if (curr?.registrationStatus && prev.registrationStatus !== curr.registrationStatus) {
-      evt('reg_status_changed', `📋 Status TI: "${prev.registrationStatus || '—'}" → "${curr.registrationStatus}"`);
-    }
+    // Status text do TI muda toda hora (Iniciado/Finalizado/etc) e
+    // duplica info que o window_changed já cobre semanticamente. Não loga.
   }
 
   return events;
