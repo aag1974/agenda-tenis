@@ -283,14 +283,20 @@ const api = {
     return r.json();
   },
   async moveCard(profileId, tid, column, order, siblings, sourceColumn, sourceSiblings) {
-    const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/column`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ column, order, siblings, sourceColumn, sourceSiblings }),
-    });
+    const body = JSON.stringify({ column, order, siblings, sourceColumn, sourceSiblings });
+    const url = `/api/profiles/${profileId}/tournaments/${tid}/column`;
+    const opts = { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body };
+    let r = await fetch(url, opts);
+    // 502/503/504: servidor reiniciando (deploy do Render). Auto-retry uma vez.
+    if (r.status >= 502 && r.status <= 504) {
+      await new Promise(res => setTimeout(res, 1500));
+      r = await fetch(url, opts);
+    }
     if (!r.ok) {
+      if (r.status >= 500) throw new Error('Servidor indisponível (tente em alguns segundos).');
       const text = await r.text().catch(() => '');
       let msg = `HTTP ${r.status}`;
-      try { msg = JSON.parse(text).error || msg; } catch { if (text) msg += ` — ${text.slice(0, 120)}`; }
+      try { msg = JSON.parse(text).error || msg; } catch {}
       throw new Error(msg);
     }
     return r.json();
