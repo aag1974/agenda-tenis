@@ -2240,15 +2240,18 @@ function renderReceiptsGallery(container, t, data) {
     fileGallery.value = '';
   }
 
+  // "Tirar foto" só faz sentido em mobile (precisa de câmera nativa).
+  // No desktop, browsers normalmente abrem o seletor de arquivo igual ao "Escolher".
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
   const buttonsRow = el('div', { class: 'flex flex-wrap gap-2' },
-    el('button', {
+    isMobile && el('button', {
       class: 'text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded',
       onClick: () => fileCamera.click(),
     }, '📸 Tirar foto'),
     el('button', {
       class: 'text-sm bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded',
       onClick: () => fileGallery.click(),
-    }, '📁 Escolher do celular'),
+    }, isMobile ? '📁 Escolher do celular' : '📁 Escolher arquivo'),
     receipts.length > 0 && el('a', {
       href: `/api/profiles/${profileId}/tournaments/${t.id}/receipts.zip`,
       download: `comprovantes-${(t.name || 'torneio').replace(/[^\w]+/g, '-').slice(0, 40)}.zip`,
