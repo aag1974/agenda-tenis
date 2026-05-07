@@ -361,27 +361,53 @@ export async function getAthleteStatusInTournament(tournamentId, athleteId, clie
     return { inscribed: false, confirmed: false, ...(debug ? { debug: { error: 'info ' + err.message, log: dbgLog } } : {}) };
   }
 
-  // 2. Localiza link pra aba Inscrições
+  // 2. Localiza link pra aba Inscrições. Tenta vários padrões porque o TI
+  // usa nomenclatura inconsistente (_inscritos, _inscricoes, etc).
   const $ = cheerio.load(infoHtml);
-  let inscritosPath = null;
+  const insc_anchors = [];
   $('a').each((i, a) => {
     const href = ($(a).attr('href') || '').trim();
-    const text = $(a).text().trim().toLowerCase();
-    if (text.includes('inscri') && /\/torneio_painel_/.test(href) && !inscritosPath) {
-      inscritosPath = href.startsWith('http') ? new URL(href).pathname : href;
+    const text = $(a).text().trim();
+    if (/insc/i.test(href) || /inscri/i.test(text)) {
+      insc_anchors.push({ href, text });
     }
   });
-  // Fallback: tenta padrão comum se não achar
-  if (!inscritosPath) inscritosPath = `/torneio_painel_inscritos/index/${tournamentId}`;
-  dbgLog.push({ step: 'find-inscritos', inscritosPath });
+  let inscritosPath = null;
+  // Prioridade: anchor com href contendo "_insc" (do panel do torneio)
+  for (const a of insc_anchors) {
+    if (/\/torneio_painel_insc/i.test(a.href)) {
+      inscritosPath = a.href.startsWith('http') ? new URL(a.href).pathname : a.href;
+      break;
+    }
+  }
+  // Fallback: tenta padrões mais prováveis em ordem
+  const candidates = inscritosPath ? [inscritosPath] : [
+    `/torneio_painel_inscricoes/index/${tournamentId}`,
+    `/torneio_painel_inscritos/index/${tournamentId}`,
+    `/torneio_painel_inscricao/index/${tournamentId}`,
+  ];
+  dbgLog.push({ step: 'find-inscritos', inscritosPath, anchorsFound: insc_anchors.length, sampleAnchors: insc_anchors.slice(0, 5), candidates });
 
-  // 3. Busca a página de inscritos (autenticada)
-  let html;
-  try {
-    html = await client.getText(inscritosPath);
-    dbgLog.push({ step: 'inscritos', len: html.length });
-  } catch (err) {
-    return { inscribed: false, confirmed: false, ...(debug ? { debug: { error: 'inscritos ' + err.message, log: dbgLog } } : {}) };
+  // 3. Tenta cada candidata até uma funcionar
+  let html = null;
+  let chosenPath = null;
+  for (const path of candidates) {
+    try {
+      const res = await client.request(path);
+      if (res.ok) {
+        html = await res.text();
+        chosenPath = path;
+        dbgLog.push({ step: 'inscritos-ok', path, status: res.status, len: html.length });
+        break;
+      } else {
+        dbgLog.push({ step: 'inscritos-skip', path, status: res.status });
+      }
+    } catch (err) {
+      dbgLog.push({ step: 'inscritos-err', path, error: err.message });
+    }
+  }
+  if (!html) {
+    return { inscribed: false, confirmed: false, ...(debug ? { debug: { log: dbgLog } } : {}) };
   }
 
   const text = elementInnerText(cheerio.load(html)('body'));
