@@ -336,6 +336,37 @@ async function fetchCatalog(client, { category = JUVENIL_CATEGORY, year = new Da
   });
 }
 
+// Verifica se a atleta está na página "Inscritos" do torneio.
+// Source of truth — o perfil dela (/perfil2/inicio + /perfil2/programa)
+// pode estar desatualizado, mas a página de Inscritos do torneio reflete
+// o estado real. Retorna { inscribed, confirmed } ou null se não achou.
+//
+// Pattern do TI: linha com "ID:472658" próximo de status "Confirmado",
+// "Pendente", etc. Faz match no texto inteiro da página.
+export async function getAthleteStatusInTournament(tournamentId, athleteId, client = null) {
+  if (!athleteId) return null;
+  const url = `${BASE}/torneio_painel_inscritos/index/${tournamentId}`;
+  let html;
+  try {
+    if (client) {
+      html = await client.getText(`/torneio_painel_inscritos/index/${tournamentId}`);
+    } else {
+      const res = await fetch(url, { headers: { 'User-Agent': UA } });
+      if (!res.ok) return null;
+      html = await res.text();
+    }
+  } catch { return null; }
+  const text = elementInnerText(cheerio.load(html)('body'));
+  // Localiza o trecho ao redor de "ID:<athleteId>" e checa o status próximo
+  const idPattern = new RegExp(`ID\\s*:\\s*${athleteId}\\b`, 'i');
+  const m = idPattern.exec(text);
+  if (!m) return { inscribed: false, confirmed: false };
+  // Olha 200 chars antes e depois do match pra capturar o status financeiro
+  const window = text.slice(Math.max(0, m.index - 200), Math.min(text.length, m.index + 400));
+  const confirmed = /Confirmado/i.test(window);
+  return { inscribed: true, confirmed };
+}
+
 export async function fetchTournamentDetails(tournamentId) {
   const url = `${BASE}/torneio_painel_info/index/${tournamentId}`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
@@ -620,6 +651,46 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
         if (!t.tier) t.tier = t.tiers[0];
       }
     }
+  }
+
+  // Source-of-truth: a página /torneio_painel_inscritos do torneio é
+  // canônica pra "atleta inscrita". O perfil dela (/perfil2/inicio +
+  // /perfil2/programa) pode estar atrasado em horas/dias.
+  //
+  // Estratégia: checar TODOS os torneios futuros (próximos 120 dias) ou
+  // recém-passados (últimos 7 dias, pra capturar status final). Concorrência
+  // limitada pra não sobrecarregar o TI.
+  if (client.athleteId) {
+    const cutoffPast = new Date(); cutoffPast.setDate(cutoffPast.getDate() - 7);
+    const cutoffFuture = new Date(); cutoffFuture.setDate(cutoffFuture.getDate() + 120);
+    const inScope = (t) => {
+      if (!t.startDate) return false;
+      const [d, m, y] = t.startDate.split('/').map(Number);
+      const date = new Date(y, m - 1, d);
+      return date >= cutoffPast && date <= cutoffFuture;
+    };
+    const candidates = tournaments.filter(inScope).slice(0, 200);
+
+    // Concorrência limitada: 8 simultâneos pra não saturar TI.
+    const CONCURRENCY = 8;
+    const results = new Map();
+    for (let i = 0; i < candidates.length; i += CONCURRENCY) {
+      const batch = candidates.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(
+        batch.map(t => getAthleteStatusInTournament(t.id, client.athleteId, client).catch(() => null))
+      );
+      for (let j = 0; j < batch.length; j++) {
+        if (batchResults[j]) results.set(batch[j].id, batchResults[j]);
+      }
+    }
+
+    for (const t of tournaments) {
+      const status = results.get(t.id);
+      if (!status) continue;
+      if (status.inscribed) t.isAnnaInscribed = true;
+      if (status.confirmed) t.isAnnaConfirmada = true;
+    }
+    console.log(`[sync] inscritos check: ${candidates.length} torneios, ${[...results.values()].filter(r => r.inscribed).length} inscrita`);
   }
 
   // Ranking regional (qualquer UF — detecta dinamicamente da página do TI)

@@ -97,15 +97,17 @@ export function getRegistrationWindowState(t) {
 //   1. status === 'past'                       → historico
 //   2. manualGiveUp                             → torneios (Concluídos)
 //   3. inscrita + boleto vencido                → torneios (Concluídos)
-//   4. inscrita + boleto pendente               → pagar_inscricao
-//   5. inscrita (heurística: confirmada)        → confirmado
-//   6. não inscrita + janela 'open'             → inscricoes_abertas
-//   7. não inscrita + janela 'closed'           → torneios (Concluídos)
-//   8. não inscrita + janela 'pending/unknown'  → vou_jogar (Monitorar)
+//   4. confirmada no TI (sit. financeira OK)    → confirmado
+//   5. inscrita + boleto pendente               → pagar_inscricao
+//   6. inscrita (sem boleto, mas não confirmada) → pagar_inscricao (esperando boleto)
+//   7. não inscrita + janela 'open'             → inscricoes_abertas
+//   8. não inscrita + janela 'closed'           → torneios (Concluídos)
+//   9. não inscrita + janela 'pending/unknown'  → vou_jogar (Monitorar)
 //
-// Nota: ideal é scrapar `isAnnaConfirmada` da página do torneio pra
-// distinguir "inscrita esperando boleto" de "confirmada". Por ora, mantém
-// heurística "inscrita + sem boleto = confirmada".
+// Sinais (definidos pelo scraper):
+// - isAnnaInscribed: ID da atleta na página /torneio_painel_inscritos
+// - isAnnaConfirmada: status "Confirmado" na mesma página
+// - pendingPayment: boleto na aba do perfil dela
 export function computeAutoColumn(t, notes = {}) {
   const status = deriveStatus(t);
   if (status === 'past') return 'historico';
@@ -114,8 +116,9 @@ export function computeAutoColumn(t, notes = {}) {
 
   const pp = t.pendingPayment;
   const inscribed = t.isAnnaInscribed || notes.manualInscribed;
+  const confirmed = t.isAnnaConfirmada;
 
-  // Boleto vencido (com inscrição registrada) — perdeu o prazo
+  // Boleto vencido com inscrição — perdeu o prazo
   if (inscribed && pp?.dueDate) {
     const [d, m, y] = pp.dueDate.split('/').map(Number);
     const due = new Date(y, m - 1, d);
@@ -123,14 +126,18 @@ export function computeAutoColumn(t, notes = {}) {
     if (due < today) return 'torneios';
   }
 
-  if (inscribed && pp) return 'pagar_inscricao';
-  if (inscribed) return 'confirmado'; // heurística — sem boleto = pago/confirmada
+  // Confirmada no TI — situação financeira OK, tudo certo
+  if (confirmed) return 'confirmado';
+
+  // Inscrita + boleto pendente OU sem boleto detectado (TI ainda não emitiu)
+  // → ambos os casos demandam ação "pagar quando vier"
+  if (inscribed) return 'pagar_inscricao';
 
   // Não inscrita: olha estado da janela
   const win = getRegistrationWindowState(t);
   if (win === 'open') return 'inscricoes_abertas';
   if (win === 'closed') return 'torneios';
-  // pending / unknown → "Monitorar" (precisa ação manual: aguardar e decidir)
+  // pending / unknown → "Monitorar" (ação manual: aguardar e decidir)
   return 'vou_jogar';
 }
 
@@ -179,10 +186,16 @@ export function diffTournamentForActivity(prev, curr) {
   if (prevPP && !currPP) evt('boleto_cleared', `✅ Pagamento confirmado pelo Tênis Integrado`);
 
   if (!prev?.isAnnaInscribed && curr?.isAnnaInscribed) {
-    evt('inscribed', `✓ Inscrição confirmada pelo Tênis Integrado`);
+    evt('inscribed', `✓ Inscrição detectada na página do torneio`);
   }
   if (prev?.isAnnaInscribed && !curr?.isAnnaInscribed) {
     evt('uninscribed', `Inscrição removida do Tênis Integrado`);
+  }
+  if (!prev?.isAnnaConfirmada && curr?.isAnnaConfirmada) {
+    evt('confirmed', `✅ Inscrição confirmada (situação financeira OK)`);
+  }
+  if (prev?.isAnnaConfirmada && !curr?.isAnnaConfirmada) {
+    evt('unconfirmed', `Inscrição perdeu confirmação no Tênis Integrado`);
   }
 
   if (!prev) evt('discovered', `🆕 Torneio descoberto na sincronização`);

@@ -1088,18 +1088,19 @@ function autoColumnFor(t) {
 
   const pp = t.pendingPayment;
   const inscribed = t.isAnnaInscribed || notes.manualInscribed;
+  const confirmed = t.isAnnaConfirmada;
 
   if (inscribed && pp?.dueDate) {
     const d = brToDate(pp.dueDate);
     if (d && d < startOfToday()) return 'torneios';
   }
-  if (inscribed && pp) return 'pagar_inscricao';
-  if (inscribed) return 'confirmado';
+  if (confirmed) return 'confirmado';
+  if (inscribed) return 'pagar_inscricao';
 
   const win = getWindowState(t);
   if (win === 'open') return 'inscricoes_abertas';
   if (win === 'closed') return 'torneios';
-  return 'vou_jogar'; // pending / unknown → Monitorar
+  return 'vou_jogar';
 }
 
 function effectiveColumnFor(t) {

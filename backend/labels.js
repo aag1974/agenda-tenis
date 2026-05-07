@@ -32,7 +32,8 @@ export const DEFAULT_MANUAL_LABELS = [
 // Auto labels — não armazenadas, derivadas por torneio. Cada uma tem um
 // autoKey estável que serve de "id" para fins de display/filtros.
 const AUTO_LABEL_DEFS = {
-  inscribed:           { name: 'Inscrito',               color: 'emerald' },
+  confirmed:           { name: 'Confirmada',             color: 'emerald' },
+  inscribed:           { name: 'Inscrita',               color: 'sky' },
   pendingPayment:      { name: 'Boleto pendente',        color: 'amber' },
   expiredPayment:      { name: 'Boleto vencido',         color: 'red' },
   closedRegistration:  { name: 'Inscrições encerradas',  color: 'slate' },
@@ -155,6 +156,8 @@ export function deriveAutoLabels(tournament, notes = {}) {
 
   if (boletoExpired) {
     out.push({ autoKey: 'expiredPayment', ...AUTO_LABEL_DEFS.expiredPayment, auto: true });
+  } else if (tournament.isAnnaConfirmada) {
+    out.push({ autoKey: 'confirmed', ...AUTO_LABEL_DEFS.confirmed, auto: true });
   } else if (pp) {
     out.push({ autoKey: 'pendingPayment', ...AUTO_LABEL_DEFS.pendingPayment, auto: true });
   } else if (inscribed) {
