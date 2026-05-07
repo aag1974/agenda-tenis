@@ -25,7 +25,7 @@ import {
   deleteManualLabel, deriveAutoLabels, resolveManualLabels, LABEL_COLORS,
 } from './labels.js';
 import { syncProfile, getSyncStatus, startAutoSync } from './sync-manager.js';
-import { deriveStatus, fetchTournamentDetails, debugAthleteInscriptions } from './scraper.js';
+import { deriveStatus, fetchTournamentDetails, debugAthleteInscriptions, getAthleteStatusInTournament } from './scraper.js';
 import { getProfileCredentials } from './storage.js';
 import {
   createUser, authenticate, signCookie, authMiddleware, requireAuth,
@@ -664,7 +664,11 @@ app.get('/api/profiles/:id/debug-inscriptions', requireAuth, ensureOwnedProfile,
     const data = await debugAthleteInscriptions(creds);
     const tid = req.query.tid;
     const found = tid ? data.unionIds.includes(String(tid)) : null;
-    res.json({ ...data, queryTid: tid || null, found });
+    let perTournament = null;
+    if (tid && data.athleteId) {
+      perTournament = await getAthleteStatusInTournament(tid, data.athleteId).catch(err => ({ error: err.message }));
+    }
+    res.json({ ...data, queryTid: tid || null, found, perTournamentCheck: perTournament });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
