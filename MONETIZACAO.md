@@ -12,8 +12,8 @@ Transformar o Tennis Flow de ferramenta pessoal em produto com 3 níveis:
   recursos sem fricção.
 - **Free (pós-trial)** — depois dos 15 dias, se não pagou, vira Free
   degradado. Mantém acesso à conta e a um quadro útil mas limitado.
-- **Pro vitalício** — pagamento único via Pix. Preço sugerido: **R$197
-  (fundador) / R$297 (regular)** — explico abaixo. Sem mensalidade, sem
+- **Pro vitalício** — pagamento único via Pix. Preço sugerido: **R$497
+  (fundador) / R$697 (regular)** — explico abaixo. Sem mensalidade, sem
   cartão, sem renovação. Garantia de reembolso 15 dias.
 
 Estratégia de aquisição: **virar viral pelo botão Compartilhar**. Quando o
@@ -259,33 +259,160 @@ ter algo útil.
    convidado quiser quadro próprio (atleta próprio), precisa Pro próprio.
 4. **Sem revogação de token** no MVP. Card compartilhado fica público
    indefinidamente. Adicionamos botão "Apagar links" se virar problema.
-5. **Preço sugerido: R$197 fundador / R$297 regular**. Detalhes abaixo.
+5. **Preço sugerido: R$497 fundador / R$697 regular**. Detalhes abaixo.
 
 ## Estratégia de preço
 
-Não há concorrente direto no Brasil — Tênis Integrado é gratuito mas pra
-clubes/jogadores; Letzplay e Tornfy são pra organizadores. Tennis Flow
-ocupa nicho vazio: **organização da família/atleta sobre o calendário do TI**.
+### Posicionamento (a comparação certa)
 
-Preço definido por **valor percebido**, não comparação:
+Não há concorrente direto. TI é gratuito mas é **infraestrutura** (transações,
+ranking, autoridade). TF é **camada de gestão** sobre essa infraestrutura.
+
+Analogia: TI está pra TF assim como **banco** está pra **Mobills/Organizze**.
+Banco é gratuito, faz transações, mantém saldo. Mobills cobra ~R$60/ano
+(~R$500 vitalício efetivo) pra organizar, alertar, dashboard. Tennis Flow
+é o equivalente disso pro mercado de torneios juvenis/profissionais.
+
+Comparar preço de TF com preço do TI é como comparar preço de Mobills
+com preço da conta corrente — categorias diferentes.
+
+### Valor real entregue
+
 - Família atleta gasta R$2-5k/mês com torneios/viagens
-- Perder 1 inscrição = R$200-500
+- Perder 1 inscrição = R$200-500 (boleto + chance perdida)
 - Multa de boleto = R$50-200
-- ROI imediato em 1 boleto evitado
+- 2-3h/semana organizando manualmente = R$200-600/mês de tempo
+- ROI imediato em 1 boleto evitado ou 1 inscrição não-perdida
 
-**Recomendação: dois preços públicos com narrativa.**
+### Anchors do mercado brasileiro vitalício
 
-| Fase                     | Preço público | Quando             |
-|--------------------------|---------------|--------------------|
-| **Fundador**             | R$197         | Primeiros 100 ou até dez/2026 |
-| **Regular**              | R$297         | Depois             |
+- Cursos vitalícios profissionais: R$497-R$1.997 (Asimov R$1.997)
+- Apps de produtividade nicho: R$497-R$997 normal
+- Fronteiras psicológicas:
+  - <R$500 = decisão impulsiva
+  - R$500-R$1.000 = decisão consciente individual
+  - \>R$1.000 = decisão familiar/discutida
 
-A transição R$197 → R$297 vira conteúdo de marketing ("estamos crescendo,
-preço sobe em janeiro") e cria urgência sem precisar de contador no site.
+### Recomendação final
 
-Alternativa simples: **R$297 firme desde o início** — perde algumas
-conversões marginais mas posicionamento é mais sólido. Se você não quer
-gerenciar duas fases, vai nessa.
+| Modelo                   | Fundador | Regular  | Quando                |
+|--------------------------|----------|----------|-----------------------|
+| **Sério** (recomendado)  | **R$497**| **R$697**| Primeiros 100 ou até dez/2026 |
+
+Por quê R$497 fundador, não R$197:
+
+1. **1 boleto evitado paga.** Cliente sente ROI na primeira ocorrência.
+2. **Sub-R$1k não vira reunião familiar.** Decisão individual.
+3. **Posiciona como ferramenta séria.** R$197 dá impressão de hobby.
+4. **Margem absorve fricção.** Pix R$497 + 15 dias trial + 15 dias
+   garantia = a margem cobre reembolsos.
+5. **Você ainda não tem prova social.** R$897+ exigiria depoimentos.
+
+A transição R$497 → R$697 vira urgência saudável ("preço sobe em janeiro").
+
+Alternativa: **R$497 firme** desde o início, sem fundador. Mais simples,
+posicionamento sólido. Tradeoff: perde "preço de fundador" como mecanismo
+de aquisição.
+
+---
+
+## Riscos — relação com o Tênis Integrado
+
+O produto depende inteiramente do TI como fonte de dados. Isso é um risco
+estratégico que precisa ser gerenciado.
+
+### As 3 camadas de risco
+
+**1. Técnico:** TI muda HTML do site → scraper quebra → produto fica fora
+até correção. Acontece naturalmente. Mitigação: manutenção contínua.
+
+**2. Operacional:** TI detecta acesso automatizado, bloqueia conta do
+usuário ou IP do servidor. Pode ser ativo (eles miram) ou passivo
+(rate-limit anti-bot).
+
+**3. Legal/comercial:** TI alega violação de termos, manda cease & desist,
+ou lança feature concorrente.
+
+### O que a arquitetura já protege
+
+- **Cada usuário usa as próprias credenciais TI.** Bloqueio é sempre
+  individual, nunca afeta o produto inteiro. Não existe "user master".
+- **Sync auto a cada 6h é educado.** Não é hammering, não chama atenção.
+- **Acesso aos dados do próprio usuário.** Defesa legal forte (Marco
+  Civil + LGPD favorecem agência do usuário sobre os próprios dados).
+
+### Curva de visibilidade
+
+- 10-50 clientes: provavelmente nem notam
+- 100-500: aparece nos logs, podem perguntar
+- 1.000+: você está visível, eles agem
+
+A janela pra conversar **antes** de virar problema é entre 50 e 200
+clientes. Depois disso, vira negociação tensa.
+
+### Plano de comunicação com TI
+
+**Quando:** ao bater ~50 clientes pagantes (ou se o produto começar a
+crescer rápido). Decisão do Alex: "se ver que o negócio vai pegar".
+
+**Quem procurar:** área comercial / parcerias do TI, não suporte técnico.
+
+**Mensagem-base** (rascunho — adapta antes de mandar):
+
+```
+Assunto: Tennis Flow — ferramenta complementar de calendário
+
+Olá,
+
+Sou Alexandre Garcia, desenvolvedor. Construí uma ferramenta chamada
+Tennis Flow que organiza a agenda de torneios pra famílias e atletas
+que usam o Tênis Integrado.
+
+A ferramenta funciona com as credenciais do próprio usuário (cada um
+loga com sua conta TI), faz uma sincronização a cada 6h e organiza os
+torneios num quadro Kanban com alertas, agenda integrada e
+compartilhamento familiar. Não compete com o TI — pelo contrário,
+aumenta engajamento (usuários pagam boletos mais cedo, registram mais
+inscrições, decidem com mais informação).
+
+Estou validando o produto com algumas dezenas de clientes e quis abrir
+um canal com vocês antes de crescer mais. Algumas opções pra discutir:
+
+1. Vocês têm interesse em alguma forma de parceria formal (API,
+   atribuição visível, programa de afiliados)?
+2. Existe alguma diretriz de uso técnico que eu precise respeitar
+   (rate limit, User-Agent declarado, etc)?
+3. Há interesse em conversar sobre como ferramentas como essa se
+   encaixam na visão de produto de vocês?
+
+Posso mandar mais detalhes técnicos, números, ou marcar uma call
+quando for melhor pra vocês.
+
+Abraço,
+Alexandre
+alexandre@opiniao.inf.br
+```
+
+### Mitigações pelo caminho
+
+- **User-Agent transparente** no scraper:
+  `Tennis-Flow/1.0 (+contato: alexandre@opiniao.inf.br)`
+- **Marketing sem implicação de parceria.** "Lê dados do Tênis
+  Integrado" (descritivo, OK) ≠ "Parceiro oficial do Tênis Integrado"
+  (falsa associação, problema).
+- **Plano B documentado:** "Se o TI ficar fora ou bloquear sua conta,
+  sua assinatura pausa e a gente devolve proporcional." Reduz a
+  ansiedade do "e se?" no cliente.
+- **Diversificação futura** (fase 2+): entrada manual de torneios,
+  scraping de federações estaduais, integração com sites de inscrição
+  alternativos. Não é prioridade agora.
+
+### Decisão atual do Alex
+
+> "Se eu ver que o negócio vai pegar, eu procuro o TI."
+
+Linha registrada. Implícito: até ~50 clientes pagantes, opera de
+forma educada e sob o radar; daí em diante, abre o canal.
 
 ---
 
