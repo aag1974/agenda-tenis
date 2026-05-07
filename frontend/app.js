@@ -880,6 +880,7 @@ function render() {
     return;
   }
   if (!state.data) {
+    document.body.classList.add('kanban-mode');
     root.appendChild(el('div', { class: 'mt-8 text-center text-slate-500' }, 'Carregando...'));
     return;
   }
@@ -887,6 +888,9 @@ function render() {
   const tournaments = state.data.tournaments || [];
 
   if (tournaments.length === 0) {
+    // Mantém o tema navy mesmo sem torneios — senão a tela "fica branca"
+    // pós-reset e parece quebrada até a primeira sync popular o quadro.
+    document.body.classList.add('kanban-mode');
     root.appendChild(renderNeedSync());
     return;
   }
@@ -3025,8 +3029,8 @@ function renderEmptyState() {
 
 function renderNeedSync() {
   return el('div', { class: 'mt-12 text-center max-w-md mx-auto' },
-    el('p', { class: 'text-slate-600 mb-4' }, 'Ainda não há torneios carregados. Toque em ⚙︎ → Sincronizar agora pra puxar a lista do Tênis Integrado.'),
-    el('p', { class: 'text-xs text-slate-500' }, 'A sincronização leva ~30 segundos.'),
+    el('p', { class: 'text-slate-100 mb-4' }, 'Ainda não há torneios carregados. Toque no avatar → Sincronizar agora pra puxar a lista do Tênis Integrado.'),
+    el('p', { class: 'text-xs text-slate-300' }, 'A sincronização leva ~30 segundos.'),
   );
 }
 
