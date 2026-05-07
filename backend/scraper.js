@@ -166,15 +166,16 @@ async function getAthleteInfo(client) {
 // CBT national juvenil ranking IDs (one per year). 1326 = 2026.
 const RANKING_PAGE_ID_CURRENT_YEAR = 1326;
 const CATEGORY_IDS = { '12F': 9, '14F': 10, '16F': 11, '18F': 12 }; // simples categories
-const UF_DF_ID = 7;
 
-// Compute Anna's position among DF athletes for a given category
-// Returns { dfPosition, totalDF, cutoffDate } or null
-async function getDFPosition(client, athleteTiId, categoryCode = '12F') {
+// Compute athlete's position within their own UF (any state, not hardcoded).
+// Two-pass: 1) lista nacional sem filtro pra detectar UF do atleta;
+// 2) lista filtrada pela UF detectada pra ranquear regionalmente.
+// Returns { uf, regionalPosition, totalRegional, cutoffDate } or null
+async function getRegionalPosition(client, athleteTiId, categoryCode = '12F') {
   const catId = CATEGORY_IDS[categoryCode];
   if (!catId) return null;
   try {
-    // First GET to capture the latest id_corte option
+    // First GET — captura último corte e mapeamento UF→id_uf do <select>
     const initial = await client.getText(`/ranking_painel_classif/index/${RANKING_PAGE_ID_CURRENT_YEAR}`);
     const $ = cheerio.load(initial);
     let latestCorte = null;
@@ -187,28 +188,53 @@ async function getDFPosition(client, athleteTiId, categoryCode = '12F') {
         latestCorteDate = (t.match(/\d{2}\/\d{2}\/\d{4}/) || [])[0] || null;
       }
     });
-
-    const body = new URLSearchParams({
-      busca: '',
-      id_corte: latestCorte || '',
-      id_categoria: String(catId),
-      id_uf: String(UF_DF_ID),
-    }).toString();
-    const res = await client.request(`/ranking_painel_classif/index/${RANKING_PAGE_ID_CURRENT_YEAR}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
+    const ufMap = {}; // { 'DF': 7, 'SP': 26, ... }
+    $('select#id_uf option').each((i, opt) => {
+      const v = ($(opt).attr('value') || '').trim();
+      const t = $(opt).text().trim().toUpperCase();
+      if (/^\d+$/.test(v) && /^[A-Z]{2}$/.test(t)) ufMap[t] = parseInt(v);
     });
-    const html = await res.text();
-    const text = elementInnerText(cheerio.load(html)('body'));
-    // Match each entry: "POSº - Name ID. NUMBER, UF: XX"
+
+    // 2nd request — POST nacional (sem UF) pra detectar UF da atleta
+    const fetchList = async (idUf) => {
+      const body = new URLSearchParams({
+        busca: '',
+        id_corte: latestCorte || '',
+        id_categoria: String(catId),
+        id_uf: idUf == null ? '' : String(idUf),
+      }).toString();
+      const res = await client.request(`/ranking_painel_classif/index/${RANKING_PAGE_ID_CURRENT_YEAR}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      });
+      const html = await res.text();
+      return elementInnerText(cheerio.load(html)('body'));
+    };
+
+    // Regex estendida: captura também a UF (formato "ID. NUMBER, UF: XX")
+    const nacText = await fetchList(null);
+    let athleteUF = null;
+    for (const m of nacText.matchAll(/(\d+)º\s*-\s*[^I]+ID\.\s*(\d+)[^\n]*?UF:\s*([A-Z]{2})/g)) {
+      if (m[2] === athleteTiId) { athleteUF = m[3]; break; }
+    }
+    if (!athleteUF || !ufMap[athleteUF]) {
+      return { uf: athleteUF, regionalPosition: null, totalRegional: 0, cutoffDate: latestCorteDate };
+    }
+
+    // 3rd request — POST com a UF da atleta pra ranquear no recorte regional
+    const regText = await fetchList(ufMap[athleteUF]);
     const entries = [];
-    for (const m of text.matchAll(/(\d+)º\s*-\s*[^I]+ID\.\s*(\d+)/g)) {
+    for (const m of regText.matchAll(/(\d+)º\s*-\s*[^I]+ID\.\s*(\d+)/g)) {
       entries.push({ nationalPos: parseInt(m[1]), id: m[2] });
     }
     const idx = entries.findIndex(e => e.id === athleteTiId);
-    if (idx < 0) return { dfPosition: null, totalDF: entries.length, cutoffDate: latestCorteDate };
-    return { dfPosition: idx + 1, totalDF: entries.length, cutoffDate: latestCorteDate };
+    return {
+      uf: athleteUF,
+      regionalPosition: idx >= 0 ? idx + 1 : null,
+      totalRegional: entries.length,
+      cutoffDate: latestCorteDate,
+    };
   } catch (err) {
     return null;
   }
@@ -538,10 +564,10 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
     }
   }
 
-  // Optional: DF ranking (ignored on failure)
+  // Ranking regional (qualquer UF — detecta dinamicamente da página do TI)
   const currentYear = new Date().getFullYear();
   const nationalRanking12F = (athlete.rankings || []).find(r => r.year === currentYear && r.category === '12F') || null;
-  const dfRanking = await getDFPosition(client, client.athleteId, '12F').catch(() => null);
+  const regionalRanking = await getRegionalPosition(client, client.athleteId, '12F').catch(() => null);
 
   return {
     athlete: {
@@ -552,7 +578,7 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
       about: athlete.about || null,
       hand: athlete.hand || null,
       rankingNational: nationalRanking12F,           // { year, category, points, position }
-      rankingDF: dfRanking,                          // { dfPosition, totalDF } | null
+      rankingRegional: regionalRanking,              // { uf, regionalPosition, totalRegional, cutoffDate } | null
       rankingsAll: athlete.rankings || [],           // all rankings on profile
       categories: categoriesToFetch.map(id => ({
         id,

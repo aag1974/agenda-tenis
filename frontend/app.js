@@ -2706,9 +2706,16 @@ function openAthleteCard() {
   const name = athlete.name || profile.athleteName || 'Atleta';
   const initials = userInitials(name);
   const rankCBT = athlete.rankingNational;
-  const rankDF = athlete.rankingDF;
+  // Ranking regional — UF detectada dinamicamente. Mantém fallback pro
+  // campo antigo `rankingDF` enquanto synced.json ainda não foi reescrito.
+  const rankRegional = athlete.rankingRegional || (athlete.rankingDF ? {
+    uf: 'DF',
+    regionalPosition: athlete.rankingDF.dfPosition,
+    totalRegional: athlete.rankingDF.totalDF,
+    cutoffDate: athlete.rankingDF.cutoffDate,
+  } : null);
   const wtn = athlete.wtn;
-  const cutoff = rankDF?.cutoffDate;
+  const cutoff = rankRegional?.cutoffDate;
 
   const tile = (label, value, hint, accent = 'cyan') => {
     const accentClass = {
@@ -2747,7 +2754,7 @@ function openAthleteCard() {
     ),
   );
 
-  const rankingTiles = (rankCBT || rankDF?.dfPosition || wtn) && el('div', null,
+  const rankingTiles = (rankCBT || rankRegional?.regionalPosition || wtn) && el('div', null,
     sectionHeader(cutoff ? `Rankings · recorte ${cutoff}` : 'Rankings'),
     el('div', { class: 'grid grid-cols-2 gap-2' },
       rankCBT && tile(
@@ -2756,7 +2763,12 @@ function openAthleteCard() {
         `${rankCBT.points} pts`,
         'slate',
       ),
-      rankDF?.dfPosition && tile('Recorte DF', `${rankDF.dfPosition}º`, 'no recorte do nacional', 'slate'),
+      rankRegional?.regionalPosition && tile(
+        `Recorte ${rankRegional.uf || 'UF'}`,
+        `${rankRegional.regionalPosition}º`,
+        rankRegional.totalRegional ? `de ${rankRegional.totalRegional}` : 'no recorte do nacional',
+        'slate',
+      ),
       wtn && tile('WTN simples', wtn.single, 'world tennis number', 'slate'),
       wtn && tile('WTN duplas', wtn.double, 'world tennis number', 'slate'),
     ),
