@@ -1026,14 +1026,14 @@ function applyHeaderFilters(tournaments) {
 }
 
 // ===== Kanban =====
-// Labels têm que bater com backend/board.js. Mantém ids estáveis.
+// Labels e ordem têm que bater com backend/board.js. Mantém ids estáveis.
 const KANBAN_COLUMNS = [
-  { id: 'torneios',            label: 'Não vou jogar',      icon: '🔒' },
-  { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟' },
   { id: 'vou_jogar',           label: 'Monitorar',          icon: '⭐' },
+  { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟' },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',    icon: '💰' },
   { id: 'confirmado',          label: 'Confirmado',         icon: '✅' },
   { id: 'viagem_comprada',     label: 'Viagem comprada',    icon: '✈️' },
+  { id: 'torneios',            label: 'Não vou jogar',      icon: '🔒' },
   { id: 'historico',           label: 'Arquivados',         icon: '🎾' },
 ];
 const KANBAN_COLUMN_IDS = KANBAN_COLUMNS.map(c => c.id);

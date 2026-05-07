@@ -4,17 +4,16 @@
 
 import { deriveStatus } from './scraper.js';
 
-// IDs dos colunas se mantêm pra preservar compatibilidade com notes existentes.
-// Labels mudaram conforme spec (07/05/2026):
-// - 'torneios' → "Concluídos" (inclui janela encerrada + boleto vencido + givenUp)
-// - 'vou_jogar' → "Monitorar" (manual + auto pra A_INICIAR/UNKNOWN)
+// IDs das colunas se mantêm pra preservar compatibilidade com notes existentes.
+// Ordem segue o ciclo de vida natural do card (esquerda → direita):
+// descoberta → decisão → ação → execução → estados finais.
 export const COLUMNS = [
-  { id: 'torneios',            label: 'Não vou jogar',      icon: '🔒', auto: true,  manual: true },
-  { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟', auto: true,  manual: true },
   { id: 'vou_jogar',           label: 'Monitorar',          icon: '⭐', auto: true,  manual: true },
+  { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟', auto: true,  manual: true },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',    icon: '💰', auto: true,  manual: true },
   { id: 'confirmado',          label: 'Confirmado',         icon: '✅', auto: true,  manual: true },
   { id: 'viagem_comprada',     label: 'Viagem comprada',    icon: '✈️', auto: false, manual: true },
+  { id: 'torneios',            label: 'Não vou jogar',      icon: '🔒', auto: true,  manual: true },
   { id: 'historico',           label: 'Arquivados',         icon: '🎾', auto: true,  manual: true },
 ];
 
