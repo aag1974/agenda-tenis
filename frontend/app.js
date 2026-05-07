@@ -1089,17 +1089,19 @@ function renderKanbanCard(t) {
   const isExpanded = expandedLabelCards.has(t.id);
 
   const labelsRow = labels.length > 0 && (isExpanded
-    // Modo expandido: pílulas com nome
+    // Modo expandido: pílulas com nome (tiers em "selo" sólido)
     ? el('div', { class: 'flex flex-wrap gap-1 mb-1.5' },
         ...labels.map(L => el('span', {
-          class: `text-[11px] px-1.5 py-0.5 rounded font-medium ${labelExpandedClass(L.color)}`,
+          class: L.tier
+            ? `text-[11px] px-1.5 py-0.5 rounded font-bold tracking-wide ${tierBadgeClass(L.color)}`
+            : `text-[11px] px-1.5 py-0.5 rounded font-medium ${labelExpandedClass(L.color)}`,
           title: L.auto ? `${L.name} (automática)` : L.name,
         }, L.name)),
       )
-    // Modo colapsado: só tarjinhas
+    // Modo colapsado: tarjinhas (tiers usam tom escuro pra destacar)
     : el('div', { class: 'flex flex-wrap gap-1 mb-1.5' },
         ...labels.map(L => el('span', {
-          class: `h-1.5 w-8 rounded-full ${labelStripClass(L.color)}`,
+          class: `h-1.5 w-8 rounded-full ${L.tier ? tierStripClass(L.color) : labelStripClass(L.color)}`,
           title: L.name,
         }))));
 
@@ -1172,7 +1174,9 @@ function renderLabelsSection(t) {
     el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '🏷️ Etiquetas'),
     el('div', { class: 'flex flex-wrap gap-1.5 items-center' },
       ...labels.map(L => el('span', {
-        class: `text-xs px-2 py-1 rounded font-medium inline-flex items-center gap-1 ${labelExpandedClass(L.color)}`,
+        class: L.tier
+          ? `text-xs px-2 py-1 rounded font-bold tracking-wide inline-flex items-center gap-1 ${tierBadgeClass(L.color)}`
+          : `text-xs px-2 py-1 rounded font-medium inline-flex items-center gap-1 ${labelExpandedClass(L.color)}`,
         title: L.auto ? `${L.name} (automática — vem do Tênis Integrado)` : L.name,
       }, L.name, L.auto && el('span', { class: 'text-[10px] opacity-60' }, '🔒')),
       ),
@@ -1225,7 +1229,9 @@ async function openLabelPicker(t) {
         el('div', { class: 'text-xs text-slate-500 mb-1.5' }, 'Automáticas (do Tênis Integrado)'),
         el('div', { class: 'flex flex-wrap gap-1.5' },
           ...autoLabels.map(L => el('span', {
-            class: `text-xs px-2 py-1 rounded font-medium inline-flex items-center gap-1 ${labelExpandedClass(L.color)}`,
+            class: L.tier
+              ? `text-xs px-2 py-1 rounded font-bold tracking-wide inline-flex items-center gap-1 ${tierBadgeClass(L.color)}`
+              : `text-xs px-2 py-1 rounded font-medium inline-flex items-center gap-1 ${labelExpandedClass(L.color)}`,
             title: 'Não dá pra editar — controle do sistema',
           }, L.name, el('span', { class: 'text-[10px] opacity-60' }, '🔒'))),
         ),
@@ -1417,6 +1423,31 @@ function labelExpandedClass(color) {
     slate: 'bg-slate-200 text-slate-800', gray: 'bg-gray-200 text-gray-800',
   };
   return map[color] || 'bg-slate-100 text-slate-700';
+}
+
+// Tier "selo" — fundo sólido escuro + texto branco em negrito.
+// Usado pra diferenciar visualmente os tiers (GA, G1, G2…) das etiquetas.
+function tierBadgeClass(color) {
+  const map = {
+    violet: 'bg-violet-700 text-white', indigo: 'bg-indigo-700 text-white',
+    blue: 'bg-blue-700 text-white', cyan: 'bg-cyan-700 text-white',
+    emerald: 'bg-emerald-700 text-white', amber: 'bg-amber-700 text-white',
+    sky: 'bg-sky-700 text-white', teal: 'bg-teal-700 text-white',
+    rose: 'bg-rose-700 text-white', red: 'bg-red-700 text-white',
+    orange: 'bg-orange-700 text-white', slate: 'bg-slate-700 text-white',
+  };
+  return map[color] || 'bg-slate-700 text-white';
+}
+function tierStripClass(color) {
+  const map = {
+    violet: 'bg-violet-700', indigo: 'bg-indigo-700',
+    blue: 'bg-blue-700', cyan: 'bg-cyan-700',
+    emerald: 'bg-emerald-700', amber: 'bg-amber-700',
+    sky: 'bg-sky-700', teal: 'bg-teal-700',
+    rose: 'bg-rose-700', red: 'bg-red-700',
+    orange: 'bg-orange-700', slate: 'bg-slate-700',
+  };
+  return map[color] || 'bg-slate-700';
 }
 
 function wireKanbanSortable(container) {

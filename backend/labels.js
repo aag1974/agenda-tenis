@@ -38,8 +38,17 @@ const AUTO_LABEL_DEFS = {
   newlyAdded:          { name: 'Novo',                   color: 'cyan' },
 };
 
-// Tier auto labels (derivados do nome do torneio)
-const TIER_LABEL_COLOR = 'sky';
+// Tier auto labels — cores específicas por tier (esquema A: frio→quente
+// = mais prestígio → menos prestígio). Renderizadas com fundo sólido +
+// texto branco pra diferenciar das etiquetas pastel.
+const TIER_COLORS = {
+  'GA+': 'violet',
+  'GA':  'indigo',
+  'G1+': 'blue',
+  'G1':  'cyan',
+  'G2':  'emerald',
+  'G3':  'amber',
+};
 
 function profileLabelsFile(profileId) {
   return join(DATA_DIR, `profile-${profileId}`, 'labels.json');
@@ -167,7 +176,13 @@ export function deriveAutoLabels(tournament, notes = {}) {
     ? tournament.tiers
     : (tournament.tier ? [tournament.tier] : []);
   for (const tier of tiers) {
-    out.push({ autoKey: `tier:${tier}`, name: tier, color: TIER_LABEL_COLOR, auto: true });
+    out.push({
+      autoKey: `tier:${tier}`,
+      name: tier,
+      color: TIER_COLORS[tier] || 'slate',
+      auto: true,
+      tier: true, // sinaliza pro frontend renderizar como "selo" sólido
+    });
   }
 
   return out;
