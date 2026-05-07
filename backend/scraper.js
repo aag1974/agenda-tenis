@@ -337,58 +337,67 @@ async function fetchCatalog(client, { category = JUVENIL_CATEGORY, year = new Da
 }
 
 // Verifica se a atleta está na página "Inscritos" do torneio.
-// Source of truth — o perfil dela (/perfil2/inicio + /perfil2/programa)
-// pode estar desatualizado, mas a página de Inscritos do torneio reflete
-// o estado real. Retorna { inscribed, confirmed, debug? } ou null em erro.
+// Estratégia: a página principal do torneio (/torneio_painel_info/index/X)
+// tem links pras abas (Inscrições, Classificação). Pegamos a URL da aba
+// Inscrições do HTML e seguimos. Mais robusto que chutar URL.
 //
-// Pattern do TI: linha com "ID:472658" próximo de status "Confirmado",
-// "Pendente", etc. Faz match no texto inteiro da página.
+// Source of truth — o perfil dela pode estar desatualizado, mas a página
+// de Inscritos do torneio reflete o estado real. A maior parte do TI
+// requer login pra ver Inscritos, então sem `client` autenticado não roda.
 export async function getAthleteStatusInTournament(tournamentId, athleteId, client = null, opts = {}) {
   if (!athleteId) return null;
-  const path = `/torneio_painel_inscritos/index/${tournamentId}`;
-  const url = `${BASE}${path}`;
+  if (!client) return null; // requer auth — fetch público dá 404
   const debug = !!opts.debug;
-  let html;
-  let status = null;
+  const dbg = (extra) => debug ? { ...extra } : undefined;
+  const dbgLog = [];
+
+  // 1. Página principal do torneio (info)
+  const infoPath = `/torneio_painel_info/index/${tournamentId}`;
+  let infoHtml;
   try {
-    if (client) {
-      const res = await client.request(path);
-      status = res.status;
-      if (!res.ok) {
-        if (debug) return { inscribed: false, confirmed: false, debug: { url, status, error: 'non-ok' } };
-        return null;
-      }
-      html = await res.text();
-    } else {
-      const res = await fetch(url, { headers: { 'User-Agent': UA } });
-      status = res.status;
-      if (!res.ok) {
-        if (debug) return { inscribed: false, confirmed: false, debug: { url, status, error: 'non-ok' } };
-        return null;
-      }
-      html = await res.text();
-    }
+    infoHtml = await client.getText(infoPath);
+    dbgLog.push({ step: 'info', path: infoPath, len: infoHtml.length });
   } catch (err) {
-    if (debug) return { inscribed: false, confirmed: false, debug: { url, status, error: err.message } };
-    return null;
+    return { inscribed: false, confirmed: false, ...(debug ? { debug: { error: 'info ' + err.message, log: dbgLog } } : {}) };
   }
+
+  // 2. Localiza link pra aba Inscrições
+  const $ = cheerio.load(infoHtml);
+  let inscritosPath = null;
+  $('a').each((i, a) => {
+    const href = ($(a).attr('href') || '').trim();
+    const text = $(a).text().trim().toLowerCase();
+    if (text.includes('inscri') && /\/torneio_painel_/.test(href) && !inscritosPath) {
+      inscritosPath = href.startsWith('http') ? new URL(href).pathname : href;
+    }
+  });
+  // Fallback: tenta padrão comum se não achar
+  if (!inscritosPath) inscritosPath = `/torneio_painel_inscritos/index/${tournamentId}`;
+  dbgLog.push({ step: 'find-inscritos', inscritosPath });
+
+  // 3. Busca a página de inscritos (autenticada)
+  let html;
+  try {
+    html = await client.getText(inscritosPath);
+    dbgLog.push({ step: 'inscritos', len: html.length });
+  } catch (err) {
+    return { inscribed: false, confirmed: false, ...(debug ? { debug: { error: 'inscritos ' + err.message, log: dbgLog } } : {}) };
+  }
+
   const text = elementInnerText(cheerio.load(html)('body'));
   const idPattern = new RegExp(`ID\\s*:\\s*${athleteId}\\b`, 'i');
   const m = idPattern.exec(text);
   if (!m) {
     if (debug) {
       const isLoginPage = /entrar|email\s*:|senha\s*:|login/i.test(text.slice(0, 500));
-      return {
-        inscribed: false,
-        confirmed: false,
-        debug: { url, status, htmlLength: html.length, isLoginPage, sample: text.slice(0, 300) },
-      };
+      const hasIdMarker = /ID\s*:\s*\d+/.test(text);
+      return { inscribed: false, confirmed: false, debug: { log: dbgLog, isLoginPage, hasIdMarker, sample: text.slice(0, 400) } };
     }
     return { inscribed: false, confirmed: false };
   }
   const window = text.slice(Math.max(0, m.index - 200), Math.min(text.length, m.index + 400));
   const confirmed = /Confirmado/i.test(window);
-  if (debug) return { inscribed: true, confirmed, debug: { url, status, window } };
+  if (debug) return { inscribed: true, confirmed, debug: { log: dbgLog, window } };
   return { inscribed: true, confirmed };
 }
 
@@ -536,8 +545,9 @@ function parseVenuesSection(text) {
 
 // Debug: roda só os scrapes de inscrição da atleta e retorna o que veio
 // de cada página do TI. Útil pra investigar "por que Anna não aparece
-// como inscrita nesse torneio".
-export async function debugAthleteInscriptions({ email, password }) {
+// como inscrita nesse torneio". Aceita opção { tid } pra também testar
+// a página de Inscritos daquele torneio com cliente autenticado.
+export async function debugAthleteInscriptions({ email, password }, opts = {}) {
   const client = new TIClient();
   await client.login(email, password);
   const athlete = await getAthleteInfo(client);
@@ -546,7 +556,7 @@ export async function debugAthleteInscriptions({ email, password }) {
   try { programaIds = await getProgramaIds(client); }
   catch (err) { programaError = err.message; }
   const annaIds = [...new Set([...athlete.tournamentIds, ...programaIds])];
-  return {
+  const out = {
     athleteId: client.athleteId,
     athleteName: athlete.name,
     profileTournamentIds: athlete.tournamentIds,
@@ -557,6 +567,11 @@ export async function debugAthleteInscriptions({ email, password }) {
     unionIds: annaIds,
     unionCount: annaIds.length,
   };
+  if (opts.tid) {
+    out.perTournamentCheck = await getAthleteStatusInTournament(opts.tid, client.athleteId, client, { debug: true })
+      .catch(err => ({ error: err.message }));
+  }
+  return out;
 }
 
 export async function syncAthlete({ email, password, starredIds = [] }) {

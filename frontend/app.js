@@ -2067,15 +2067,26 @@ function refreshSyncProgressModal() {
     dot.className = 'inline-block w-3 h-3 rounded-full bg-amber-400 animate-pulse';
     const startedAt = ss?.startedAt ? new Date(ss.startedAt).getTime() : Date.now();
     const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    const profileCount = (state.profiles || []).length;
+    const subtitle = profileCount > 1
+      ? `${profileCount} atletas · decorrido ${elapsedSec}s`
+      : `Decorrido ${elapsedSec}s`;
     body.appendChild(el('div', { class: 'flex items-center gap-3 mb-3' },
       el('div', { class: 'w-8 h-8 rounded-full border-4 border-slate-200 border-t-[#00a3e0] animate-spin' }),
       el('div', null,
-        el('div', { class: 'font-semibold' }, 'Sincronizando…'),
-        el('div', { class: 'text-xs text-slate-500' }, `Decorrido: ${elapsedSec}s · costuma levar ~30s`),
+        el('div', { class: 'font-semibold' }, 'Atualizando agenda'),
+        el('div', { class: 'text-xs text-slate-500' }, subtitle),
       ),
     ));
-    body.appendChild(el('p', { class: 'text-sm text-slate-600' },
-      'Buscando torneios, inscrições e boletos no Tênis Integrado. Pode deixar essa janela aberta — vou mostrar aqui o que mudou quando terminar.'));
+    const stepClass = 'flex items-start gap-2 text-xs text-slate-600 py-0.5';
+    body.appendChild(el('ul', { class: 'space-y-0.5 mb-3 mt-1' },
+      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Lendo lista de torneios da CBT'),
+      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Detectando boletos pendentes e prazos'),
+      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Verificando inscrição em cada torneio'),
+      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Atualizando ranking nacional e regional'),
+    ));
+    body.appendChild(el('p', { class: 'text-xs text-slate-500 italic' },
+      'Costuma levar ~30-50s. Pode esconder essa janela — quando terminar, mostro aqui o que mudou.'));
     footer.appendChild(el('button', {
       type: 'button',
       class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-600 hover:bg-slate-100',

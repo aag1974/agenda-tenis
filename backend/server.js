@@ -672,14 +672,10 @@ app.get('/api/profiles/:id/debug-inscriptions', requireAuth, ensureOwnedProfile,
   const creds = getProfileCredentials(req.params.id);
   if (!creds) return res.status(404).json({ error: 'Perfil não encontrado' });
   try {
-    const data = await debugAthleteInscriptions(creds);
     const tid = req.query.tid;
+    const data = await debugAthleteInscriptions(creds, { tid });
     const found = tid ? data.unionIds.includes(String(tid)) : null;
-    let perTournament = null;
-    if (tid && data.athleteId) {
-      perTournament = await getAthleteStatusInTournament(tid, data.athleteId, null, { debug: true }).catch(err => ({ error: err.message }));
-    }
-    res.json({ ...data, queryTid: tid || null, found, perTournamentCheck: perTournament });
+    res.json({ ...data, queryTid: tid || null, found });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
