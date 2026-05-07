@@ -1,11 +1,11 @@
 {
-  "name": "Agenda Tênis Integrado",
-  "short_name": "Agenda Tênis Integrado",
-  "description": "Organize torneios de tênis: agenda, hotéis, passagens",
+  "name": "Tennis Flow",
+  "short_name": "Tennis Flow",
+  "description": "Organize a agenda de torneios da família atleta",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#059669",
+  "background_color": "#0e3a4d",
+  "theme_color": "#0e3a4d",
   "orientation": "portrait",
   "lang": "pt-BR",
   "icons": [

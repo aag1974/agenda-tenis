@@ -1,5 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="36" fill="#059669"/>
-  <circle cx="96" cy="96" r="60" fill="#dcfce7"/>
-  <path d="M 36 96 Q 96 36 156 96 M 36 96 Q 96 156 156 96" stroke="#059669" stroke-width="6" fill="none" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <!-- Navy bg (iOS arredonda os cantos automaticamente) -->
+  <rect width="192" height="192" fill="#0e3a4d"/>
+  <!-- Bola de tênis -->
+  <circle cx="96" cy="96" r="74" fill="#bef264" stroke="#4d7c0f" stroke-width="3"/>
+  <!-- TF: T branco, F cyan -->
+  <text x="96" y="120" font-family="-apple-system, system-ui, 'Segoe UI', sans-serif" font-size="74" font-weight="900" text-anchor="middle" letter-spacing="-3">
+    <tspan fill="#ffffff" stroke="#0e3a4d" stroke-width="2">T</tspan><tspan fill="#0891b2">F</tspan>
+  </text>
 </svg>
