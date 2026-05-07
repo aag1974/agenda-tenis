@@ -1436,6 +1436,21 @@ function renderKanbanCard(t) {
 
     labelsRow && el('div', { onClick: onLabelClick, title: 'Click pra expandir/colapsar etiquetas' }, labelsRow),
 
+    // Chip da coluna — só aparece quando há busca ativa, pra ajudar
+    // o usuário a localizar em qual coluna o card está (útil no mobile
+    // que mostra uma coluna por vez).
+    (state.searchQuery && state.searchQuery.trim()) && (() => {
+      const colId = effectiveColumnFor(t);
+      const col = KANBAN_COLUMNS.find(c => c.id === colId);
+      const label = state.columnLabels[colId] || col?.label || colId;
+      return el('div', {
+        class: 'mb-1 inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-800 border border-cyan-200',
+      },
+        el('span', null, col?.icon || '🏷️'),
+        el('span', null, label),
+      );
+    })(),
+
     el('h3', { class: 'text-sm font-medium leading-snug mb-0.5 line-clamp-2 pr-12' }, t.name || '(sem nome)'),
 
     el('div', { class: 'text-xs text-slate-600 flex items-center justify-between gap-2' },
@@ -1905,13 +1920,15 @@ function renderHeaderEl() {
     }, '+'),
   );
 
-  // Busca livre — vive no header e filtra por nome/cidade/UF/etiqueta/chave
+  // Busca livre — vive no header e filtra por nome/cidade/UF/etiqueta/chave.
+  // font-size: 16px obrigatório pra iOS Safari não dar zoom no foco do input.
   const searchInput = profile && el('input', {
     id: 'header-search',
     type: 'search',
     placeholder: 'Buscar…',
     value: state.searchQuery || '',
-    class: 'w-full text-sm bg-white/10 hover:bg-white/15 focus:bg-white/20 text-white placeholder-white/50 border border-white/20 rounded px-3 py-1.5 outline-none focus:border-cyan-300',
+    class: 'w-full bg-white/10 hover:bg-white/15 focus:bg-white/20 text-white placeholder-white/50 border border-white/20 rounded px-3 py-1.5 outline-none focus:border-cyan-300',
+    style: 'font-size: 16px;',
   });
   if (searchInput) {
     searchInput.oninput = (e) => {
