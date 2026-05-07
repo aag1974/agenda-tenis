@@ -1027,10 +1027,12 @@ function renderKanban(allTournaments) {
     if (!cardsByColumn[col]) cardsByColumn[col] = [];
     cardsByColumn[col].push(t);
   }
-  // Sort within each column: manual cardOrder first, then by start date (asc/desc por coluna)
+  // Sort within each column: pinados primeiro, depois cardOrder manual, depois data
   const sortForColumn = (colId) => {
     const dir = state.columnSort[colId] === 'desc' ? 'desc' : 'asc';
     return (a, b) => {
+      const pa = !!a.notes?.pinned, pb = !!b.notes?.pinned;
+      if (pa !== pb) return pa ? -1 : 1;
       const oa = a.notes?.cardOrder, ob = b.notes?.cardOrder;
       if (typeof oa === 'number' && typeof ob === 'number') return oa - ob;
       if (typeof oa === 'number') return -1;
@@ -1139,6 +1141,113 @@ function renderKanbanColumn(col, cards) {
 // Estado UI por card: tarja expandida (mostra texto) ou colapsada (só a barra).
 const expandedLabelCards = new Set();
 
+// ===== Card actions (3 pontinhos) =====
+function openCardActions(anchorEl, t) {
+  // Fecha popover existente
+  const existing = document.getElementById('card-actions-popover');
+  if (existing) { existing.remove(); return; }
+
+  const isPinned = !!t.notes?.pinned;
+  const pop = el('div', {
+    id: 'card-actions-popover',
+    class: 'fixed z-[60] bg-white rounded-lg shadow-xl border border-slate-200 py-1 min-w-[180px]',
+    style: 'color:#0f172a;',
+    onClick: (e) => e.stopPropagation(),
+  },
+    el('button', {
+      class: 'w-full text-left px-3 py-2 text-sm hover:bg-slate-100 flex items-center gap-2',
+      onClick: () => { pop.remove(); togglePinCard(t); },
+    },
+      el('span', null, isPinned ? '📍' : '📌'),
+      el('span', null, isPinned ? 'Desfixar' : 'Fixar no topo'),
+    ),
+    el('button', {
+      class: 'w-full text-left px-3 py-2 text-sm hover:bg-slate-100 flex items-center gap-2',
+      onClick: () => { pop.remove(); shareCardWhatsApp(t); },
+    },
+      el('span', null, '📤'),
+      el('span', null, 'Compartilhar (WhatsApp)'),
+    ),
+  );
+
+  document.body.appendChild(pop);
+  // Posiciona abaixo do botão âncora
+  const r = anchorEl.getBoundingClientRect();
+  const popW = pop.offsetWidth;
+  const left = Math.max(8, Math.min(r.right - popW, window.innerWidth - popW - 8));
+  pop.style.left = `${left}px`;
+  pop.style.top = `${r.bottom + 4}px`;
+
+  // Fecha ao clicar fora ou pressionar Esc
+  const onAway = (ev) => {
+    if (!pop.contains(ev.target) && ev.target !== anchorEl) { pop.remove(); cleanup(); }
+  };
+  const onKey = (ev) => { if (ev.key === 'Escape') { pop.remove(); cleanup(); } };
+  const cleanup = () => {
+    document.removeEventListener('click', onAway, true);
+    document.removeEventListener('keydown', onKey);
+  };
+  setTimeout(() => {
+    document.addEventListener('click', onAway, true);
+    document.addEventListener('keydown', onKey);
+  }, 0);
+}
+
+async function togglePinCard(t) {
+  const next = !t.notes?.pinned;
+  // Optimistic
+  t.notes = { ...(t.notes || {}), pinned: next };
+  rerenderBody();
+  try {
+    await api.updateNotes(state.activeProfileId, t.id, { pinned: next });
+  } catch (err) {
+    t.notes.pinned = !next;
+    rerenderBody();
+    alert('Erro ao fixar: ' + err.message);
+  }
+}
+
+function buildShareText(t) {
+  const pp = t.pendingPayment;
+  const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
+  const where = [t.city, t.state].filter(Boolean).join('/');
+  const dates = t.startDate
+    ? (t.endDate && t.endDate !== t.startDate ? `${t.startDate} a ${t.endDate}` : t.startDate)
+    : null;
+  const lines = [];
+  lines.push(`🎾 *${t.name || 'Torneio'}*`);
+  if (dates) lines.push(`📅 ${dates}`);
+  if (where) lines.push(`📍 ${where}`);
+  if (tiers.length) lines.push(`🏆 ${tiers.join(' · ')}`);
+  if (t.registrationStatus) lines.push(`📝 Inscrição: ${t.registrationStatus}`);
+  if (pp?.value) lines.push(`💰 Boleto: ${pp.value}${pp.dueDate ? ` (vence ${pp.dueDate})` : ''}`);
+  if (t.url) lines.push(`\n🔗 ${t.url}`);
+  // Branding — instiga curiosidade sem ser intrusivo
+  lines.push('');
+  lines.push('— Compartilhado pelo *Tennis Flow* 🎾');
+  lines.push(`Organize a agenda de torneios em um Kanban: ${location.origin}/manual`);
+  return lines.join('\n');
+}
+
+async function shareCardWhatsApp(t) {
+  const text = buildShareText(t);
+  const shareData = {
+    title: `${t.name || 'Torneio'} — Tennis Flow`,
+    text,
+  };
+  // Web Share API quando disponível (iPhone, Android) → sheet nativo
+  if (navigator.share) {
+    try { await navigator.share(shareData); return; }
+    catch (err) {
+      // Usuário cancelou — não cair no fallback
+      if (err?.name === 'AbortError') return;
+    }
+  }
+  // Fallback: WhatsApp Web/desktop
+  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 function renderKanbanCard(t) {
   const selected = !!t.notes?.selected;
   const cityState = [t.city, t.state].filter(Boolean).join(' / ');
@@ -1169,14 +1278,27 @@ function renderKanbanCard(t) {
     rerenderBody();
   };
 
+  const isPinned = !!t.notes?.pinned;
   return el('article', {
-    class: 'kanban-card bg-white text-slate-900 rounded-md p-2.5 shadow-sm cursor-pointer hover:shadow-md',
+    class: `kanban-card relative bg-white text-slate-900 rounded-md p-2.5 shadow-sm cursor-pointer hover:shadow-md ${isPinned ? 'ring-2 ring-amber-300' : ''}`,
     'data-tid': t.id,
     onClick: () => openTournament(t.id),
   },
+    // Botão de 3 pontinhos no canto superior direito
+    el('button', {
+      class: 'absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 leading-none',
+      title: 'Ações',
+      'aria-label': 'Ações do torneio',
+      onClick: (e) => { e.stopPropagation(); openCardActions(e.currentTarget, t); },
+    }, '⋯'),
+    isPinned && el('span', {
+      class: 'absolute top-1 right-8 text-amber-500 text-xs',
+      title: 'Fixado no topo',
+    }, '📌'),
+
     labelsRow && el('div', { onClick: onLabelClick, title: 'Click pra expandir/colapsar etiquetas' }, labelsRow),
 
-    el('h3', { class: 'text-sm font-medium leading-snug mb-0.5 line-clamp-2' }, t.name || '(sem nome)'),
+    el('h3', { class: 'text-sm font-medium leading-snug mb-0.5 line-clamp-2 pr-12' }, t.name || '(sem nome)'),
 
     el('div', { class: 'text-xs text-slate-600 flex items-center justify-between gap-2' },
       el('span', { class: 'truncate' }, cityState || '—'),
