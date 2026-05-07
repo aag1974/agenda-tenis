@@ -2432,9 +2432,11 @@ async function openTournament(tid) {
   const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-40', onClick: close });
 
   const observationsBlock = merged.observations
-    ? el('section', null,
-        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Observações do torneio'),
-        el('pre', { class: 'text-xs whitespace-pre-wrap bg-slate-50 p-3 rounded border border-slate-200 max-h-64 overflow-auto' }, merged.observations),
+    ? el('details', { class: 'group' },
+        el('summary', { class: 'cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 select-none' },
+          'Observações do torneio ▾',
+        ),
+        el('pre', { class: 'mt-2 text-xs whitespace-pre-wrap bg-slate-50 p-3 rounded border border-slate-200 max-h-64 overflow-auto' }, merged.observations),
       )
     : null;
 
