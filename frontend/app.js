@@ -206,9 +206,9 @@ const api = {
     return r.json();
   },
   async listInvites() { return (await fetch('/api/household/invites')).json(); },
-  async createInvite(label) {
+  async createInvite({ label, role }) {
     const r = await fetch('/api/household/invites', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label, role }),
     });
     if (!r.ok) throw new Error((await r.json()).error || 'Erro');
     return r.json();
@@ -218,6 +218,13 @@ const api = {
   },
   async removeMember(userId) {
     const r = await fetch('/api/household/members/' + userId, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async setMemberRole(userId, role) {
+    const r = await fetch(`/api/household/members/${userId}/role`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }),
+    });
     if (!r.ok) throw new Error((await r.json()).error || 'Erro');
     return r.json();
   },
@@ -416,6 +423,8 @@ async function init() {
     id: me.userId, email: me.email,
     householdId: me.householdId, members: me.members || [],
     plan: me.plan || null,
+    role: me.role || 'editor',
+    isFounder: !!me.isFounder,
   } : null;
   state.hasUsers = !!me.hasUsers;
 
@@ -724,20 +733,29 @@ async function openInviteModal() {
   const renderBody = async () => {
     body.innerHTML = '';
     body.appendChild(el('p', { class: 'text-sm text-slate-600' },
-      'Pessoas convidadas enxergam todos os atletas da sua família e podem editar tudo. Mande o link por WhatsApp, email ou SMS.'));
+      'Convide membros da família como Editor (mexe em tudo) ou Leitor (só visualiza). Mande o link por WhatsApp, email ou SMS.'));
 
-    // Form pra criar novo convite
+    // Form pra criar novo convite — apelido + role
     const labelInput = el('input', {
       type: 'text', placeholder: 'Apelido (opcional, ex: "Maria")',
-      class: 'flex-1 text-sm rounded border border-slate-300 px-2 py-1.5 outline-none focus:border-cyan-400',
+      class: 'w-full text-sm rounded border border-slate-300 px-2 py-1.5 outline-none focus:border-cyan-400',
     });
+    let selectedRole = 'editor';
+    const roleBtn = (text, value, desc) => el('button', {
+      type: 'button',
+      class: `flex-1 text-sm rounded border px-3 py-2 text-left transition-colors ${selectedRole === value ? 'border-cyan-600 bg-cyan-50' : 'border-slate-300 hover:bg-slate-50'}`,
+      onClick: (e) => { e.preventDefault(); selectedRole = value; renderBody(); },
+    },
+      el('div', { class: `text-xs font-semibold ${selectedRole === value ? 'text-cyan-700' : 'text-slate-700'}` }, text),
+      el('div', { class: 'text-[11px] text-slate-500 mt-0.5' }, desc),
+    );
     const createBtn = el('button', {
       type: 'button',
-      class: 'shrink-0 text-sm rounded bg-cyan-600 hover:bg-cyan-700 text-white font-medium px-3 py-1.5',
+      class: 'w-full text-sm rounded bg-cyan-600 hover:bg-cyan-700 text-white font-medium px-3 py-2',
       onClick: async () => {
         createBtn.disabled = true; createBtn.textContent = 'Gerando…';
         try {
-          await api.createInvite(labelInput.value.trim() || null);
+          await api.createInvite({ label: labelInput.value.trim() || null, role: selectedRole });
           await renderBody();
         } catch (err) {
           alert('Erro: ' + err.message);
@@ -745,7 +763,14 @@ async function openInviteModal() {
         }
       },
     }, 'Gerar link');
-    body.appendChild(el('div', { class: 'flex items-center gap-2' }, labelInput, createBtn));
+    body.appendChild(el('div', { class: 'space-y-2' },
+      labelInput,
+      el('div', { class: 'flex gap-2' },
+        roleBtn('Editor', 'editor', 'Adiciona, edita e exclui'),
+        roleBtn('Leitor', 'viewer', 'Só visualiza, não altera'),
+      ),
+      createBtn,
+    ));
 
     // Membros atuais
     const meRes = await api.me();
@@ -755,23 +780,45 @@ async function openInviteModal() {
       body.appendChild(el('div', { class: 'pt-3 border-t border-slate-200' },
         el('h4', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2' }, 'Membros atuais'),
         el('ul', { class: 'space-y-1' },
-          ...state.user.members.map(m => el('li', { class: 'flex items-center gap-2 text-sm py-1' },
-            el('span', { class: 'w-7 h-7 rounded-full bg-cyan-600 text-white text-[10px] font-semibold flex items-center justify-center shrink-0' }, userInitials(m.email || m.name)),
-            el('span', { class: 'truncate flex-1' }, m.email || m.name || 'membro'),
-            m.id === state.user.id && el('span', { class: 'text-xs text-slate-400' }, 'você'),
-            m.isFounder && m.id !== state.user.id && el('span', { class: 'text-xs text-slate-400' }, 'dono'),
-            isFounder && !m.isFounder && el('button', {
-              class: 'text-xs text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded',
-              title: 'Remover acesso',
-              onClick: async () => {
-                if (!confirm(`Remover ${m.email} da família?\n\nEla perde acesso aos atletas. Os atletas que ela criou aqui permanecem.`)) return;
-                try {
-                  await api.removeMember(m.id);
-                  await renderBody();
-                } catch (err) { alert('Erro: ' + err.message); }
-              },
-            }, 'Remover'),
-          )),
+          ...state.user.members.map(m => {
+            const roleBadge = m.isFounder
+              ? el('span', { class: 'text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800' }, 'Dono')
+              : el('span', { class: `text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${m.role === 'viewer' ? 'bg-slate-200 text-slate-700' : 'bg-cyan-100 text-cyan-800'}` }, m.role === 'viewer' ? 'Leitor' : 'Editor');
+            return el('li', { class: 'flex items-center gap-2 text-sm py-1' },
+              el('span', { class: 'w-7 h-7 rounded-full bg-cyan-600 text-white text-[10px] font-semibold flex items-center justify-center shrink-0' }, userInitials(m.email || m.name)),
+              el('div', { class: 'min-w-0 flex-1' },
+                el('div', { class: 'truncate text-sm text-slate-800' }, m.email || m.name || 'membro'),
+                el('div', { class: 'flex items-center gap-1.5 mt-0.5' },
+                  roleBadge,
+                  m.id === state.user.id && el('span', { class: 'text-[11px] text-slate-400' }, 'você'),
+                ),
+              ),
+              isFounder && !m.isFounder && el('div', { class: 'flex items-center gap-1 shrink-0' },
+                el('button', {
+                  class: 'text-xs text-cyan-700 hover:bg-cyan-50 px-2 py-0.5 rounded',
+                  title: m.role === 'viewer' ? 'Promover a Editor' : 'Rebaixar a Leitor',
+                  onClick: async () => {
+                    const next = m.role === 'viewer' ? 'editor' : 'viewer';
+                    try {
+                      await api.setMemberRole(m.id, next);
+                      await renderBody();
+                    } catch (err) { alert('Erro: ' + err.message); }
+                  },
+                }, m.role === 'viewer' ? '↑ Editor' : '↓ Leitor'),
+                el('button', {
+                  class: 'text-xs text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded',
+                  title: 'Remover acesso',
+                  onClick: async () => {
+                    if (!confirm(`Remover ${m.email} da família?\n\nEla perde acesso aos atletas. Os atletas que ela criou aqui permanecem.`)) return;
+                    try {
+                      await api.removeMember(m.id);
+                      await renderBody();
+                    } catch (err) { alert('Erro: ' + err.message); }
+                  },
+                }, 'Remover'),
+              ),
+            );
+          }),
         ),
       ));
     }
@@ -817,8 +864,14 @@ async function openInviteModal() {
                 renderBody();
               },
             }, '🗑');
+            const roleTag = el('span', {
+              class: `text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${inv.role === 'viewer' ? 'bg-slate-200 text-slate-700' : 'bg-cyan-100 text-cyan-800'}`,
+            }, inv.role === 'viewer' ? 'Leitor' : 'Editor');
             return el('li', null,
-              inv.label && el('div', { class: 'text-xs text-slate-600 mb-1' }, inv.label),
+              el('div', { class: 'flex items-center gap-2 mb-1' },
+                inv.label && el('span', { class: 'text-xs text-slate-600' }, inv.label),
+                roleTag,
+              ),
               el('div', { class: 'flex items-center gap-1' }, linkInput, copyBtn, wppBtn, revokeBtn),
             );
           }),
@@ -1808,6 +1861,8 @@ function tierStripClass(color) {
 
 function wireKanbanSortable(container) {
   if (typeof Sortable === 'undefined') return;
+  // Viewer (acesso só-leitura) não pode mover cards nem reordenar colunas.
+  if (isViewer()) return;
   // Em mobile (telas <640px) o drag-drop do touchscreen briga com o
   // scroll/swipe natural. Pula o wiring inteiro — usuário move card
   // via dropdown "Mudar coluna" no header do modal e reorganiza colunas
@@ -1905,6 +1960,10 @@ function toTitleCase(s) {
     if (i > 0 && lower.has(w)) return w;
     return w.charAt(0).toUpperCase() + w.slice(1);
   }).join(' ');
+}
+
+function isViewer() {
+  return state.user?.role === 'viewer';
 }
 
 function userInitials(emailOrName) {
@@ -2006,10 +2065,16 @@ function renderHeaderEl() {
   }
   const searchWrap = profile && el('div', { class: 'relative w-full' }, searchInput, searchClearBtn);
 
+  const viewerBadge = isViewer() && el('span', {
+    class: 'hidden sm:inline-flex items-center gap-1 text-[10px] uppercase tracking-wide font-semibold bg-amber-400/90 text-amber-950 px-2 py-0.5 rounded shrink-0',
+    title: 'Você tem acesso somente leitura. Peça ao dono pra promover sua conta.',
+  }, '👁 Leitor');
+
   return el('header', { id: 'header-bar', class: 'flex items-center gap-2 sm:gap-3 pb-2 border-b border-slate-200 relative' },
     logo,
     profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchWrap),
     el('div', { class: 'flex items-center gap-1 sm:gap-2 shrink-0' },
+      viewerBadge,
       memberStack,
       profile && renderFiltersButton(),
       profile && renderAlertsBell(),
@@ -2195,11 +2260,13 @@ function refreshSyncProgressModal() {
       class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-100',
       onClick: close,
     }, 'Fechar'));
-    footer.appendChild(el('button', {
-      type: 'button',
-      class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
-      onClick: () => { close(); syncNow(); },
-    }, 'Tentar de novo'));
+    if (!isViewer()) {
+      footer.appendChild(el('button', {
+        type: 'button',
+        class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
+        onClick: () => { close(); syncNow(); },
+      }, 'Tentar de novo'));
+    }
     return;
   }
 
@@ -2342,7 +2409,7 @@ function openSyncModal({ dot, title, detail, runningOnly = false }) {
         class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-100',
         onClick: close,
       }, runningOnly ? 'Fechar' : 'Cancelar'),
-      !runningOnly && el('button', {
+      !runningOnly && !isViewer() && el('button', {
         type: 'button',
         class: 'px-3 py-1.5 text-sm rounded bg-[#00a3e0] hover:bg-[#0090c7] text-white font-medium',
         onClick: () => { close(); syncNow(); },

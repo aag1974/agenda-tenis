@@ -192,11 +192,23 @@ export function authMiddleware(req, res, next) {
     req.userId = user.id;
     req.userEmail = user.email;
     req.householdId = user.householdId || user.id;
+    // Founder (criador da household) = sempre editor. Outros usam o
+    // role gravado, default 'editor' pra manter compat com membros legados.
+    const isFounder = user.id === (user.householdId || user.id);
+    req.userRole = isFounder ? 'editor' : (user.role || 'editor');
   }
   next();
 }
 
 export function requireAuth(req, res, next) {
   if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+  next();
+}
+
+export function requireEditor(req, res, next) {
+  if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+  if (req.userRole === 'viewer') {
+    return res.status(403).json({ error: 'Acesso somente leitura. Peça ao dono da família para promover sua conta a Editor.' });
+  }
   next();
 }

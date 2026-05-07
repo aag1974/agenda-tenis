@@ -28,13 +28,13 @@ import { syncProfile, getSyncStatus, startAutoSync } from './sync-manager.js';
 import { deriveStatus, fetchTournamentDetails, debugAthleteInscriptions, getAthleteStatusInTournament } from './scraper.js';
 import { getProfileCredentials } from './storage.js';
 import {
-  createUser, authenticate, signCookie, authMiddleware, requireAuth,
+  createUser, authenticate, signCookie, authMiddleware, requireAuth, requireEditor,
   userCount, listUsers, findUserById, getPlanInfo, migrateUsersAddPlan,
 } from './auth.js';
 import {
   migrateHouseholdsOnBoot, listHouseholdMembers, profileBelongsToHousehold,
   createInvite, getInvite, listInvitesByHousehold, revokeInvite, acceptInvite,
-  removeHouseholdMember,
+  removeHouseholdMember, setMemberRole, MEMBER_ROLES,
   getHouseholdBoardConfig, setHouseholdBoardConfig,
 } from './household.js';
 import * as admin from './admin-cli.js';
@@ -71,6 +71,8 @@ app.get('/api/auth/me', (req, res) => {
     members,
     hasUsers: userCount() > 0,
     plan: user ? getPlanInfo(user) : null,
+    role: req.userRole || null,
+    isFounder: req.userId && req.userId === householdId,
   });
 });
 
@@ -111,7 +113,7 @@ app.get('/api/household/board-config', requireAuth, (req, res) => {
   res.json(getHouseholdBoardConfig(req.householdId));
 });
 
-app.patch('/api/household/board-config', requireAuth, (req, res) => {
+app.patch('/api/household/board-config', requireAuth, requireEditor, (req, res) => {
   res.json(setHouseholdBoardConfig(req.householdId, req.body || {}));
 });
 
@@ -128,17 +130,41 @@ app.delete('/api/household/members/:userId', requireAuth, (req, res) => {
   }
 });
 
+app.patch('/api/household/members/:userId/role', requireAuth, (req, res) => {
+  try {
+    const result = setMemberRole({
+      householdId: req.householdId,
+      requesterId: req.userId,
+      targetUserId: req.params.userId,
+      role: req.body?.role,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(403).json({ error: err.message });
+  }
+});
+
 app.get('/api/household/invites', requireAuth, (req, res) => {
   res.json({ invites: listInvitesByHousehold(req.householdId) });
 });
 
-app.post('/api/household/invites', requireAuth, (req, res) => {
-  const { label } = req.body || {};
-  const inv = createInvite({ householdId: req.householdId, invitedBy: req.userId, label: label || null });
-  res.status(201).json(inv);
+app.post('/api/household/invites', requireAuth, requireEditor, (req, res) => {
+  const { label, role } = req.body || {};
+  const safeRole = MEMBER_ROLES.includes(role) ? role : 'editor';
+  try {
+    const inv = createInvite({
+      householdId: req.householdId,
+      invitedBy: req.userId,
+      label: label || null,
+      role: safeRole,
+    });
+    res.status(201).json(inv);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
-app.delete('/api/household/invites/:token', requireAuth, (req, res) => {
+app.delete('/api/household/invites/:token', requireAuth, requireEditor, (req, res) => {
   const ok = revokeInvite(req.params.token, req.householdId);
   if (!ok) return res.status(404).json({ error: 'Convite não encontrado' });
   res.status(204).end();
@@ -474,7 +500,7 @@ function renderSharePage(tournament, details) {
 </html>`;
 }
 
-app.post('/api/profiles/:id/tournaments/:tid/share', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/tournaments/:tid/share', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const data = getSyncedData(req.params.id);
   const t = (data?.tournaments || []).find(x => x.id === req.params.tid);
   if (!t) return res.status(404).json({ error: 'Torneio não encontrado' });
@@ -503,7 +529,7 @@ app.get('/api/profiles', requireAuth, (req, res) => {
   res.json(listProfiles({ householdId: req.householdId }));
 });
 
-app.post('/api/profiles', requireAuth, (req, res) => {
+app.post('/api/profiles', requireAuth, requireEditor, (req, res) => {
   const { athleteName, tiEmail, tiPassword, originAirport, originCity } = req.body || {};
   if (!tiEmail || !tiPassword) {
     return res.status(400).json({ error: 'tiEmail e tiPassword são obrigatórios' });
@@ -524,19 +550,19 @@ function ensureOwnedProfile(req, res, next) {
   next();
 }
 
-app.patch('/api/profiles/:id', requireAuth, ensureOwnedProfile, (req, res) => {
+app.patch('/api/profiles/:id', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const updated = updateProfile(req.params.id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Perfil não encontrado' });
   res.json(updated);
 });
 
-app.delete('/api/profiles/:id', requireAuth, ensureOwnedProfile, (req, res) => {
+app.delete('/api/profiles/:id', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   deleteProfile(req.params.id);
   res.status(204).end();
 });
 
 // Sync — só dispara quando o usuário pede explicitamente
-app.post('/api/profiles/:id/sync', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/sync', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const p = getProfile(req.params.id);
   if (!p) return res.status(404).json({ error: 'Perfil não encontrado' });
   syncProfile(req.params.id).catch(err => console.error(`[sync ${req.params.id}]`, err.message));
@@ -545,7 +571,7 @@ app.post('/api/profiles/:id/sync', requireAuth, ensureOwnedProfile, (req, res) =
 
 // Sync de todos os atletas da household — uma chamada, dispara em paralelo.
 // Retorna a lista dos profileIds disparados pra o frontend acompanhar.
-app.post('/api/sync-all', requireAuth, (req, res) => {
+app.post('/api/sync-all', requireAuth, requireEditor, (req, res) => {
   const profiles = listProfiles({ householdId: req.householdId });
   const ids = profiles.map(p => p.id);
   for (const id of ids) {
@@ -569,14 +595,14 @@ app.get('/api/profiles/:id/alert-rules', requireAuth, ensureOwnedProfile, (req, 
   res.json(getAlertRules(req.params.id));
 });
 
-app.post('/api/profiles/:id/alert-rules', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/alert-rules', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const { type, params, label, enabled } = req.body || {};
   if (!VALID_ALERT_TYPES.has(type)) return res.status(400).json({ error: 'Tipo inválido' });
   const rule = addAlertRule(req.params.id, { type, params: params || {}, label: label || null, enabled: enabled !== false });
   res.json(rule);
 });
 
-app.patch('/api/profiles/:id/alert-rules/:ruleId', requireAuth, ensureOwnedProfile, (req, res) => {
+app.patch('/api/profiles/:id/alert-rules/:ruleId', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const { type, params, label, enabled } = req.body || {};
   if (type && !VALID_ALERT_TYPES.has(type)) return res.status(400).json({ error: 'Tipo inválido' });
   const patch = {};
@@ -589,7 +615,7 @@ app.patch('/api/profiles/:id/alert-rules/:ruleId', requireAuth, ensureOwnedProfi
   res.json(updated);
 });
 
-app.delete('/api/profiles/:id/alert-rules/:ruleId', requireAuth, ensureOwnedProfile, (req, res) => {
+app.delete('/api/profiles/:id/alert-rules/:ruleId', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   deleteAlertRule(req.params.id, req.params.ruleId);
   res.status(204).end();
 });
@@ -600,17 +626,17 @@ app.get('/api/profiles/:id/alerts', requireAuth, ensureOwnedProfile, (req, res) 
   res.json(onlyUnseen ? events.filter(e => !e.seen) : events);
 });
 
-app.post('/api/profiles/:id/alerts/seen', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/alerts/seen', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const { ids } = req.body || {};
   if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids[] obrigatório' });
   res.json(markAlertsSeen(req.params.id, ids));
 });
 
-app.post('/api/profiles/:id/alerts/seen-all', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/alerts/seen-all', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   res.json(markAllAlertsSeen(req.params.id));
 });
 
-app.delete('/api/profiles/:id/alerts/:eventId', requireAuth, ensureOwnedProfile, (req, res) => {
+app.delete('/api/profiles/:id/alerts/:eventId', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   deleteAlertEvent(req.params.id, req.params.eventId);
   res.status(204).end();
 });
@@ -654,14 +680,14 @@ app.get('/api/profiles/:id/tournaments/:tid', requireAuth, ensureOwnedProfile, (
   res.json({ ...t, derivedStatus: deriveStatus(t), notes });
 });
 
-app.patch('/api/profiles/:id/tournaments/:tid/notes', requireAuth, ensureOwnedProfile, (req, res) => {
+app.patch('/api/profiles/:id/tournaments/:tid/notes', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const updated = updateTournamentNotes(req.params.id, req.params.tid, req.body || {});
   res.json(updated);
 });
 
 // Reset apenas das movimentações manuais (column + cardOrder).
 // Preserva comentários, etiquetas, anexos, agenda, alertas, pin etc.
-app.post('/api/profiles/:id/reset-board-overrides', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/reset-board-overrides', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const cleared = clearColumnOverrides(req.params.id);
   res.json({ cleared });
 });
@@ -684,7 +710,7 @@ app.get('/api/profiles/:id/debug-inscriptions', requireAuth, ensureOwnedProfile,
 // Reset radical: apaga synced + notes + alertas. Preserva perfil + creds.
 // Próxima sync vira baseline novo. Útil pra limpar quadro que ficou
 // inconsistente após muitas movimentações + mudanças no app.
-app.post('/api/profiles/:id/reset-all', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/reset-all', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   resetProfileData(req.params.id);
   res.json({ ok: true });
 });
@@ -1058,7 +1084,7 @@ app.get('/api/profiles/:id/board', requireAuth, ensureOwnedProfile, (req, res) =
 // Limpa cardOrder de uma lista de torneios (usado quando o usuário toca no
 // toggle asc/desc de uma coluna — reseta a ordem manual pra que o sort por data
 // volte a funcionar).
-app.post('/api/profiles/:id/cards/clear-order', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/cards/clear-order', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const { tids } = req.body || {};
   if (!Array.isArray(tids)) return res.status(400).json({ error: 'tids deve ser array' });
   for (const tid of tids) {
@@ -1067,7 +1093,7 @@ app.post('/api/profiles/:id/cards/clear-order', requireAuth, ensureOwnedProfile,
   res.json({ ok: true, cleared: tids.length });
 });
 
-app.patch('/api/profiles/:id/tournaments/:tid/column', requireAuth, ensureOwnedProfile, (req, res) => {
+app.patch('/api/profiles/:id/tournaments/:tid/column', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const { column, order, siblings, sourceSiblings } = req.body || {};
   if (!COLUMN_IDS.includes(column)) {
     return res.status(400).json({ error: 'Coluna inválida' });
@@ -1097,7 +1123,7 @@ app.get('/api/profiles/:id/tournaments/:tid/activity', requireAuth, ensureOwnedP
   res.json({ items: getCardActivity(req.params.id, req.params.tid) });
 });
 
-app.post('/api/profiles/:id/tournaments/:tid/comments', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/tournaments/:tid/comments', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   try {
     const entry = addCardComment(req.params.id, req.params.tid, req.body?.text);
     res.status(201).json(entry);
@@ -1106,7 +1132,7 @@ app.post('/api/profiles/:id/tournaments/:tid/comments', requireAuth, ensureOwned
   }
 });
 
-app.patch('/api/profiles/:id/tournaments/:tid/comments/:cid', requireAuth, ensureOwnedProfile, (req, res) => {
+app.patch('/api/profiles/:id/tournaments/:tid/comments/:cid', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   try {
     const entry = updateCardComment(req.params.id, req.params.tid, req.params.cid, req.body?.text);
     if (!entry) return res.status(404).json({ error: 'Comentário não encontrado' });
@@ -1116,7 +1142,7 @@ app.patch('/api/profiles/:id/tournaments/:tid/comments/:cid', requireAuth, ensur
   }
 });
 
-app.delete('/api/profiles/:id/tournaments/:tid/comments/:cid', requireAuth, ensureOwnedProfile, (req, res) => {
+app.delete('/api/profiles/:id/tournaments/:tid/comments/:cid', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const ok = deleteCardComment(req.params.id, req.params.tid, req.params.cid);
   if (!ok) return res.status(404).json({ error: 'Comentário não encontrado' });
   res.status(204).end();
@@ -1133,7 +1159,7 @@ app.get('/api/profiles/:id/labels', requireAuth, ensureOwnedProfile, (req, res) 
   res.json({ labels: listManualLabels(req.params.id) });
 });
 
-app.post('/api/profiles/:id/labels', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/labels', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   try {
     const entry = createManualLabel(req.params.id, req.body || {});
     res.status(201).json(entry);
@@ -1142,7 +1168,7 @@ app.post('/api/profiles/:id/labels', requireAuth, ensureOwnedProfile, (req, res)
   }
 });
 
-app.patch('/api/profiles/:id/labels/:lid', requireAuth, ensureOwnedProfile, (req, res) => {
+app.patch('/api/profiles/:id/labels/:lid', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   try {
     const entry = updateManualLabel(req.params.id, req.params.lid, req.body || {});
     if (!entry) return res.status(404).json({ error: 'Etiqueta não encontrada' });
@@ -1152,7 +1178,7 @@ app.patch('/api/profiles/:id/labels/:lid', requireAuth, ensureOwnedProfile, (req
   }
 });
 
-app.delete('/api/profiles/:id/labels/:lid', requireAuth, ensureOwnedProfile, (req, res) => {
+app.delete('/api/profiles/:id/labels/:lid', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const ok = deleteManualLabel(req.params.id, req.params.lid);
   if (!ok) return res.status(404).json({ error: 'Etiqueta não encontrada' });
   // (manuais ficam órfãs nas notas — resolveManualLabels filtra automaticamente)
@@ -1179,7 +1205,7 @@ app.get('/api/profiles/:id/tournaments/:tid/receipts', requireAuth, ensureOwnedP
   });
 });
 
-app.post('/api/profiles/:id/tournaments/:tid/receipts', requireAuth, ensureOwnedProfile, (req, res) => {
+app.post('/api/profiles/:id/tournaments/:tid/receipts', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const { category, dataUrl, originalName } = req.body || {};
   try {
     const entry = addReceipt(req.params.id, req.params.tid, { category, dataUrl, originalName });
@@ -1201,7 +1227,7 @@ app.get('/api/profiles/:id/tournaments/:tid/receipts/:rid/file', requireAuth, en
   res.sendFile(found.filePath);
 });
 
-app.patch('/api/profiles/:id/tournaments/:tid/receipts/:rid', requireAuth, ensureOwnedProfile, (req, res) => {
+app.patch('/api/profiles/:id/tournaments/:tid/receipts/:rid', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   try {
     const entry = updateReceiptCategory(req.params.id, req.params.tid, req.params.rid, req.body?.category);
     if (!entry) return res.status(404).json({ error: 'Comprovante não encontrado' });
@@ -1211,7 +1237,7 @@ app.patch('/api/profiles/:id/tournaments/:tid/receipts/:rid', requireAuth, ensur
   }
 });
 
-app.delete('/api/profiles/:id/tournaments/:tid/receipts/:rid', requireAuth, ensureOwnedProfile, (req, res) => {
+app.delete('/api/profiles/:id/tournaments/:tid/receipts/:rid', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const ok = deleteReceipt(req.params.id, req.params.tid, req.params.rid);
   if (!ok) return res.status(404).json({ error: 'Comprovante não encontrado' });
   res.status(204).end();

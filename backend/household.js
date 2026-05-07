@@ -61,15 +61,43 @@ export function getUserHouseholdId(userId) {
   return u?.householdId || null;
 }
 
+// Roles válidos pra membros: 'editor' pode mexer em tudo, 'viewer' só lê.
+// Founder (user cujo id === householdId) é sempre tratado como 'editor'.
+export const MEMBER_ROLES = ['editor', 'viewer'];
+
 export function listHouseholdMembers(householdId) {
   const users = readJson(USERS_FILE, []);
   return users
     .filter(u => u.householdId === householdId)
-    .map(u => ({
-      id: u.id, email: u.email, name: u.name || null,
-      joinedAt: u.householdJoinedAt || u.createdAt,
-      isFounder: u.id === householdId,
-    }));
+    .map(u => {
+      const isFounder = u.id === householdId;
+      return {
+        id: u.id, email: u.email, name: u.name || null,
+        joinedAt: u.householdJoinedAt || u.createdAt,
+        isFounder,
+        role: isFounder ? 'editor' : (u.role || 'editor'),
+      };
+    });
+}
+
+// Founder pode promover/rebaixar membros. O próprio founder não pode ter
+// role alterado (sempre é editor). Não pode trocar role de quem não é da
+// household.
+export function setMemberRole({ householdId, requesterId, targetUserId, role }) {
+  if (!MEMBER_ROLES.includes(role)) throw new Error('Role inválido');
+  if (requesterId !== householdId) {
+    throw new Error('Apenas o dono da família pode alterar permissões');
+  }
+  if (targetUserId === householdId) {
+    throw new Error('O dono da família é sempre Editor — papel não pode ser alterado');
+  }
+  const users = readJson(USERS_FILE, []);
+  const target = users.find(u => u.id === targetUserId);
+  if (!target) throw new Error('Membro não encontrado');
+  if (target.householdId !== householdId) throw new Error('Membro não pertence à família');
+  target.role = role;
+  writeJson(USERS_FILE, users);
+  return { id: target.id, role };
 }
 
 // Remove um membro da household — volta a ser household solo (id própria).
@@ -89,6 +117,7 @@ export function removeHouseholdMember({ householdId, requesterId, targetUserId }
   target.householdId = target.id;
   target.householdLeftAt = new Date().toISOString();
   delete target.householdJoinedAt;
+  delete target.role; // volta a ser fundador da própria household
   writeJson(USERS_FILE, users);
   return { id: target.id, email: target.email };
 }
@@ -130,7 +159,8 @@ export function setHouseholdBoardConfig(householdId, patch) {
 
 // ===== Invites =====
 
-export function createInvite({ householdId, invitedBy, label = null, ttlHours = 168 }) {
+export function createInvite({ householdId, invitedBy, label = null, role = 'editor', ttlHours = 168 }) {
+  if (!MEMBER_ROLES.includes(role)) throw new Error('Role inválido');
   const list = readJson(INVITES_FILE, []);
   const token = randomBytes(18).toString('base64url');
   const entry = {
@@ -138,6 +168,7 @@ export function createInvite({ householdId, invitedBy, label = null, ttlHours = 
     householdId,
     invitedBy,
     label,
+    role,
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + ttlHours * 3600 * 1000).toISOString(),
     acceptedBy: null,
@@ -193,6 +224,7 @@ export function acceptInvite(token, userId) {
   const oldHouseholdId = user.householdId || user.id;
   user.householdId = inv.householdId;
   user.householdJoinedAt = new Date().toISOString();
+  user.role = inv.role || 'editor';
   writeJson(USERS_FILE, users);
 
   // Migra perfis do household antigo pro novo (se a pessoa já tinha atletas)
