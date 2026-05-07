@@ -2642,11 +2642,23 @@ function toggleGearMenu() {
   // Cabeçalho do menu (estilo Trello): avatar + nome + email
   const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
   const displayName = state.user?.name && state.user.name !== state.user.email ? state.user.name : null;
+  const planLine = (() => {
+    const p = state.user?.plan;
+    if (!p) return null;
+    if (p.effective === 'pro') return { text: 'Pro vitalício', color: 'text-emerald-700' };
+    if (p.effective === 'trial') return { text: `Trial · ${p.trialDaysLeft}d restantes · fazer upgrade`, color: 'text-amber-700' };
+    return { text: 'Free · fazer upgrade', color: 'text-cyan-700' };
+  })();
   const userHeader = state.user && el('div', { class: 'px-3 py-3 border-b border-slate-200 flex items-center gap-3 bg-slate-50' },
     el('span', { class: 'w-10 h-10 rounded-full bg-cyan-600 text-white text-sm font-semibold flex items-center justify-center shrink-0' }, initials),
     el('div', { class: 'min-w-0 flex-1' },
       displayName && el('div', { class: 'text-sm font-medium text-slate-800 truncate' }, displayName),
       el('div', { class: `${displayName ? 'text-xs text-slate-500' : 'text-sm text-slate-700'} truncate` }, state.user.email || 'Conta'),
+      planLine && el('button', {
+        class: `text-[11px] ${planLine.color} hover:underline truncate text-left mt-0.5`,
+        onClick: () => { const m = $('gear-menu'); if (m) m.remove(); window.open('/upgrade', '_blank'); },
+        title: 'Ver plano',
+      }, planLine.text),
     ),
   );
 
@@ -2692,18 +2704,10 @@ function toggleGearMenu() {
   ] : [];
   // Mobile: "Convidar membro" no menu. Desktop: "+" no header (memberStack)
   const isMobile = window.matchMedia('(max-width: 640px)').matches;
-  const planLabel = (() => {
-    const p = state.user?.plan;
-    if (!p) return 'Meu plano';
-    if (p.effective === 'pro') return 'Plano: Pro vitalício';
-    if (p.effective === 'trial') return `Plano: Trial · ${p.trialDaysLeft}d restantes`;
-    return 'Plano: Free · fazer upgrade';
-  })();
   const accountActions = state.user ? [
     isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
     profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
-    { label: planLabel, onClick: () => window.open('/upgrade', '_blank') },
     { label: 'Manual', onClick: () => window.open('/manual', '_blank') },
     { label: 'Sair', onClick: () => logout() },
   ].filter(Boolean) : [];
