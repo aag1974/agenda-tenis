@@ -985,13 +985,10 @@ function renderKanban(allTournaments) {
   };
   for (const c of orderedColumns) cardsByColumn[c.id].sort(sortForColumn(c.id));
 
-  const container = el('div', { id: 'kanban-board', class: 'mt-4 flex flex-col min-h-0' },
-    el('div', { class: 'sm:hidden mb-3 shrink-0 text-xs px-3 py-2 rounded bg-amber-100/20 border border-amber-300/30 text-amber-100' },
-      '📱 Versão mobile chegando. Por enquanto, deslize lateralmente entre colunas.',
-    ),
+  const container = el('div', { id: 'kanban-board', class: 'mt-2 sm:mt-4 flex flex-col min-h-0' },
     el('div', {
       id: 'kanban-col-row',
-      class: 'flex-1 min-h-0 flex gap-3 overflow-x-auto pb-2 px-1 -mx-1',
+      class: 'flex-1 min-h-0 flex gap-2 sm:gap-3 overflow-x-auto pb-2 px-1 -mx-1',
       style: 'scroll-snap-type: x proximity;',
     },
       ...orderedColumns.map(col => renderKanbanColumn(col, cardsByColumn[col.id] || [])),
@@ -1527,9 +1524,9 @@ function renderHeaderEl() {
     onClick: (e) => { e.stopPropagation(); toggleGearMenu(); },
   }, initials);
 
-  // Bolinhas dos membros da household (exceto o usuário ativo) + botão "+"
+  // Bolinhas dos membros da household — só desktop (mobile vê no menu)
   const otherMembers = (state.user?.members || []).filter(m => m.id !== state.user?.id);
-  const memberStack = state.user && el('div', { class: 'flex items-center -space-x-2 shrink-0' },
+  const memberStack = state.user && el('div', { class: 'hidden md:flex items-center -space-x-2 shrink-0' },
     ...otherMembers.slice(0, 4).map(m => el('button', {
       class: 'w-8 h-8 rounded-full bg-emerald-600 text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-[#0e3a4d] hover:bg-emerald-500',
       title: m.email,
@@ -1547,31 +1544,74 @@ function renderHeaderEl() {
   );
 
   // Busca livre — vive no header e filtra por nome/cidade/UF/etiqueta/chave
-  const searchInput = profile && el('input', {
-    id: 'header-search',
-    type: 'search',
-    placeholder: 'Buscar por nome, cidade, etiqueta…',
-    value: state.searchQuery || '',
-    class: 'w-full max-w-md text-sm bg-white/10 hover:bg-white/15 focus:bg-white/20 text-white placeholder-white/50 border border-white/20 rounded px-3 py-1.5 outline-none focus:border-cyan-300',
-  });
-  if (searchInput) {
-    searchInput.oninput = (e) => {
+  const makeSearchInput = (extraClass = '') => {
+    const inp = el('input', {
+      id: 'header-search',
+      type: 'search',
+      placeholder: 'Buscar por nome, cidade, etiqueta…',
+      value: state.searchQuery || '',
+      class: `w-full text-sm bg-white/10 hover:bg-white/15 focus:bg-white/20 text-white placeholder-white/50 border border-white/20 rounded px-3 py-1.5 outline-none focus:border-cyan-300 ${extraClass}`,
+    });
+    inp.oninput = (e) => {
       state.searchQuery = e.target.value;
-      // Mantém o foco no input mesmo após re-render do body
       rerenderBody();
       const live = $('header-search');
       if (live && document.activeElement !== live) live.focus();
     };
-  }
+    return inp;
+  };
 
-  return el('header', { id: 'header-bar', class: 'flex items-center gap-3 pb-2 border-b border-slate-200 relative' },
+  const desktopSearch = profile && el('div', { class: 'hidden md:block flex-1 min-w-0 max-w-md mx-auto' },
+    makeSearchInput(),
+  );
+
+  // Mobile: ícone de busca que expande pra um overlay com input full-width
+  const mobileSearchToggle = profile && el('button', {
+    id: 'mobile-search-toggle',
+    class: 'md:hidden w-9 h-9 flex items-center justify-center rounded text-white/80 hover:text-white hover:bg-white/10',
+    title: 'Buscar',
+    onClick: (e) => {
+      e.stopPropagation();
+      const bar = $('mobile-search-bar');
+      if (bar) {
+        bar.classList.toggle('hidden');
+        if (!bar.classList.contains('hidden')) {
+          const inp = bar.querySelector('input');
+          if (inp) setTimeout(() => inp.focus(), 0);
+        }
+      }
+    },
+  }, '🔍');
+
+  const mobileSearchBar = profile && el('div', {
+    id: 'mobile-search-bar',
+    class: (state.searchQuery ? '' : 'hidden ') + 'md:hidden absolute inset-x-0 top-full left-0 right-0 mt-1 px-3 z-30',
+  },
+    el('div', { class: 'bg-[#0e3a4d] border border-white/15 rounded-lg p-2 shadow-xl flex items-center gap-2' },
+      makeSearchInput(),
+      el('button', {
+        class: 'shrink-0 w-8 h-8 flex items-center justify-center rounded text-white/70 hover:text-white text-lg leading-none',
+        onClick: () => {
+          state.searchQuery = '';
+          rerenderBody();
+          const bar = $('mobile-search-bar');
+          if (bar) bar.classList.add('hidden');
+        },
+      }, '×'),
+    ),
+  );
+
+  return el('header', { id: 'header-bar', class: 'flex items-center gap-2 sm:gap-3 pb-2 border-b border-slate-200 relative' },
     logo,
-    profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchInput),
-    el('div', { class: 'flex items-center gap-2 shrink-0' },
+    desktopSearch,
+    el('div', { class: 'flex-1 md:hidden' }), // spacer mobile
+    el('div', { class: 'flex items-center gap-1 sm:gap-2 shrink-0' },
+      mobileSearchToggle,
       memberStack,
       profile && renderSyncIndicator(),
       avatarButton,
     ),
+    mobileSearchBar,
   );
 }
 
