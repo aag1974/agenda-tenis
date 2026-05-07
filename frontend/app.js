@@ -2898,10 +2898,11 @@ function toggleGearMenu() {
     { label: `Sobre ${athleteFirstName}`, onClick: () => openAthleteCard() },
     { label: 'Credenciais TI', onClick: () => openProfileForm(profile) },
   ] : [];
-  // "Convidar membro" sempre visível no menu (desktop tem o "+" no header
-  // também, mas redundância aqui melhora descoberta).
+  // Mobile: "Convidar membro" no menu (não tem o "+" do member stack que
+  // só aparece em md+). Desktop usa o "+" no header diretamente.
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
   const accountActions = state.user ? [
-    { label: 'Convidar membro', onClick: () => openInviteModal() },
+    isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
     profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
     { label: 'Manual', onClick: () => window.open('/manual', '_blank') },
