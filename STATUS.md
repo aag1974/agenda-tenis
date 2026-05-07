@@ -76,9 +76,13 @@ App pivotou de "lista cronológica" pra **quadro Kanban estilo Trello** com pale
 
 ## Backlog
 
-- **Rebrand: "Agenda Tênis Integrado" → "Tennis Flow"** — trocar em todos os lugares (HTML title, manifest, header, .command, LEIA-ME, theme-color talvez, ícone). Considerar domínio `tennisflow.com.br` ou similar.
+- **Rebrand: "Agenda Tênis Integrado" → "Tennis Flow"** — trocar em todos os lugares (HTML title, manifest, header, .command, LEIA-ME, theme-color talvez, ícone). Considerar domínio `tennisflow.com.br` ou similar. (Front já usa "Tennis Flow"; pendente: title, manifest, log de boot, .command, LEIA-ME.)
 - **Login com Google (OAuth)** — adicionar como alternativa ao email/senha existente. Setup Google Cloud Console, rotas `/api/auth/google` + `/callback`. Aproveitar pra trazer foto/nome do Google pro avatar.
-- **Compartilhar acesso (família/co-gestor)** — opção no menu pra convidar outra pessoa (mãe, técnico, outro pai) pra ter acesso ao mesmo perfil de atleta. Modelo: owner vs collaborator. Implementação: link de convite, aceite via signup/login, perfil ganha múltiplos `userIds`. Frontend: item "👥 Convidar membro" no menu.
+- **Esqueci minha senha** — fluxo de reset por email (precisa SMTP) ou pergunta de segurança.
+- **Generalizar ids das colunas do Kanban** — hoje os ids carregam nome legado (`torneios`, `vou_jogar`). Migrar pra ids genéricos (`closed_reg`, `open_reg`, `interest`, `pay`, `paid`, `travel`, `archive`) pra que renames de label não exijam migração de notes/activity. Inclui migração de `notes.json` (campo `column` + activity msgs) e `localStorage` (`columnOrder`, `columnSort`, `columnLabels`) no primeiro load.
+- **Configuração de board por household** (vs por dispositivo) — hoje `columnLabels`/`columnOrder` estão no `localStorage`, então cada membro tem sua visão. Migrar pra `data/profile-{id}/board-config.json` ou nível household pra alinhar a linguagem na família. Trade-off: perde-se customização individual.
+- **Mobile** — header (busca em ícone), snap de coluna estilo Trello, modais como bottom sheets em todos os fluxos (login, atleta, convidar). Retirar banner "📱 Versão mobile chegando".
+- **Reset / cleanup admin** — comandos `clear-card-overrides <email>` e `force-resync <email>` pro admin-cli (não expor na UI por risco de uso indevido).
 
 ## Decisões pra Fase 2 (não MVP)
 
