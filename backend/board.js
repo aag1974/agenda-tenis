@@ -5,9 +5,9 @@
 import { deriveStatus } from './scraper.js';
 
 export const COLUMNS = [
-  { id: 'inscricoes_abertas', label: 'Inscrições abertas', icon: '🌟', auto: true,  manual: true },
   { id: 'torneios',            label: 'Inscrições Encerradas', icon: '🔒', auto: true,  manual: true },
-  { id: 'vou_jogar',           label: 'Vou jogar',           icon: '⭐', auto: false, manual: true },
+  { id: 'inscricoes_abertas', label: 'Inscrições Abertas',   icon: '🌟', auto: true,  manual: true },
+  { id: 'vou_jogar',           label: 'No radar',            icon: '⭐', auto: false, manual: true },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',     icon: '💰', auto: true,  manual: true },
   { id: 'confirmado',          label: 'Confirmado',          icon: '✅', auto: true,  manual: true },
   { id: 'viagem_comprada',     label: 'Viagem comprada',     icon: '✈️', auto: false, manual: true },

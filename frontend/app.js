@@ -913,9 +913,9 @@ function applyHeaderFilters(tournaments) {
 
 // ===== Kanban =====
 const KANBAN_COLUMNS = [
-  { id: 'inscricoes_abertas', label: 'Inscrições abertas', icon: '🌟' },
   { id: 'torneios',            label: 'Inscrições Encerradas', icon: '🔒' },
-  { id: 'vou_jogar',           label: 'Vou jogar',           icon: '⭐' },
+  { id: 'inscricoes_abertas', label: 'Inscrições Abertas',   icon: '🌟' },
+  { id: 'vou_jogar',           label: 'No radar',            icon: '⭐' },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',     icon: '💰' },
   { id: 'confirmado',          label: 'Confirmado',          icon: '✅' },
   { id: 'viagem_comprada',     label: 'Viagem comprada',     icon: '✈️' },
