@@ -376,6 +376,11 @@ const api = {
   async deleteAlertEvent(profileId, eventId) {
     await fetch(`/api/profiles/${profileId}/alerts/${eventId}`, { method: 'DELETE' });
   },
+  async createShareLink(profileId, tid) {
+    const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/share`, { method: 'POST' });
+    if (!r.ok) throw new Error('Erro ao gerar link');
+    return r.json();
+  },
 };
 
 // ===== Init =====
@@ -1155,19 +1160,13 @@ function openCardActions(anchorEl, t) {
     onClick: (e) => e.stopPropagation(),
   },
     el('button', {
-      class: 'w-full text-left px-3 py-2 text-sm hover:bg-slate-100 flex items-center gap-2',
+      class: 'w-full text-left px-3 py-2 text-sm hover:bg-slate-100',
       onClick: () => { pop.remove(); togglePinCard(t); },
-    },
-      el('span', null, isPinned ? '📍' : '📌'),
-      el('span', null, isPinned ? 'Desfixar' : 'Fixar no topo'),
-    ),
+    }, isPinned ? 'Desfixar' : 'Fixar no topo'),
     el('button', {
-      class: 'w-full text-left px-3 py-2 text-sm hover:bg-slate-100 flex items-center gap-2',
+      class: 'w-full text-left px-3 py-2 text-sm hover:bg-slate-100',
       onClick: () => { pop.remove(); shareCardWhatsApp(t); },
-    },
-      el('span', null, '📤'),
-      el('span', null, 'Compartilhar (WhatsApp)'),
-    ),
+    }, 'Compartilhar'),
   );
 
   document.body.appendChild(pop);
@@ -1207,8 +1206,7 @@ async function togglePinCard(t) {
   }
 }
 
-function buildShareText(t) {
-  const pp = t.pendingPayment;
+function buildShareText(t, shareUrl) {
   const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
   const where = [t.city, t.state].filter(Boolean).join('/');
   const dates = t.startDate
@@ -1219,27 +1217,37 @@ function buildShareText(t) {
   if (dates) lines.push(`📅 ${dates}`);
   if (where) lines.push(`📍 ${where}`);
   if (tiers.length) lines.push(`🏆 ${tiers.join(' · ')}`);
-  if (t.registrationStatus) lines.push(`📝 Inscrição: ${t.registrationStatus}`);
-  if (pp?.value) lines.push(`💰 Boleto: ${pp.value}${pp.dueDate ? ` (vence ${pp.dueDate})` : ''}`);
-  if (t.url) lines.push(`\n🔗 ${t.url}`);
-  // Branding — instiga curiosidade sem ser intrusivo
+  if (t.registrationStatus) lines.push(`📝 ${t.registrationStatus}`);
   lines.push('');
-  lines.push('— Compartilhado pelo *Tennis Flow* 🎾');
-  lines.push(`Organize a agenda de torneios em um Kanban: ${location.origin}/manual`);
+  if (shareUrl) {
+    lines.push('Veja todos os detalhes:');
+    lines.push(shareUrl);
+  } else if (t.url) {
+    lines.push(`🔗 ${t.url}`);
+  }
+  lines.push('');
+  lines.push('— Compartilhado via *Tennis Flow* 🎾');
   return lines.join('\n');
 }
 
 async function shareCardWhatsApp(t) {
-  const text = buildShareText(t);
+  let shareUrl = null;
+  try {
+    const r = await api.createShareLink(state.activeProfileId, t.id);
+    shareUrl = r.url;
+  } catch (err) {
+    console.warn('share link falhou, caindo pro link do TI', err);
+  }
+  const text = buildShareText(t, shareUrl);
   const shareData = {
     title: `${t.name || 'Torneio'} — Tennis Flow`,
     text,
+    ...(shareUrl ? { url: shareUrl } : {}),
   };
   // Web Share API quando disponível (iPhone, Android) → sheet nativo
   if (navigator.share) {
     try { await navigator.share(shareData); return; }
     catch (err) {
-      // Usuário cancelou — não cair no fallback
       if (err?.name === 'AbortError') return;
     }
   }

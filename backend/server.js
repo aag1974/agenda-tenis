@@ -11,6 +11,7 @@ import {
   setCardColumn, addCardComment, updateCardComment, deleteCardComment, getCardActivity,
   getAlertRules, addAlertRule, updateAlertRule, deleteAlertRule,
   getAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
+  findOrCreateShareToken, getShareLink,
 } from './storage.js';
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn } from './board.js';
 import {
@@ -194,6 +195,225 @@ app.use(express.static(join(__dirname, '..', 'frontend')));
 
 // Alias amigável pro manual público (também acessível em /manual.html)
 app.get('/manual', (req, res) => res.sendFile(join(__dirname, '..', 'frontend', 'manual.html')));
+
+// ===== Card público compartilhado =====
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderSharePage(tournament) {
+  const t = tournament;
+  const name = escapeHtml(t.name || 'Torneio');
+  const where = [t.city, t.state].filter(Boolean).join('/');
+  const dates = t.startDate
+    ? (t.endDate && t.endDate !== t.startDate ? `${t.startDate} a ${t.endDate}` : t.startDate)
+    : null;
+  const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
+  const regStatus = t.registrationStatus || null;
+  const regOpen = /Aberto|aberta/i.test(regStatus || '');
+  const ogDesc = [dates, where, tiers.join(' · ')].filter(Boolean).join(' · ');
+
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>${name} — Tennis Flow</title>
+<meta name="theme-color" content="#0e3a4d" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="${name}" />
+<meta property="og:description" content="${escapeHtml(ogDesc)}" />
+<meta property="og:site_name" content="Tennis Flow" />
+<link rel="icon" href="/icon-192.svg" />
+<style>
+  :root { --navy:#0e3a4d; --navy-dark:#0a2e3d; --teal:#1f5b75; --cyan:#22d3ee; --cyan-deep:#00a3e0; --slate-100:#f1f5f9; --slate-200:#e2e8f0; --slate-500:#64748b; --slate-600:#475569; --slate-700:#334155; --slate-900:#0f172a; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--teal) 100%);
+    background-attachment: fixed;
+    color: var(--slate-900);
+    min-height: 100vh;
+  }
+  body::before, body::after {
+    content:'🎾'; position:fixed; font-size:14rem; opacity:0.05; pointer-events:none; z-index:0;
+  }
+  body::before { top:-3rem; left:-3rem; transform:rotate(-15deg); }
+  body::after { bottom:-3rem; right:-3rem; transform:rotate(20deg); }
+  .wrap {
+    max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem 2rem;
+    position: relative; z-index: 1;
+  }
+  .brand-bar {
+    display:flex; align-items:center; justify-content:center; gap:0.6rem;
+    color: white; padding: 1rem 0 1.5rem; opacity: 0.95;
+  }
+  .brand-mark {
+    width: 36px; height: 36px; background: var(--navy-dark); border-radius: 8px;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size: 18px; position: relative;
+  }
+  .brand-mark .tf {
+    position:absolute; bottom:1px; right:1px; font-size:9px; font-weight:900; line-height:1; letter-spacing:-0.5px;
+  }
+  .brand-mark .tf .t { color:white; }
+  .brand-mark .tf .f { color: var(--cyan); }
+  .brand-name { font-weight: 800; font-size: 1.1rem; }
+  .brand-name .f { color: var(--cyan); }
+  .shared-by {
+    text-align:center; color: rgba(255,255,255,0.75); font-size:0.85rem;
+    margin-bottom: 1rem;
+  }
+  /* Card */
+  .card {
+    background: white; border-radius: 16px; padding: 1.25rem;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    margin-bottom: 1rem;
+  }
+  .badges { display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.75rem; }
+  .badge {
+    font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px;
+    font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+  }
+  .badge-tier { background: var(--navy); color: white; }
+  .badge-open { background: #d1fae5; color: #047857; }
+  .badge-closed { background: var(--slate-100); color: var(--slate-600); }
+  .card h1 {
+    margin: 0 0 0.6rem; font-size: 1.35rem; line-height: 1.25; color: var(--navy);
+  }
+  .meta-row {
+    display:flex; align-items:center; gap:0.55rem; padding: 0.5rem 0;
+    border-top: 1px solid var(--slate-100); font-size: 0.95rem; color: var(--slate-700);
+  }
+  .meta-row:first-of-type { border-top: none; }
+  .meta-icon { font-size: 1.1rem; width: 1.5rem; text-align: center; }
+  .meta-label { color: var(--slate-500); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 0.25rem; }
+  .meta-value { font-weight: 600; }
+  .ti-link {
+    display:block; text-align:center; padding: 0.6rem;
+    background: var(--slate-100); color: var(--slate-700);
+    text-decoration: none; border-radius: 10px;
+    font-size: 0.85rem; margin-top: 0.75rem;
+  }
+  .ti-link:hover { background: var(--slate-200); }
+  /* CTA */
+  .cta {
+    background: white; border-radius: 16px; padding: 1.5rem 1.25rem;
+    text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  }
+  .cta h2 {
+    margin: 0 0 0.5rem; color: var(--navy); font-size: 1.15rem;
+  }
+  .cta p {
+    margin: 0 0 1.25rem; color: var(--slate-600); font-size: 0.92rem;
+    line-height: 1.5;
+  }
+  .cta-btn {
+    display:block; width:100%; padding: 0.85rem;
+    background: var(--cyan-deep); color: white; text-decoration: none;
+    border-radius: 10px; font-weight: 700; font-size: 1rem;
+    transition: background 0.15s;
+  }
+  .cta-btn:hover { background: var(--navy); }
+  .cta-btn-secondary {
+    display:block; text-align:center; padding: 0.7rem;
+    color: var(--navy); text-decoration: none;
+    font-size: 0.9rem; margin-top: 0.5rem;
+  }
+  .cta-btn-secondary:hover { text-decoration: underline; }
+  /* Bullet list */
+  .why {
+    list-style: none; padding: 0; margin: 1rem 0 1.25rem;
+    text-align: left;
+  }
+  .why li {
+    display: grid; grid-template-columns: 24px 1fr; gap: 0.5rem;
+    padding: 0.35rem 0; font-size: 0.88rem; color: var(--slate-700);
+  }
+  .why li::before { content:'✓'; color: var(--cyan-deep); font-weight: 800; }
+  .footer {
+    text-align:center; color: rgba(255,255,255,0.6); font-size: 0.78rem;
+    margin-top: 1.25rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand-bar">
+    <span class="brand-mark">
+      🎾<span class="tf"><span class="t">T</span><span class="f">F</span></span>
+    </span>
+    <span class="brand-name">Tennis<span class="f">Flow</span></span>
+  </div>
+
+  <div class="shared-by">Compartilhado via Tennis Flow</div>
+
+  <div class="card">
+    <div class="badges">
+      ${tiers.map(t => `<span class="badge badge-tier">${escapeHtml(t)}</span>`).join('')}
+      ${regStatus ? `<span class="badge ${regOpen ? 'badge-open' : 'badge-closed'}">${escapeHtml(regStatus)}</span>` : ''}
+    </div>
+    <h1>${name}</h1>
+
+    ${dates ? `
+    <div class="meta-row">
+      <span class="meta-icon">📅</span>
+      <span class="meta-value">${escapeHtml(dates)}</span>
+    </div>` : ''}
+
+    ${where ? `
+    <div class="meta-row">
+      <span class="meta-icon">📍</span>
+      <span class="meta-value">${escapeHtml(where)}</span>
+    </div>` : ''}
+
+    ${t.url ? `
+    <a class="ti-link" href="${escapeHtml(t.url)}" target="_blank" rel="noopener">
+      Ver no Tênis Integrado →
+    </a>` : ''}
+  </div>
+
+  <div class="cta">
+    <h2>Organize a sua agenda também</h2>
+    <p>Tennis Flow lê o Tênis Integrado, organiza tudo num quadro Kanban e avisa de boletos, inscrições e mudanças no ranking.</p>
+    <ul class="why">
+      <li>Sincronização automática a cada 6h</li>
+      <li>Boletos detectados com lembrete de vencimento</li>
+      <li>Agenda integrada (iPhone e Google)</li>
+      <li>Compartilhamento em família</li>
+    </ul>
+    <a class="cta-btn" href="/manual">Conhecer o Tennis Flow</a>
+    <a class="cta-btn-secondary" href="/">Já tenho conta</a>
+  </div>
+
+  <div class="footer">
+    🎾 Tennis Flow — agenda de torneios pra famílias e atletas
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+app.post('/api/profiles/:id/tournaments/:tid/share', requireAuth, ensureOwnedProfile, (req, res) => {
+  const data = getSyncedData(req.params.id);
+  const t = (data?.tournaments || []).find(x => x.id === req.params.tid);
+  if (!t) return res.status(404).json({ error: 'Torneio não encontrado' });
+  const link = findOrCreateShareToken(req.params.id, req.params.tid, req.user?.id || null);
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  res.json({ token: link.token, url: `${proto}://${host}/share/${link.token}` });
+});
+
+app.get('/share/:token', (req, res) => {
+  const link = getShareLink(req.params.token);
+  if (!link) return res.status(404).type('html').send('<h1>Link inválido ou expirado</h1>');
+  const data = getSyncedData(link.profileId);
+  const t = (data?.tournaments || []).find(x => x.id === link.tournamentId);
+  if (!t) return res.status(404).type('html').send('<h1>Torneio não encontrado</h1>');
+  res.type('html').send(renderSharePage(t));
+});
 
 // Profiles — escopados pela household do usuário
 app.get('/api/profiles', requireAuth, (req, res) => {

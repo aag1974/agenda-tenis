@@ -384,6 +384,39 @@ export function getManualTournaments(profileId) {
   return readJson(join(profileDir(profileId), 'manual.json'), []);
 }
 
+// ===== Share links (cards públicos compartilhados) =====
+// data/shared/_index.json: { "profileId:tid": "token" } — pra idempotência
+// data/shared/<token>.json: { token, profileId, tournamentId, sharedBy, sharedAt }
+const SHARED_DIR = join(DATA_DIR, 'shared');
+const SHARED_INDEX = join(SHARED_DIR, '_index.json');
+
+export function findOrCreateShareToken(profileId, tournamentId, sharedBy) {
+  const index = readJson(SHARED_INDEX, {});
+  const key = `${profileId}:${tournamentId}`;
+  if (index[key]) {
+    const existing = readJson(join(SHARED_DIR, `${index[key]}.json`), null);
+    if (existing) return existing;
+  }
+  // Token base62 ~10 chars — randomBytes 8 bytes em base64url
+  const token = 'T' + randomBytes(8).toString('base64url').replace(/[-_]/g, '').slice(0, 10);
+  const data = {
+    token,
+    profileId,
+    tournamentId,
+    sharedBy,
+    sharedAt: new Date().toISOString(),
+  };
+  writeJson(join(SHARED_DIR, `${token}.json`), data);
+  index[key] = token;
+  writeJson(SHARED_INDEX, index);
+  return data;
+}
+
+export function getShareLink(token) {
+  if (!/^T[A-Za-z0-9]{1,16}$/.test(token)) return null;
+  return readJson(join(SHARED_DIR, `${token}.json`), null);
+}
+
 export function addManualTournament(profileId, tournament) {
   const list = getManualTournaments(profileId);
   if (list.find(t => t.id === tournament.id)) return list;
