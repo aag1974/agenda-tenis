@@ -1216,17 +1216,12 @@ async function togglePinCard(t) {
   }
 }
 
-function buildShareText(t, shareUrl) {
-  // Mensagem propositalmente sem emojis no corpo — alguns dispositivos
-  // renderizam como "?" e prejudicam a leitura. WhatsApp gera o preview
-  // bonito a partir das og:tags da página /share, então o texto pode ser
-  // simples e direto.
+function buildShareText(t, { includeUrl = true, shareUrl = null } = {}) {
   const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
   const where = [t.city, t.state].filter(Boolean).join(' / ');
   const dates = t.startDate
     ? (t.endDate && t.endDate !== t.startDate ? `${t.startDate} a ${t.endDate}` : t.startDate)
     : null;
-  const meta = [dates, tiers.join(' · ')].filter(Boolean).join(' · ');
   const regStatus = t.registrationStatus || '';
   const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
   const regOpen = /Aberto|aberta/i.test(regStatus);
@@ -1234,15 +1229,17 @@ function buildShareText(t, shareUrl) {
     ? (regOpen ? `Inscrições até ${regDate}` : `Inscrições encerraram em ${regDate}`)
     : (regStatus || null);
   const lines = [];
-  lines.push(`*${t.name || 'Torneio'}*`);
-  if (where) lines.push(where);
-  if (meta) lines.push(meta);
-  if (regLine) lines.push(regLine);
-  lines.push('');
-  if (shareUrl) {
-    lines.push(`Abrir torneio: ${shareUrl}`);
-  } else if (t.url) {
-    lines.push(`Abrir torneio: ${t.url}`);
+  lines.push(`🎾 *${t.name || 'Torneio'}*`);
+  if (where) lines.push(`📍 ${where}`);
+  if (dates) lines.push(`📅 ${dates}`);
+  if (tiers.length) lines.push(`🏆 ${tiers.join(' · ')}`);
+  if (regLine) lines.push(`📝 ${regLine}`);
+  if (includeUrl) {
+    const url = shareUrl || t.url;
+    if (url) {
+      lines.push('');
+      lines.push(`Abrir torneio: ${url}`);
+    }
   }
   lines.push('');
   lines.push('— Compartilhado via Tennis Flow');
@@ -1257,20 +1254,23 @@ async function shareCardWhatsApp(t) {
   } catch (err) {
     console.warn('share link falhou, caindo pro link do TI', err);
   }
-  const text = buildShareText(t, shareUrl);
-  const shareData = {
-    title: `${t.name || 'Torneio'} — Tennis Flow`,
-    text,
-    ...(shareUrl ? { url: shareUrl } : {}),
-  };
-  // Web Share API quando disponível (iPhone, Android) → sheet nativo
-  if (navigator.share) {
-    try { await navigator.share(shareData); return; }
-    catch (err) {
+  // Web Share API: passa URL no campo `url` (vira preview card) e texto
+  // SEM o link embutido — senão WhatsApp duplica (preview + URL crua).
+  if (navigator.share && shareUrl) {
+    const text = buildShareText(t, { includeUrl: false });
+    try {
+      await navigator.share({
+        title: `${t.name || 'Torneio'} — Tennis Flow`,
+        text,
+        url: shareUrl,
+      });
+      return;
+    } catch (err) {
       if (err?.name === 'AbortError') return;
     }
   }
-  // Fallback: WhatsApp Web/desktop
+  // Fallback (desktop / sem Web Share): inclui URL no texto + abre wa.me
+  const text = buildShareText(t, { includeUrl: true, shareUrl });
   const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 }
