@@ -1227,10 +1227,17 @@ function buildShareText(t, shareUrl) {
     ? (t.endDate && t.endDate !== t.startDate ? `${t.startDate} a ${t.endDate}` : t.startDate)
     : null;
   const meta = [dates, tiers.join(' · ')].filter(Boolean).join(' · ');
+  const regStatus = t.registrationStatus || '';
+  const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
+  const regOpen = /Aberto|aberta/i.test(regStatus);
+  const regLine = regDate
+    ? (regOpen ? `Inscrições até ${regDate}` : `Inscrições encerraram em ${regDate}`)
+    : (regStatus || null);
   const lines = [];
   lines.push(`*${t.name || 'Torneio'}*`);
   if (where) lines.push(where);
   if (meta) lines.push(meta);
+  if (regLine) lines.push(regLine);
   lines.push('');
   if (shareUrl) {
     lines.push(`Abrir torneio: ${shareUrl}`);
