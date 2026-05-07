@@ -12,9 +12,9 @@ import {
   getAlertRules, addAlertRule, updateAlertRule, deleteAlertRule,
   getAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
   findOrCreateShareToken, getShareLink,
-  clearColumnOverrides,
+  clearColumnOverrides, saveSyncedData,
 } from './storage.js';
-import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn } from './board.js';
+import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed } from './board.js';
 import {
   listReceipts, addReceipt, getReceiptFile, updateReceiptCategory, deleteReceipt,
   getQuotaInfo, RECEIPT_CATEGORIES, daysUntilCleanup, CLEANUP_DAYS_AFTER_END,
@@ -218,8 +218,8 @@ function renderSharePage(tournament, details) {
     : null;
   const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
   const regStatus = t.registrationStatus || null;
-  const regOpen = /Aberto|aberta/i.test(regStatus || '');
-  const regClosed = /Encerrad/i.test(regStatus || '');
+  const regOpen = isRegistrationOpen(regStatus);
+  const regClosed = isRegistrationClosed(regStatus);
   const regDate = (regStatus || '').match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
   // Só info de janela (aberta/encerrada). Status privado do atleta
   // ("Confirmado", "Pendente") não vai pra página pública.
@@ -668,7 +668,28 @@ async function loadTournamentDetailsCached(tid) {
 }
 app.get('/api/tournament-details/:tid', async (req, res) => {
   try {
-    res.json(await loadTournamentDetailsCached(req.params.tid));
+    const data = await loadTournamentDetailsCached(req.params.tid);
+    // Lazy enrichment: se o cliente passou um profileId autorizado e a
+    // página de detalhes traz tiers que o catálogo não tinha, persiste
+    // a união em synced.json. Resolve o caso do card mostrar só "G1+"
+    // quando o torneio é multi-chave (ex: G1+ e GA).
+    const pid = req.query.profileId;
+    if (pid && req.userId && Array.isArray(data?.tiers) && data.tiers.length) {
+      const p = getProfile(pid);
+      if (p && profileBelongsToHousehold(pid, req.householdId)) {
+        const synced = getSyncedData(pid);
+        const t = (synced?.tournaments || []).find(x => x.id === req.params.tid);
+        if (t) {
+          const merged = [...new Set([...(t.tiers || []), ...data.tiers])];
+          if (merged.length !== (t.tiers || []).length) {
+            t.tiers = merged;
+            if (!t.tier) t.tier = merged[0];
+            saveSyncedData(pid, synced);
+          }
+        }
+      }
+    }
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

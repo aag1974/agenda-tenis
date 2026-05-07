@@ -16,6 +16,19 @@ export const COLUMNS = [
 
 export const COLUMN_IDS = COLUMNS.map(c => c.id);
 
+// Estado de inscrição extraído do registrationStatus do TI.
+// O TI usa textos variados: "Aberta até DD/MM", "Aberta", "Iniciado",
+// "Encerrada em DD/MM", "Finalizado", etc. Centralizado aqui pra
+// frontend e backend usarem a mesma regra.
+export function isRegistrationOpen(status) {
+  if (!status) return false;
+  return /Aberto|aberta|inicia/i.test(status);
+}
+export function isRegistrationClosed(status) {
+  if (!status) return false;
+  return /encerrad|finalizad/i.test(status);
+}
+
 // Compute the "natural" column based on tournament state alone (TI signals + notes).
 // User can override via notes.column; this function does NOT consider override.
 export function computeAutoColumn(t, notes = {}) {
@@ -34,7 +47,7 @@ export function computeAutoColumn(t, notes = {}) {
   if (inscribed) return 'confirmado';
 
   // Registration open in TI (no Anna registered yet)
-  if (/Aberto|aberta/i.test(t.registrationStatus || '')) return 'inscricoes_abertas';
+  if (isRegistrationOpen(t.registrationStatus)) return 'inscricoes_abertas';
 
   // Otherwise: pool of tournaments
   return 'torneios';

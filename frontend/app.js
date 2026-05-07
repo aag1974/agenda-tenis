@@ -258,7 +258,10 @@ const api = {
     return r.json();
   },
   async flightUrl(profileId, tid) { return (await fetch(`/api/profiles/${profileId}/tournaments/${tid}/flight-url`)).json(); },
-  async tournamentDetails(tid) { return (await fetch(`/api/tournament-details/${tid}`)).json(); },
+  async tournamentDetails(tid, profileId = null) {
+    const q = profileId ? `?profileId=${encodeURIComponent(profileId)}` : '';
+    return (await fetch(`/api/tournament-details/${tid}${q}`)).json();
+  },
   async listLabels(profileId) { return (await fetch(`/api/profiles/${profileId}/labels`)).json(); },
   async createLabel(profileId, body) {
     const r = await fetch(`/api/profiles/${profileId}/labels`, {
@@ -902,11 +905,16 @@ function isBoletoExpired(t) {
   return due && due < startOfToday();
 }
 
+// Status de inscrição do TI — mantém em sincronia com backend/board.js.
+// O TI usa textos variados ("Aberta", "Iniciado", "Encerrada", "Finalizado").
+function regStatusOpen(s) { return !!s && /Aberto|aberta|inicia/i.test(s); }
+function regStatusClosed(s) { return !!s && /encerrad|finalizad/i.test(s); }
+
 function isRegistrationClosed(t, inscribed) {
   // Already inscribed → not "missed it"
   if (inscribed) return false;
   // TI explicit signal in catalog row
-  if (/encerrad/i.test(t.registrationStatus || '')) return true;
+  if (regStatusClosed(t.registrationStatus)) return true;
   // Cancellation deadline already passed
   if (t.cancelDeadline) {
     const cd = brToDate(t.cancelDeadline);
@@ -1007,7 +1015,7 @@ function autoColumnFor(t) {
   const inscribed = givenUp ? false : (t.isAnnaInscribed || t.notes?.manualInscribed);
   if (pp) return 'pagar_inscricao';
   if (inscribed) return 'confirmado';
-  if (/Aberto|aberta/i.test(t.registrationStatus || '')) return 'inscricoes_abertas';
+  if (regStatusOpen(t.registrationStatus)) return 'inscricoes_abertas';
   return 'torneios';
 }
 
@@ -1234,8 +1242,8 @@ function buildShareText(t, { includeUrl = true, shareUrl = null } = {}) {
     : null;
   const regStatus = t.registrationStatus || '';
   const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
-  const regOpen = /Aberto|aberta/i.test(regStatus);
-  const regClosed = /Encerrad/i.test(regStatus);
+  const regOpen = regStatusOpen(regStatus);
+  const regClosed = regStatusClosed(regStatus);
   // Só mostra "Inscrições" se for info real de janela (aberta/encerrada).
   // Status do atleta tipo "Confirmado", "Pendente" não cabem aqui — são
   // privados e confundem quem recebe o link.
@@ -3299,10 +3307,21 @@ async function openTournament(tid) {
 
   // Lazy-fetch detalhes + voo em paralelo — antes era sequencial e dobrava
   // o tempo de abertura do modal (cada um leva ~500-800ms).
+  // Passa profileId pro backend persistir a união de tiers em synced.json
+  // (corrige o caso de card multi-chave que aparecia com só uma).
   const [details, flightInfo] = await Promise.all([
-    isFuture ? api.tournamentDetails(tid).catch(() => null) : Promise.resolve(null),
+    isFuture ? api.tournamentDetails(tid, state.activeProfileId).catch(() => null) : Promise.resolve(null),
     showTravelTools ? api.flightUrl(state.activeProfileId, tid).catch(() => ({ error: true })) : Promise.resolve(null),
   ]);
+  // Une tiers locais + os detalhes pra etiquetas refletirem todas as chaves
+  // imediatamente (sem precisar refresh)
+  if (details && Array.isArray(details.tiers) && details.tiers.length) {
+    const tierUnion = [...new Set([...(t.tiers || []), ...details.tiers])];
+    if (tierUnion.length !== (t.tiers || []).length) {
+      t.tiers = tierUnion;
+      if (!t.tier) t.tier = tierUnion[0];
+    }
+  }
   const merged = details ? { ...t, hotels: details.hotels || t.hotels || [], venues: details.venues || t.venues || [], observations: details.observations || t.observations, cancelDeadline: details.cancelDeadline || t.cancelDeadline, prices: details.prices || t.prices } : t;
 
   const notes = t.notes || {};
@@ -3390,16 +3409,17 @@ async function openTournament(tid) {
 
       (() => {
         // Extrai data de encerramento/abertura do registrationStatus do TI
-        // (ex: "Aberto até 19/05/2026", "Encerrada em 14/05/2026")
+        // (ex: "Aberta até 19/05/2026", "Iniciado", "Encerrada em 14/05/2026")
         const regStatus = t.registrationStatus || '';
         const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
-        const isOpen = /Aberto|aberta/i.test(regStatus);
+        const isOpen = regStatusOpen(regStatus);
+        const isClosed = regStatusClosed(regStatus);
         let regLine = null;
-        if (regDate) {
-          regLine = isOpen ? `Inscrições abertas até ${regDate}` : `Inscrições encerraram em ${regDate}`;
-        } else if (regStatus) {
-          regLine = `Inscrições: ${regStatus}`;
-        }
+        if (regDate && isOpen) regLine = `Inscrições abertas até ${regDate}`;
+        else if (regDate && isClosed) regLine = `Inscrições encerraram em ${regDate}`;
+        else if (isOpen) regLine = 'Inscrições abertas';
+        else if (isClosed) regLine = 'Inscrições encerradas';
+        else if (regStatus) regLine = `Inscrições: ${regStatus}`;
         return el('section', null,
           el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Datas'),
           el('p', { class: 'text-sm' }, `${t.startDate || '—'} a ${t.endDate || '—'}`),
