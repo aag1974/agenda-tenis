@@ -20,13 +20,43 @@ export const COLUMN_IDS = COLUMNS.map(c => c.id);
 // O TI usa textos variados: "Aberta até DD/MM", "Aberta", "Iniciado",
 // "Encerrada em DD/MM", "Finalizado", etc. Centralizado aqui pra
 // frontend e backend usarem a mesma regra.
-export function isRegistrationOpen(status) {
-  if (!status) return false;
-  return /Aberto|aberta|inicia/i.test(status);
-}
 export function isRegistrationClosed(status) {
   if (!status) return false;
   return /encerrad|finalizad/i.test(status);
+}
+
+// "Iniciado" no TI = período de inscrição começou, MAS pode já ter
+// terminado (se cancelDeadline ou startDate passaram). Recebe o torneio
+// inteiro pra olhar essas datas.
+export function isRegistrationOpen(t) {
+  if (!t) return false;
+  const s = typeof t === 'string' ? t : (t.registrationStatus || '');
+  if (isRegistrationClosed(s)) return false;
+  if (/Aberto|aberta/i.test(s)) {
+    // Explícito aberta — checa cancelDeadline pra confirmar
+    if (typeof t === 'object' && t.cancelDeadline) {
+      const [d, m, y] = t.cancelDeadline.split('/').map(Number);
+      const cancel = new Date(y, m - 1, d);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      if (cancel < today) return false;
+    }
+    return true;
+  }
+  if (/inicia/i.test(s)) {
+    // "Iniciado" depende das datas — sem objeto, assume aberta (sem como saber)
+    if (typeof t !== 'object') return true;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (t.cancelDeadline) {
+      const [d, m, y] = t.cancelDeadline.split('/').map(Number);
+      if (new Date(y, m - 1, d) < today) return false;
+    }
+    if (t.startDate) {
+      const [d, m, y] = t.startDate.split('/').map(Number);
+      if (new Date(y, m - 1, d) < today) return false;
+    }
+    return true;
+  }
+  return false;
 }
 
 // Compute the "natural" column based on tournament state alone (TI signals + notes).
@@ -47,7 +77,7 @@ export function computeAutoColumn(t, notes = {}) {
   if (inscribed) return 'confirmado';
 
   // Registration open in TI (no Anna registered yet)
-  if (isRegistrationOpen(t.registrationStatus)) return 'inscricoes_abertas';
+  if (isRegistrationOpen(t)) return 'inscricoes_abertas';
 
   // Otherwise: pool of tournaments
   return 'torneios';

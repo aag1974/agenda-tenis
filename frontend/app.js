@@ -389,6 +389,11 @@ const api = {
     if (!r.ok) throw new Error('Erro ao resetar');
     return r.json();
   },
+  async resetAll(profileId) {
+    const r = await fetch(`/api/profiles/${profileId}/reset-all`, { method: 'POST' });
+    if (!r.ok) throw new Error('Erro ao resetar tudo');
+    return r.json();
+  },
 };
 
 // ===== Init =====
@@ -906,9 +911,38 @@ function isBoletoExpired(t) {
 }
 
 // Status de inscrição do TI — mantém em sincronia com backend/board.js.
-// O TI usa textos variados ("Aberta", "Iniciado", "Encerrada", "Finalizado").
-function regStatusOpen(s) { return !!s && /Aberto|aberta|inicia/i.test(s); }
-function regStatusClosed(s) { return !!s && /encerrad|finalizad/i.test(s); }
+// "Iniciado" no TI significa que o período COMEÇOU, mas pode já ter
+// terminado se cancelDeadline ou startDate passaram. Aceita string OU
+// objeto torneio (preferir objeto pra usar as datas).
+function regStatusClosed(s) {
+  if (typeof s === 'object') s = s?.registrationStatus || '';
+  return !!s && /encerrad|finalizad/i.test(s);
+}
+function regStatusOpen(t) {
+  if (!t) return false;
+  const s = typeof t === 'string' ? t : (t.registrationStatus || '');
+  if (regStatusClosed(s)) return false;
+  if (/Aberto|aberta/i.test(s)) {
+    if (typeof t === 'object' && t.cancelDeadline) {
+      const d = brToDate(t.cancelDeadline);
+      if (d && d < startOfToday()) return false;
+    }
+    return true;
+  }
+  if (/inicia/i.test(s)) {
+    if (typeof t !== 'object') return true;
+    if (t.cancelDeadline) {
+      const d = brToDate(t.cancelDeadline);
+      if (d && d < startOfToday()) return false;
+    }
+    if (t.startDate) {
+      const d = brToDate(t.startDate);
+      if (d && d < startOfToday()) return false;
+    }
+    return true;
+  }
+  return false;
+}
 
 function isRegistrationClosed(t, inscribed) {
   // Already inscribed → not "missed it"
@@ -1015,7 +1049,7 @@ function autoColumnFor(t) {
   const inscribed = givenUp ? false : (t.isAnnaInscribed || t.notes?.manualInscribed);
   if (pp) return 'pagar_inscricao';
   if (inscribed) return 'confirmado';
-  if (regStatusOpen(t.registrationStatus)) return 'inscricoes_abertas';
+  if (regStatusOpen(t)) return 'inscricoes_abertas';
   return 'torneios';
 }
 
@@ -1242,7 +1276,7 @@ function buildShareText(t, { includeUrl = true, shareUrl = null } = {}) {
     : null;
   const regStatus = t.registrationStatus || '';
   const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
-  const regOpen = regStatusOpen(regStatus);
+  const regOpen = regStatusOpen(t);
   const regClosed = regStatusClosed(regStatus);
   // Só mostra "Inscrições" se for info real de janela (aberta/encerrada).
   // Status do atleta tipo "Confirmado", "Pendente" não cabem aqui — são
@@ -2569,6 +2603,7 @@ function toggleGearMenu() {
     profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
     profile && { label: 'Resetar movimentações', onClick: () => resetBoardOverrides() },
+    profile && { label: 'Resetar tudo', onClick: () => resetAllData() },
     { label: planLabel, onClick: () => window.open('/upgrade', '_blank') },
     { label: 'Manual', onClick: () => window.open('/manual', '_blank') },
     { label: 'Sair', onClick: () => logout() },
@@ -2925,6 +2960,32 @@ async function resetBoardOverrides() {
     await refreshActive();
     render();
     alert(`Pronto. ${r.cleared} card(s) voltaram para a coluna automática.`);
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function resetAllData() {
+  if (!state.activeProfileId) return;
+  const ok = confirm(
+    'RESETAR TUDO do quadro deste atleta?\n\n' +
+    'Apaga: torneios sincronizados, comentários, atividades, ' +
+    'movimentações, alertas pendentes.\n\n' +
+    'Mantém: a conta, o perfil do atleta e as credenciais do TI.\n\n' +
+    'A próxima sincronização vai virar uma "primeira sincronização" ' +
+    '(baseline novo).\n\n' +
+    'Esta ação não pode ser desfeita.'
+  );
+  if (!ok) return;
+  if (!confirm('Tem certeza absoluta? Vai começar do zero.')) return;
+  try {
+    await api.resetAll(state.activeProfileId);
+    state.data = null;
+    state.syncStatus = null;
+    render();
+    await refreshActive();
+    render();
+    alert('Pronto. Toque em ⚙︎ → Sincronizar agora pra puxar tudo do TI.');
   } catch (err) {
     alert('Erro: ' + err.message);
   }
@@ -3412,7 +3473,7 @@ async function openTournament(tid) {
         // (ex: "Aberta até 19/05/2026", "Iniciado", "Encerrada em 14/05/2026")
         const regStatus = t.registrationStatus || '';
         const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
-        const isOpen = regStatusOpen(regStatus);
+        const isOpen = regStatusOpen(merged);
         const isClosed = regStatusClosed(regStatus);
         let regLine = null;
         if (regDate && isOpen) regLine = `Inscrições abertas até ${regDate}`;

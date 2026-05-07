@@ -12,7 +12,7 @@ import {
   getAlertRules, addAlertRule, updateAlertRule, deleteAlertRule,
   getAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
   findOrCreateShareToken, getShareLink,
-  clearColumnOverrides, saveSyncedData,
+  clearColumnOverrides, saveSyncedData, resetProfileData,
 } from './storage.js';
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed } from './board.js';
 import {
@@ -218,7 +218,7 @@ function renderSharePage(tournament, details) {
     : null;
   const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
   const regStatus = t.registrationStatus || null;
-  const regOpen = isRegistrationOpen(regStatus);
+  const regOpen = isRegistrationOpen(merged);
   const regClosed = isRegistrationClosed(regStatus);
   const regDate = (regStatus || '').match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
   // Só info de janela (aberta/encerrada). Status privado do atleta
@@ -656,6 +656,14 @@ app.post('/api/profiles/:id/reset-board-overrides', requireAuth, ensureOwnedProf
   res.json({ cleared });
 });
 
+// Reset radical: apaga synced + notes + alertas. Preserva perfil + creds.
+// Próxima sync vira baseline novo. Útil pra limpar quadro que ficou
+// inconsistente após muitas movimentações + mudanças no app.
+app.post('/api/profiles/:id/reset-all', requireAuth, ensureOwnedProfile, (req, res) => {
+  resetProfileData(req.params.id);
+  res.json({ ok: true });
+});
+
 // Lazy-load full tournament details (hotels, venues, observations) — public endpoint, with cache
 const detailsCache = new Map(); // tid -> { data, ts }
 const DETAILS_TTL = 6 * 60 * 60 * 1000; // 6h
@@ -669,23 +677,31 @@ async function loadTournamentDetailsCached(tid) {
 app.get('/api/tournament-details/:tid', async (req, res) => {
   try {
     const data = await loadTournamentDetailsCached(req.params.tid);
-    // Lazy enrichment: se o cliente passou um profileId autorizado e a
-    // página de detalhes traz tiers que o catálogo não tinha, persiste
-    // a união em synced.json. Resolve o caso do card mostrar só "G1+"
-    // quando o torneio é multi-chave (ex: G1+ e GA).
+    // Lazy enrichment: persiste tiers + cancelDeadline em synced.json quando
+    // a página de detalhes trouxer info nova. Resolve dois casos:
+    // 1) Card mostra só "G1+" quando o torneio é multi-chave (G1+ e GA)
+    // 2) Status "Iniciado" precisa de cancelDeadline pra saber se já passou
     const pid = req.query.profileId;
-    if (pid && req.userId && Array.isArray(data?.tiers) && data.tiers.length) {
+    if (pid && req.userId) {
       const p = getProfile(pid);
       if (p && profileBelongsToHousehold(pid, req.householdId)) {
         const synced = getSyncedData(pid);
         const t = (synced?.tournaments || []).find(x => x.id === req.params.tid);
         if (t) {
-          const merged = [...new Set([...(t.tiers || []), ...data.tiers])];
-          if (merged.length !== (t.tiers || []).length) {
-            t.tiers = merged;
-            if (!t.tier) t.tier = merged[0];
-            saveSyncedData(pid, synced);
+          let changed = false;
+          if (Array.isArray(data?.tiers) && data.tiers.length) {
+            const merged = [...new Set([...(t.tiers || []), ...data.tiers])];
+            if (merged.length !== (t.tiers || []).length) {
+              t.tiers = merged;
+              if (!t.tier) t.tier = merged[0];
+              changed = true;
+            }
           }
+          if (data?.cancelDeadline && t.cancelDeadline !== data.cancelDeadline) {
+            t.cancelDeadline = data.cancelDeadline;
+            changed = true;
+          }
+          if (changed) saveSyncedData(pid, synced);
         }
       }
     }

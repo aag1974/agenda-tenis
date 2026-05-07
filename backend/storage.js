@@ -183,6 +183,17 @@ export function updateTournamentNotes(profileId, tournamentId, patch) {
   return notes[tournamentId];
 }
 
+// Reset radical — apaga synced.json + notes.json + manual.json + activity
+// + alertas. Preserva o perfil (creds TI). Próxima sync vira baseline novo.
+export function resetProfileData(profileId) {
+  const dir = profileDir(profileId);
+  const files = ['synced.json', 'notes.json', 'manual.json', 'alert-events.json'];
+  for (const f of files) {
+    const path = join(dir, f);
+    if (existsSync(path)) rmSync(path);
+  }
+}
+
 // Limpa apenas overrides manuais de coluna/ordem — preserva tudo o resto
 // (selected, comments, labels, manualInscribed, manualGiveUp, pinned).
 // Cada card volta a obedecer a regra de auto-placement.
