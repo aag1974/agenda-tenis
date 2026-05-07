@@ -1003,9 +1003,18 @@ function relativeDateLabel(t) {
   return `daqui ${Math.round(dStart / 30)} ${Math.round(dStart / 30) === 1 ? 'mês' : 'meses'}`;
 }
 
+// Normaliza pra busca: lowercase + remove acentos (Belém → belem,
+// São Paulo → sao paulo). Permite busca insensível a diacríticos.
+function normalizeForSearch(s) {
+  if (!s) return '';
+  // ̀-ͯ = bloco "Combining Diacritical Marks" (acentos isolados
+  // após NFD: é → e + ´). Removendo, sobra a letra base.
+  return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function applyHeaderFilters(tournaments) {
   const f = state;
-  const q = (f.searchQuery || '').trim().toLowerCase();
+  const q = normalizeForSearch((f.searchQuery || '').trim());
   const terms = q ? q.split(/\s+/).filter(Boolean) : [];
   return tournaments.filter(t => {
     if (f.filterUFs.length && !f.filterUFs.includes(t.state)) return false;
@@ -1018,11 +1027,11 @@ function applyHeaderFilters(tournaments) {
       if (!y || !f.filterYears.includes(y)) return false;
     }
     if (terms.length) {
-      const haystack = [
+      const haystack = normalizeForSearch([
         t.name, t.city, t.state,
         ...(t.tiers || []), t.tier,
         ...(t.labels || []).map(L => L.name),
-      ].filter(Boolean).join(' ').toLowerCase();
+      ].filter(Boolean).join(' '));
       if (!terms.every(term => haystack.includes(term))) return false;
     }
     return true;
@@ -1030,15 +1039,15 @@ function applyHeaderFilters(tournaments) {
 }
 
 // ===== Kanban =====
-// Labels e ordem têm que bater com backend/board.js. Mantém ids estáveis.
+// Labels, ordem e ícones têm que bater com backend/board.js. Mantém ids estáveis.
 const KANBAN_COLUMNS = [
-  { id: 'vou_jogar',           label: 'Monitorar',          icon: '⭐' },
+  { id: 'vou_jogar',           label: 'Monitorar',          icon: '👀' },
   { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟' },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',    icon: '💰' },
-  { id: 'confirmado',          label: 'Confirmado',         icon: '✅' },
+  { id: 'confirmado',          label: 'Confirmado',         icon: '🎾' },
   { id: 'viagem_comprada',     label: 'Viagem comprada',    icon: '✈️' },
-  { id: 'torneios',            label: 'Não vou jogar',      icon: '🔒' },
-  { id: 'historico',           label: 'Arquivados',         icon: '🎾' },
+  { id: 'torneios',            label: 'Não vou jogar',      icon: '❌' },
+  { id: 'historico',           label: 'Arquivados',         icon: '📦' },
 ];
 const KANBAN_COLUMN_IDS = KANBAN_COLUMNS.map(c => c.id);
 
