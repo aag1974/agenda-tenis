@@ -2385,6 +2385,7 @@ function toggleGearMenu() {
     isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
     profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
+    { label: 'Manual', onClick: () => window.open('/manual', '_blank') },
     { label: 'Sair', onClick: () => logout() },
   ].filter(Boolean) : [];
 

@@ -192,6 +192,9 @@ app.post('/api/admin', (req, res) => {
 
 app.use(express.static(join(__dirname, '..', 'frontend')));
 
+// Alias amigável pro manual público (também acessível em /manual.html)
+app.get('/manual', (req, res) => res.sendFile(join(__dirname, '..', 'frontend', 'manual.html')));
+
 // Profiles — escopados pela household do usuário
 app.get('/api/profiles', requireAuth, (req, res) => {
   res.json(listProfiles({ householdId: req.householdId }));

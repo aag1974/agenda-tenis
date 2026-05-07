@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tennis Flow — Manual</title>
+  <link rel="icon" href="/icon-192.svg" />
+  <style>
+    :root {
+      --navy: #0e3a4d;
+      --navy-dark: #0a2e3d;
+      --teal: #1f5b75;
+      --cyan: #22d3ee;
+      --cyan-deep: #00a3e0;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--slate-800);
+      background: var(--slate-50);
+      line-height: 1.55;
+    }
+    .page {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem 3rem;
+      background: white;
+    }
+    /* === Capa === */
+    .cover {
+      background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--teal) 100%);
+      color: white;
+      padding: 4rem 2rem 5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before, .cover::after {
+      content: '🎾';
+      position: absolute;
+      font-size: 12rem;
+      opacity: 0.07;
+      pointer-events: none;
+    }
+    .cover::before { top: -2rem; left: -2rem; transform: rotate(-15deg); }
+    .cover::after { bottom: -3rem; right: -2rem; transform: rotate(20deg); }
+    .cover-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 96px; height: 96px;
+      background: var(--navy-dark);
+      border-radius: 24px;
+      font-size: 56px;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .cover-mark .tf {
+      position: absolute;
+      bottom: 4px; right: 4px;
+      font-size: 18px; font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .cover-mark .tf .t { color: white; }
+    .cover-mark .tf .f { color: var(--cyan); }
+    .cover h1 {
+      font-size: 3rem;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+      font-weight: 800;
+    }
+    .cover h1 .accent { color: var(--cyan); }
+    .cover .tagline {
+      font-size: 1.25rem;
+      opacity: 0.85;
+      margin: 0 0 2rem;
+      max-width: 520px;
+      margin-left: auto; margin-right: auto;
+    }
+    .cover .pills {
+      display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+    .cover .pill {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+    /* === Tipografia === */
+    h2 {
+      font-size: 1.75rem;
+      color: var(--navy);
+      margin: 2.5rem 0 0.75rem;
+      letter-spacing: -0.01em;
+      page-break-after: avoid;
+    }
+    h2 .num {
+      display: inline-block;
+      width: 2rem; height: 2rem;
+      background: var(--cyan);
+      color: var(--navy);
+      border-radius: 50%;
+      text-align: center;
+      line-height: 2rem;
+      font-size: 1rem;
+      font-weight: 800;
+      margin-right: 0.6rem;
+      vertical-align: middle;
+    }
+    h3 {
+      font-size: 1.15rem;
+      color: var(--navy);
+      margin: 1.5rem 0 0.5rem;
+      page-break-after: avoid;
+    }
+    p { margin: 0 0 0.85rem; }
+    .lead {
+      font-size: 1.1rem;
+      color: var(--slate-700);
+    }
+    .muted { color: var(--slate-500); font-size: 0.9rem; }
+    /* === Componentes === */
+    .quote {
+      border-left: 4px solid var(--cyan);
+      padding: 0.75rem 1.25rem;
+      background: var(--slate-100);
+      font-style: italic;
+      color: var(--slate-700);
+      margin: 1.5rem 0;
+      page-break-inside: avoid;
+    }
+    .grid-2 {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1rem; margin: 1.25rem 0;
+    }
+    .grid-3 {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.85rem; margin: 1.25rem 0;
+    }
+    .card {
+      background: white;
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      page-break-inside: avoid;
+    }
+    .card .icon {
+      font-size: 2rem; line-height: 1; margin-bottom: 0.5rem;
+      display: block;
+    }
+    .card .title {
+      font-weight: 700; color: var(--navy); margin-bottom: 0.25rem;
+      font-size: 0.95rem;
+    }
+    .card .desc { font-size: 0.85rem; color: var(--slate-600); margin: 0; }
+
+    /* Diagrama de fluxo */
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 0.5rem;
+      align-items: center;
+      margin: 1.5rem 0 2rem;
+      page-break-inside: avoid;
+    }
+    .flow-step {
+      background: white;
+      border: 2px solid var(--cyan);
+      border-radius: 16px;
+      padding: 1rem 0.75rem;
+      text-align: center;
+    }
+    .flow-step .step-icon {
+      font-size: 2.5rem; display: block; margin-bottom: 0.4rem;
+    }
+    .flow-step .step-title {
+      font-weight: 800; color: var(--navy); font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+    .flow-step .step-desc { font-size: 0.78rem; color: var(--slate-600); }
+    .flow-arrow {
+      font-size: 1.5rem; color: var(--cyan); font-weight: bold;
+    }
+    .flow-step.middle {
+      background: var(--navy);
+      color: white;
+      border-color: var(--navy);
+    }
+    .flow-step.middle .step-title { color: white; }
+    .flow-step.middle .step-desc { color: rgba(255,255,255,0.85); }
+
+    /* Kanban diagram */
+    .kanban {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.4rem;
+      margin: 1.25rem 0 1rem;
+      page-break-inside: avoid;
+    }
+    .kcol {
+      background: var(--navy);
+      color: white;
+      border-radius: 8px;
+      padding: 0.6rem 0.4rem;
+      text-align: center;
+      font-size: 0.7rem;
+    }
+    .kcol .kicon { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
+    .kcol .klabel {
+      font-weight: 700; line-height: 1.15; font-size: 0.65rem;
+    }
+    .kcol .kcards {
+      margin-top: 0.5rem;
+      display: flex; flex-direction: column; gap: 0.2rem;
+    }
+    .kcol .kcard {
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      height: 8px;
+    }
+    .kcol-list {
+      list-style: none; padding: 0; margin: 1.25rem 0;
+    }
+    .kcol-list li {
+      display: grid;
+      grid-template-columns: 50px 1fr;
+      gap: 1rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--slate-200);
+      page-break-inside: avoid;
+    }
+    .kcol-list li:last-child { border-bottom: none; }
+    .kcol-list .col-icon {
+      font-size: 1.75rem;
+      text-align: center;
+    }
+    .kcol-list .col-name {
+      font-weight: 700; color: var(--navy); font-size: 1rem;
+    }
+    .kcol-list .col-desc {
+      font-size: 0.9rem; color: var(--slate-600); margin: 0.15rem 0 0;
+    }
+
+    /* Quick-start */
+    .steps {
+      counter-reset: step;
+      list-style: none; padding: 0; margin: 1.25rem 0;
+    }
+    .steps > li {
+      counter-increment: step;
+      position: relative;
+      padding: 0.85rem 1rem 0.85rem 3.25rem;
+      background: var(--slate-100);
+      border-radius: 10px;
+      margin-bottom: 0.6rem;
+      page-break-inside: avoid;
+    }
+    .steps > li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0.85rem; top: 0.75rem;
+      width: 1.75rem; height: 1.75rem;
+      background: var(--cyan);
+      color: var(--navy);
+      border-radius: 50%;
+      text-align: center;
+      line-height: 1.75rem;
+      font-weight: 800;
+    }
+    .steps > li strong {
+      color: var(--navy);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 2px solid var(--slate-200);
+      text-align: center;
+      color: var(--slate-500);
+      font-size: 0.85rem;
+    }
+    .footer .brand {
+      font-weight: 800; color: var(--navy); font-size: 1rem;
+    }
+    .footer .brand .f { color: var(--cyan-deep); }
+
+    /* Banner CTA */
+    .cta {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--teal) 100%);
+      color: white;
+      padding: 1.75rem;
+      border-radius: 16px;
+      text-align: center;
+      margin: 2rem 0 1rem;
+      page-break-inside: avoid;
+    }
+    .cta h3 { color: white; margin: 0 0 0.5rem; font-size: 1.4rem; }
+    .cta p { margin: 0; opacity: 0.9; }
+
+    /* Print rules */
+    @media print {
+      body { background: white; }
+      .page, .cover { max-width: none; padding: 1.25rem 1.5rem; }
+      .cover { padding-top: 2rem; padding-bottom: 2.5rem; }
+      .no-print { display: none !important; }
+      h2 { page-break-after: avoid; }
+      .card, .flow, .kanban, .quote, .steps > li { page-break-inside: avoid; }
+      .section-break { page-break-before: always; }
+    }
+    @page { margin: 1.2cm; }
+
+    /* Mobile */
+    @media (max-width: 640px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .flow-arrow { transform: rotate(90deg); justify-self: center; }
+      .kanban { grid-template-columns: repeat(2, 1fr); }
+      .cover h1 { font-size: 2.25rem; }
+    }
+
+    /* Print button */
+    .print-bar {
+      position: sticky; top: 0; z-index: 50;
+      background: var(--navy); color: white;
+      padding: 0.6rem 1rem;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .print-bar a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .print-bar button {
+      background: var(--cyan);
+      color: var(--navy);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .print-bar button:hover { background: white; }
+  </style>
+</head>
+<body>
+
+<div class="print-bar no-print">
+  <a href="/">← Voltar pro app</a>
+  <span style="font-size:0.85rem; opacity:0.8">Manual Tennis Flow</span>
+  <button onclick="window.print()">Salvar como PDF</button>
+</div>
+
+<!-- ============== CAPA ============== -->
+<section class="cover">
+  <div class="cover-mark">
+    🎾<span class="tf"><span class="t">T</span><span class="f">F</span></span>
+  </div>
+  <h1>Tennis<span class="accent">Flow</span></h1>
+  <p class="tagline">A agenda de torneios da família atleta — organizada num quadro Kanban que entende o calendário do tênis brasileiro.</p>
+  <div class="pills">
+    <span class="pill">Sincroniza com Tênis Integrado</span>
+    <span class="pill">Boletos detectados</span>
+    <span class="pill">Agenda no iPhone</span>
+    <span class="pill">Compartilhado em família</span>
+  </div>
+</section>
+
+<div class="page">
+
+  <!-- ============== POR QUE ============== -->
+  <h2><span class="num">1</span>Por que existe</h2>
+  <p class="lead">Quem é pai, mãe ou treinador de criança que joga torneio sabe: o calendário é caótico.</p>
+  <p>O Tênis Integrado tem tudo, mas quem precisa transformar aquilo em <strong>plano de viagem, lembrete de boleto e mensagem no grupo da família</strong> é você. Cada semana é um copia-e-cola entre o site, o Google Calendar, o WhatsApp do treinador e o boleto que vence amanhã.</p>
+
+  <div class="quote">
+    "A inscrição abriu ontem e fechou hoje. Acabei descobrindo no grupo do clube — depois que a vaga já tinha esgotado."
+  </div>
+
+  <p>O Tennis Flow nasceu pra resolver isso. Ele <strong>lê o Tênis Integrado por você</strong>, organiza tudo num quadro Kanban familiar, avisa de boletos pendentes, manda os torneios pra agenda do celular e divide tudo com quem precisa acompanhar.</p>
+
+  <!-- ============== COMO FUNCIONA EM 3 PASSOS ============== -->
+  <h2><span class="num">2</span>Como funciona, em 3 passos</h2>
+
+  <div class="flow">
+    <div class="flow-step">
+      <span class="step-icon">🌐</span>
+      <div class="step-title">Tênis Integrado</div>
+      <div class="step-desc">Você fornece login do TI. O Flow lê todos os torneios da categoria, inscrições e boletos.</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step middle">
+      <span class="step-icon">🎾</span>
+      <div class="step-title">Tennis Flow</div>
+      <div class="step-desc">Organiza tudo num Kanban. Detecta mudanças e avisa.</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <span class="step-icon">📱</span>
+      <div class="step-title">Sua família</div>
+      <div class="step-desc">Quadro compartilhado, agenda no iPhone, alertas no celular. Todo mundo na mesma página.</div>
+    </div>
+  </div>
+
+  <!-- ============== AS 7 COLUNAS ============== -->
+  <h2><span class="num">3</span>O quadro: as 7 colunas</h2>
+  <p>Cada torneio é um <em>card</em>. Ele cai automaticamente na coluna certa baseado nos sinais do Tênis Integrado — e você pode mover manualmente quando faz sentido.</p>
+
+  <!-- Mini diagrama visual do Kanban -->
+  <div class="kanban">
+    <div class="kcol">
+      <span class="kicon">🔒</span>
+      <div class="klabel">Inscrições<br>Encerradas</div>
+      <div class="kcards"><div class="kcard"></div><div class="kcard"></div><div class="kcard"></div></div>
+    </div>
+    <div class="kcol">
+      <span class="kicon">🌟</span>
+      <div class="klabel">Inscrições<br>Abertas</div>
+      <div class="kcards"><div class="kcard"></div><div class="kcard"></div></div>
+    </div>
+    <div class="kcol">
+      <span class="kicon">⭐</span>
+      <div class="klabel">No radar</div>
+      <div class="kcards"><div class="kcard"></div></div>
+    </div>
+    <div class="kcol">
+      <span class="kicon">💰</span>
+      <div class="klabel">Pagar<br>inscrição</div>
+      <div class="kcards"><div class="kcard"></div></div>
+    </div>
+    <div class="kcol">
+      <span class="kicon">✅</span>
+      <div class="klabel">Confirmado</div>
+      <div class="kcards"><div class="kcard"></div><div class="kcard"></div></div>
+    </div>
+    <div class="kcol">
+      <span class="kicon">✈️</span>
+      <div class="klabel">Viagem<br>comprada</div>
+      <div class="kcards"><div class="kcard"></div></div>
+    </div>
+    <div class="kcol">
+      <span class="kicon">🎾</span>
+      <div class="klabel">Encerrados</div>
+      <div class="kcards"><div class="kcard"></div><div class="kcard"></div><div class="kcard"></div></div>
+    </div>
+  </div>
+
+  <ul class="kcol-list">
+    <li>
+      <div class="col-icon">🔒</div>
+      <div>
+        <div class="col-name">Inscrições Encerradas</div>
+        <p class="col-desc">Torneios futuros que ainda não estão com inscrições abertas, ou já passaram do prazo. É a "estante" — onde tudo começa antes do TI sinalizar abertura.</p>
+      </div>
+    </li>
+    <li>
+      <div class="col-icon">🌟</div>
+      <div>
+        <div class="col-name">Inscrições Abertas</div>
+        <p class="col-desc">O TI marcou como aberto. Hora de decidir: vai jogar? Move pra "No radar" ou aguarda virar Confirmado.</p>
+      </div>
+    </li>
+    <li>
+      <div class="col-icon">⭐</div>
+      <div>
+        <div class="col-name">No radar</div>
+        <p class="col-desc">Você marcou que tem interesse. Esses entram com lembrete na agenda 7 dias antes, mesmo que ainda não tenha inscrito.</p>
+      </div>
+    </li>
+    <li>
+      <div class="col-icon">💰</div>
+      <div>
+        <div class="col-name">Pagar inscrição</div>
+        <p class="col-desc">Boleto detectado pelo TI. O Flow puxa o link do boleto e cria lembrete na agenda 1 dia antes do vencimento. Quando paga, sai sozinho.</p>
+      </div>
+    </li>
+    <li>
+      <div class="col-icon">✅</div>
+      <div>
+        <div class="col-name">Confirmado</div>
+        <p class="col-desc">Inscrição registrada no TI e (se tinha boleto) já paga. Está dentro.</p>
+      </div>
+    </li>
+    <li>
+      <div class="col-icon">✈️</div>
+      <div>
+        <div class="col-name">Viagem comprada</div>
+        <p class="col-desc">Manual: você arrasta o card pra cá quando comprou passagens / reservou hotel. Útil pra família saber o que já está logisticamente fechado.</p>
+      </div>
+    </li>
+    <li>
+      <div class="col-icon">🎾</div>
+      <div>
+        <div class="col-name">Encerrados</div>
+        <p class="col-desc">Histórico — torneios que já aconteceram. Mantém comentários, anexos e ficha do torneio pra consulta futura.</p>
+      </div>
+    </li>
+  </ul>
+
+  <!-- ============== RECURSOS ============== -->
+  <h2><span class="num">4</span>O que ele faz por você</h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <span class="icon">🔄</span>
+      <div class="title">Sincronização automática</div>
+      <p class="desc">Lê o Tênis Integrado a cada 6h e quando você pedir. Sem exportar planilha, sem copiar URL.</p>
+    </div>
+    <div class="card">
+      <span class="icon">💰</span>
+      <div class="title">Boletos detectados</div>
+      <p class="desc">Quando aparece um boleto pendente no TI, o card vai pra "Pagar inscrição" e ganha lembrete 1 dia antes do vencimento.</p>
+    </div>
+    <div class="card">
+      <span class="icon">📅</span>
+      <div class="title">Agenda do iPhone / Google</div>
+      <p class="desc">Cada torneio marcado vira evento na sua agenda. Atualiza sozinho — basta inscrever uma vez.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🔔</span>
+      <div class="title">Alertas configuráveis</div>
+      <p class="desc">"Avise quando aparecer torneio em DF", "quando o ranking nacional mudar", "quando aparecer chave G1". Você define as regras.</p>
+    </div>
+    <div class="card">
+      <span class="icon">👥</span>
+      <div class="title">Compartilhado em família</div>
+      <p class="desc">Convide mãe, pai, treinador. Todo mundo vê o mesmo quadro — quem move, quem comenta, quem anexou o boleto.</p>
+    </div>
+    <div class="card">
+      <span class="icon">💬</span>
+      <div class="title">Comentários e anexos</div>
+      <p class="desc">Cada card tem timeline de atividade, comentários da família e anexo de comprovantes (boleto pago, voucher de hotel).</p>
+    </div>
+    <div class="card">
+      <span class="icon">📊</span>
+      <div class="title">Ranking visível</div>
+      <p class="desc">Posição da atleta no ranking nacional e do estado, sempre na ficha do perfil.</p>
+    </div>
+    <div class="card">
+      <span class="icon">📱</span>
+      <div class="title">Funciona como app no iPhone</div>
+      <p class="desc">Adicione à tela inicial — vira ícone igual aplicativo nativo, com cores e tela cheia.</p>
+    </div>
+  </div>
+
+  <!-- ============== PRA QUEM É ============== -->
+  <h2><span class="num">5</span>Pra quem é</h2>
+  <div class="grid-3">
+    <div class="card">
+      <span class="icon">👨‍👩‍👧</span>
+      <div class="title">Pais e mães</div>
+      <p class="desc">Que querem saber quando abre inscrição, quanto custa o boleto, e quando vai ser a próxima viagem — sem ficar refrescando o site.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🎾</span>
+      <div class="title">Treinadores</div>
+      <p class="desc">Que acompanham vários atletas e precisam de uma visão única do calendário de cada um.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🏠</span>
+      <div class="title">Famílias multi-tela</div>
+      <p class="desc">Quando avó, padrasto, irmão mais velho — todo mundo opina na decisão de jogar e quer ver o mesmo quadro.</p>
+    </div>
+  </div>
+
+  <!-- ============== COMO COMEÇAR ============== -->
+  <h2><span class="num">6</span>Como começar</h2>
+  <ol class="steps">
+    <li><strong>Crie sua conta.</strong> Email + senha. Em segundos.</li>
+    <li><strong>Conecte o Tênis Integrado.</strong> Email e senha que você usa no TI. As credenciais ficam criptografadas — só o Flow usa, pra ler os dados.</li>
+    <li><strong>Aguarde a primeira sincronização.</strong> Leva ~30 segundos. Vai puxar todos os torneios da categoria, ranking e qualquer boleto pendente.</li>
+    <li><strong>Marque os torneios que interessam.</strong> Estrelinha → cai em "No radar" e entra na agenda.</li>
+    <li><strong>Conecte sua agenda.</strong> No menu, "Conectar agenda" → mostra um link que você cola no calendário do iPhone (ou Google). Atualiza sozinho dali em diante.</li>
+    <li><strong>Convide a família (opcional).</strong> No menu, "Convidar membro". Eles vêem o mesmo quadro — incluindo quem comentou e quem anexou o quê.</li>
+    <li><strong>Configure alertas (opcional).</strong> Menu → "Criar alertas". Defina regras como "novo torneio em DF" ou "qualquer mudança no ranking nacional".</li>
+  </ol>
+
+  <!-- ============== CTA FINAL ============== -->
+  <div class="cta">
+    <h3>Tennis Flow</h3>
+    <p>Pra a família atleta gastar tempo com tênis, não com planilha.</p>
+  </div>
+
+  <div class="footer">
+    <div class="brand">Tennis<span class="f">Flow</span></div>
+    <div style="margin-top: 0.4rem">Manual gerado em <span id="today"></span></div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('today').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+</script>
+
+</body>
+</html>
