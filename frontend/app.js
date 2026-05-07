@@ -1229,9 +1229,15 @@ function buildShareText(t, { includeUrl = true, shareUrl = null } = {}) {
   const regStatus = t.registrationStatus || '';
   const regDate = regStatus.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
   const regOpen = /Aberto|aberta/i.test(regStatus);
-  const regLine = regDate
-    ? (regOpen ? `abertas até ${regDate}` : `encerraram em ${regDate}`)
-    : (regStatus || null);
+  const regClosed = /Encerrad/i.test(regStatus);
+  // Só mostra "Inscrições" se for info real de janela (aberta/encerrada).
+  // Status do atleta tipo "Confirmado", "Pendente" não cabem aqui — são
+  // privados e confundem quem recebe o link.
+  let regLine = null;
+  if (regDate && regOpen) regLine = `abertas até ${regDate}`;
+  else if (regDate && regClosed) regLine = `encerraram em ${regDate}`;
+  else if (regOpen) regLine = 'abertas';
+  else if (regClosed) regLine = 'encerradas';
   const lines = [];
   lines.push(`*${t.name || 'Torneio'}*`);
   if (where) lines.push(`Local: ${where}`);

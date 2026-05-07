@@ -214,10 +214,15 @@ function renderSharePage(tournament, details) {
   const tiers = (t.tiers && t.tiers.length) ? t.tiers : (t.tier ? [t.tier] : []);
   const regStatus = t.registrationStatus || null;
   const regOpen = /Aberto|aberta/i.test(regStatus || '');
+  const regClosed = /Encerrad/i.test(regStatus || '');
   const regDate = (regStatus || '').match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
-  const regLine = regDate
-    ? (regOpen ? `Inscrições abertas até ${regDate}` : `Inscrições encerraram em ${regDate}`)
-    : (regStatus ? `Inscrições: ${regStatus}` : null);
+  // Só info de janela (aberta/encerrada). Status privado do atleta
+  // ("Confirmado", "Pendente") não vai pra página pública.
+  let regLine = null;
+  if (regDate && regOpen) regLine = `Inscrições abertas até ${regDate}`;
+  else if (regDate && regClosed) regLine = `Inscrições encerraram em ${regDate}`;
+  else if (regOpen) regLine = 'Inscrições abertas';
+  else if (regClosed) regLine = 'Inscrições encerradas';
   const ogDesc = [dates, where, tiers.join(' · ')].filter(Boolean).join(' · ');
 
   return `<!doctype html>
@@ -379,7 +384,7 @@ function renderSharePage(tournament, details) {
 
   <div class="modal-card">
     <div class="modal-header">
-      <span class="col-pill">${regOpen ? '🌟 Inscrições Abertas' : (regStatus ? '🔒 ' + escapeHtml(regStatus) : '🎾 Torneio')}</span>
+      <span class="col-pill">${regOpen ? '🌟 Inscrições Abertas' : (regClosed ? '🔒 Inscrições Encerradas' : '🎾 Torneio')}</span>
       ${t.url ? `<a class="ti-link" href="${escapeHtml(t.url)}" target="_blank" rel="noopener">Ver no Tênis Integrado ↗</a>` : ''}
     </div>
 
