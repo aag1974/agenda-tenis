@@ -490,7 +490,8 @@ app.get('/share/:token', async (req, res) => {
   // do endpoint de detalhes. Falha silenciosa se TI offline.
   let details = null;
   try { details = await loadTournamentDetailsCached(t.id); } catch {}
-  res.type('html').send(renderSharePage(t, details));
+  // Evita cache de CDN servir versões antigas do layout
+  res.set('Cache-Control', 'no-cache, must-revalidate').type('html').send(renderSharePage(t, details));
 });
 
 // Profiles — escopados pela household do usuário
