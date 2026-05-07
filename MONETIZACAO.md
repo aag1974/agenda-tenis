@@ -138,7 +138,7 @@ Esse é o coração da estratégia viral. Vou detalhar.
 
 1. Usuário Pro clica em "⋯ → Compartilhar" num card
 2. Backend gera (ou reusa) um **token de compartilhamento** pro torneio
-3. Mensagem do WhatsApp agora carrega `https://tennisflow.../share/T_abc123`
+3. Mensagem do WhatsApp agora carrega `https://tennis-flow.com/share/T_abc123`
 4. Quem recebe clica → vê uma página pública linda com:
    - Header: logo Tennis Flow + "Compartilhado via Tennis Flow 🎾"
    - **Card hero**: nome do torneio em destaque, datas, cidade/UF, chave,
