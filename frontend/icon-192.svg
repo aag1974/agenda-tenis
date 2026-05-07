@@ -3,7 +3,7 @@
   <text x="96" y="138" font-size="140" text-anchor="middle"
         font-family="'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif">🎾</text>
   <!-- TF no canto inferior direito -->
-  <text x="178" y="178" font-size="34" font-weight="900" text-anchor="end" letter-spacing="-1.5"
+  <text x="192" y="180" font-size="52" font-weight="900" text-anchor="end" letter-spacing="-2"
         font-family="-apple-system, system-ui, 'Segoe UI', sans-serif">
     <tspan fill="#ffffff">T</tspan><tspan fill="#22d3ee">F</tspan>
   </text>
