@@ -1,10 +1,13 @@
 // Operações administrativas — usadas tanto pelo CLI (Render shell) quanto
 // pelo endpoint /api/admin protegido por ADMIN_TOKEN.
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scryptSync, randomBytes } from 'node:crypto';
+import { COLUMNS } from './board.js';
+
+const COLUMN_LABEL_BY_ID = Object.fromEntries(COLUMNS.map(c => [c.id, c.label]));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '..', 'data');
@@ -69,6 +72,36 @@ export function showHousehold(email) {
   };
 }
 
+// Reescreve mensagens antigas do tipo `Movido para "pagar_inscricao"` pra
+// `Movido para "Pagar inscrição"` em todas as notes.json.
+export function normalizeActivityLogs() {
+  if (!existsSync(DATA_DIR)) return { profiles: 0, rewritten: 0 };
+  let profilesTouched = 0;
+  let rewritten = 0;
+  for (const dir of readdirSync(DATA_DIR)) {
+    if (!dir.startsWith('profile-')) continue;
+    const file = join(DATA_DIR, dir, 'notes.json');
+    if (!existsSync(file)) continue;
+    let notes;
+    try { notes = JSON.parse(readFileSync(file, 'utf8')); } catch { continue; }
+    let touched = false;
+    for (const tid of Object.keys(notes)) {
+      const acts = notes[tid]?.activity;
+      if (!Array.isArray(acts)) continue;
+      for (const a of acts) {
+        if (a.type !== 'column_change' || !a.message) continue;
+        const newMsg = a.message.replace(/"([a-z_]+)"/g, (_, id) => `"${COLUMN_LABEL_BY_ID[id] || id}"`);
+        if (newMsg !== a.message) { a.message = newMsg; rewritten++; touched = true; }
+      }
+    }
+    if (touched) {
+      writeFileSync(file, JSON.stringify(notes, null, 2));
+      profilesTouched++;
+    }
+  }
+  return { profiles: profilesTouched, rewritten };
+}
+
 export function findTournament(email, namePartial) {
   const u = findUser(email);
   if (!u) throw new Error('Usuário não encontrado');
@@ -121,8 +154,10 @@ if (isMain) {
       console.log(JSON.stringify(showHousehold(arg1), null, 2));
     } else if (cmd === 'find-tournament') {
       console.log(JSON.stringify(findTournament(arg1, arg2), null, 2));
+    } else if (cmd === 'normalize-activity-logs') {
+      console.log('✓', normalizeActivityLogs());
     } else {
-      console.log('Comandos: list-users | delete-user <email> | reset-password <email> <novaSenha> | show-household <email> | find-tournament <email> <nome>');
+      console.log('Comandos: list-users | delete-user | reset-password | show-household | find-tournament | normalize-activity-logs');
     }
   } catch (err) {
     console.error('Erro:', err.message);

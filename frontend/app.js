@@ -1824,11 +1824,19 @@ function openAthleteCard() {
   const tournaments = data.tournaments || [];
   const today = startOfToday();
 
+  // Próximo / último: só conta torneios inscritos e com inscrição paga
+  const willPlay = (t) => {
+    const givenUp = !!t.notes?.manualGiveUp;
+    if (givenUp) return false;
+    const inscribed = t.isAnnaInscribed || t.notes?.manualInscribed;
+    const paid = !t.pendingPayment;
+    return !!(inscribed && paid);
+  };
   const future = tournaments
-    .filter(t => brToDate(t.startDate) && brToDate(t.startDate) >= today)
+    .filter(t => willPlay(t) && brToDate(t.startDate) && brToDate(t.startDate) >= today)
     .sort((a, b) => (brToIso(a.startDate) || '').localeCompare(brToIso(b.startDate) || ''));
   const past = tournaments
-    .filter(t => brToDate(t.endDate) && brToDate(t.endDate) < today)
+    .filter(t => willPlay(t) && brToDate(t.endDate) && brToDate(t.endDate) < today)
     .sort((a, b) => (brToIso(b.endDate) || '').localeCompare(brToIso(a.endDate) || ''));
   const next = future[0];
   const last = past[0];
@@ -2421,9 +2429,9 @@ async function openTournament(tid) {
   const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-40', onClick: close });
 
   const observationsBlock = merged.observations
-    ? el('details', { class: 'mt-3' },
-        el('summary', { class: 'cursor-pointer text-sm text-slate-600 hover:text-slate-900' }, 'Observações do torneio (texto livre)'),
-        el('pre', { class: 'mt-2 text-xs whitespace-pre-wrap bg-slate-50 p-3 rounded border border-slate-200 max-h-64 overflow-auto' }, merged.observations),
+    ? el('section', null,
+        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Observações do torneio'),
+        el('pre', { class: 'text-xs whitespace-pre-wrap bg-slate-50 p-3 rounded border border-slate-200 max-h-64 overflow-auto' }, merged.observations),
       )
     : null;
 
@@ -2495,32 +2503,12 @@ async function openTournament(tid) {
         }, '🎾 Inscrever no Tênis Integrado ↗'),
       ),
 
-      t.pendingPayment && (() => {
-        const reminder = buildPaymentReminder(t);
-        return el('section', { class: 'rounded-lg bg-amber-50 border border-amber-300 p-3' },
-          el('div', { class: 'text-sm font-medium text-amber-900' }, `💰 Pagamento pendente — vence ${t.pendingPayment.dueDate || '?'}`),
-          el('div', { class: 'text-xs text-amber-800 mt-0.5' }, `${fmtValueNoCents(t.pendingPayment.value)}${t.pendingPayment.category ? ' · ' + t.pendingPayment.category : ''}`),
-          el('div', { class: 'flex flex-wrap gap-2 mt-2' },
-            el('a', {
-              href: t.url || 'https://www.tenisintegrado.com.br',
-              target: '_blank', rel: 'noopener',
-              class: 'text-xs bg-amber-600 text-white px-2 py-1 rounded hover:bg-amber-700',
-            }, 'Abrir torneio no TI ↗'),
-            reminder && el('button', {
-              type: 'button',
-              class: 'text-xs bg-white border border-amber-400 text-amber-800 px-2 py-1 rounded hover:bg-amber-100',
-              title: `Cria evento em ${reminder.start.toLocaleString('pt-BR')} com alarme 30min antes`,
-              onClick: () => downloadIcs(reminder, `pagamento-${(t.name || 'torneio').replace(/[^\w]+/g, '-').slice(0, 40)}.ics`),
-            }, '📅 Apple Calendar (.ics)'),
-            reminder && el('a', {
-              href: googleCalendarUrl(reminder), target: '_blank', rel: 'noopener',
-              class: 'text-xs bg-white border border-amber-400 text-amber-800 px-2 py-1 rounded hover:bg-amber-100',
-              title: 'Abre Google Calendar com evento pré-preenchido',
-            }, '🌐 Google Calendar'),
-          ),
-          reminder && el('div', { class: 'text-xs text-amber-700 mt-1' }, `Lembrete: ${reminder.start.toLocaleDateString('pt-BR')} às 09:00 (alarme 30min antes)`),
-        );
-      })(),
+      t.pendingPayment && el('section', { class: 'rounded-lg bg-amber-50 border border-amber-300 px-3 py-2 flex items-center justify-between gap-3' },
+        el('div', { class: 'min-w-0' },
+          el('div', { class: 'text-sm font-medium text-amber-900' }, `💰 Vence ${t.pendingPayment.dueDate || '?'} · ${fmtValueNoCents(t.pendingPayment.value)}`),
+          t.pendingPayment.category && el('div', { class: 'text-xs text-amber-800 mt-0.5 truncate' }, t.pendingPayment.category),
+        ),
+      ),
 
       el('section', null,
         el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Datas'),
@@ -2575,11 +2563,6 @@ async function openTournament(tid) {
       ),
 
       observationsBlock,
-
-      el('section', null,
-        el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Anotações'),
-        renderNotesForm(t.id, notes),
-      ),
 
       receiptsBlock(t),
   );
