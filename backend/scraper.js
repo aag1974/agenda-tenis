@@ -361,69 +361,65 @@ export async function getAthleteStatusInTournament(tournamentId, athleteId, clie
     return { inscribed: false, confirmed: false, ...(debug ? { debug: { error: 'info ' + err.message, log: dbgLog } } : {}) };
   }
 
-  // 2. Localiza link pra aba Inscrições. Tenta vários padrões porque o TI
-  // usa nomenclatura inconsistente (_inscritos, _inscricoes, etc).
+  // 2. Localiza link pra aba Inscrições. TI usa /torneio_painel_insc/
+  // (curto). Per-categoria: /torneio_painel_insc/index/<tid>/<catId>.
   const $ = cheerio.load(infoHtml);
   const insc_anchors = [];
   $('a').each((i, a) => {
     const href = ($(a).attr('href') || '').trim();
     const text = $(a).text().trim();
-    if (/insc/i.test(href) || /inscri/i.test(text)) {
+    if (/torneio_painel_insc/i.test(href)) {
       insc_anchors.push({ href, text });
     }
   });
-  let inscritosPath = null;
-  // Prioridade: anchor com href contendo "_insc" (do panel do torneio)
-  for (const a of insc_anchors) {
-    if (/\/torneio_painel_insc/i.test(a.href)) {
-      inscritosPath = a.href.startsWith('http') ? new URL(a.href).pathname : a.href;
-      break;
-    }
-  }
-  // Fallback: tenta padrões mais prováveis em ordem
-  const candidates = inscritosPath ? [inscritosPath] : [
-    `/torneio_painel_inscricoes/index/${tournamentId}`,
-    `/torneio_painel_inscritos/index/${tournamentId}`,
-    `/torneio_painel_inscricao/index/${tournamentId}`,
-  ];
-  dbgLog.push({ step: 'find-inscritos', inscritosPath, anchorsFound: insc_anchors.length, sampleAnchors: insc_anchors.slice(0, 5), candidates });
 
-  // 3. Tenta cada candidata até uma funcionar
-  let html = null;
-  let chosenPath = null;
-  for (const path of candidates) {
+  // Constrói lista de candidatos: links da página + fallbacks
+  const normalize = (h) => {
+    if (!h) return null;
+    if (h.startsWith('http')) return new URL(h).pathname;
+    return h.startsWith('/') ? h : '/' + h;
+  };
+  const fromPage = insc_anchors.map(a => normalize(a.href)).filter(Boolean);
+  // Adiciona base path se houver per-categoria mas não a geral
+  const hasGeneral = fromPage.some(p => /\/torneio_painel_insc\/index\/\d+\/?$/.test(p));
+  if (!hasGeneral) fromPage.push(`/torneio_painel_insc/index/${tournamentId}`);
+  const candidates = [...new Set(fromPage)];
+  dbgLog.push({ step: 'find-inscritos', anchorsFound: insc_anchors.length, sampleAnchors: insc_anchors.slice(0, 6), candidates });
+
+  // 3. Cada candidato é uma página (geralmente per-categoria). Scannea
+  // todas até achar a atleta. Cap em 12 pra não exagerar nos HTTPs.
+  const idPattern = new RegExp(`ID\\s*:\\s*${athleteId}\\b`, 'i');
+  let foundMatch = null; // { path, window }
+  let anyOk = false;
+  for (const path of candidates.slice(0, 12)) {
     try {
       const res = await client.request(path);
-      if (res.ok) {
-        html = await res.text();
-        chosenPath = path;
-        dbgLog.push({ step: 'inscritos-ok', path, status: res.status, len: html.length });
+      if (!res.ok) {
+        dbgLog.push({ step: 'page-skip', path, status: res.status });
+        continue;
+      }
+      anyOk = true;
+      const pageHtml = await res.text();
+      const pageText = elementInnerText(cheerio.load(pageHtml)('body'));
+      const m = idPattern.exec(pageText);
+      if (m) {
+        const window = pageText.slice(Math.max(0, m.index - 200), Math.min(pageText.length, m.index + 400));
+        foundMatch = { path, window };
+        dbgLog.push({ step: 'page-found', path, status: res.status });
         break;
       } else {
-        dbgLog.push({ step: 'inscritos-skip', path, status: res.status });
+        dbgLog.push({ step: 'page-no-id', path, status: res.status, len: pageHtml.length });
       }
     } catch (err) {
-      dbgLog.push({ step: 'inscritos-err', path, error: err.message });
+      dbgLog.push({ step: 'page-err', path, error: err.message });
     }
   }
-  if (!html) {
-    return { inscribed: false, confirmed: false, ...(debug ? { debug: { log: dbgLog } } : {}) };
-  }
-
-  const text = elementInnerText(cheerio.load(html)('body'));
-  const idPattern = new RegExp(`ID\\s*:\\s*${athleteId}\\b`, 'i');
-  const m = idPattern.exec(text);
-  if (!m) {
-    if (debug) {
-      const isLoginPage = /entrar|email\s*:|senha\s*:|login/i.test(text.slice(0, 500));
-      const hasIdMarker = /ID\s*:\s*\d+/.test(text);
-      return { inscribed: false, confirmed: false, debug: { log: dbgLog, isLoginPage, hasIdMarker, sample: text.slice(0, 400) } };
-    }
+  if (!foundMatch) {
+    if (debug) return { inscribed: false, confirmed: false, debug: { log: dbgLog, anyOk } };
     return { inscribed: false, confirmed: false };
   }
-  const window = text.slice(Math.max(0, m.index - 200), Math.min(text.length, m.index + 400));
-  const confirmed = /Confirmado/i.test(window);
-  if (debug) return { inscribed: true, confirmed, debug: { log: dbgLog, window } };
+  const confirmed = /Confirmado/i.test(foundMatch.window);
+  if (debug) return { inscribed: true, confirmed, debug: { log: dbgLog, found: foundMatch } };
   return { inscribed: true, confirmed };
 }
 
@@ -504,12 +500,15 @@ function parseDetailsHtml(html, id, url) {
   }
 
   // Tiers do panel: 2 fontes complementares
-  // a) Categorias formais entre parênteses: "12 Anos Feminino Simples (G1+)"
+  // a) Categorias formais entre parênteses: "(G1+)" — `)` no fim previne
+  //    falsos positivos. Alternação ordenada longest-first pra capturar
+  //    "G1+" antes de cair em "G1".
   // b) Texto "CHAVE G1+" / "CHAVE GA" nas observações (alguns torneios têm
-  //    múltiplas chaves sequenciais anunciadas só em texto, não na Categorias)
+  //    múltiplas chaves sequenciais anunciadas só em texto). Lookahead
+  //    `(?![+\d])` previne backtrack de G1+ pra G1.
   const tiers = [...new Set([
-    ...[...text.matchAll(/\((GA\+|GA|G1\+|G1|G2|G3)\)/g)].map(m => m[1]),
-    ...[...text.matchAll(/\bCHAVE\s+(GA\+|GA|G1\+|G1|G2|G3)\b/gi)].map(m => m[1].toUpperCase()),
+    ...[...text.matchAll(/\((GA\+|G1\+|GA|G1|G2|G3)\)/g)].map(m => m[1]),
+    ...[...text.matchAll(/\bCHAVE\s+(GA\+|G1\+|GA|G1|G2|G3)(?![+\dA-Za-z])/gi)].map(m => m[1].toUpperCase()),
   ])];
 
   return {
