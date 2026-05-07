@@ -1825,12 +1825,12 @@ function toggleGearMenu() {
   const athleteActions = profile ? [
     { label: `Sobre ${athleteFirstName}`, onClick: () => openAthleteCard() },
     { label: `TI de ${athleteFirstName}`, onClick: () => openProfileForm(profile) },
-    { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
   ] : [];
   // Mobile: "Convidar membro" no menu. Desktop: "+" no header (memberStack)
   const isMobile = window.matchMedia('(max-width: 640px)').matches;
   const accountActions = state.user ? [
     isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
+    profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
     { label: 'Sair', onClick: () => logout() },
   ].filter(Boolean) : [];
 
