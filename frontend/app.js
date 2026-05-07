@@ -730,6 +730,11 @@ async function openInviteModal() {
   root.appendChild(overlay);
   root.appendChild(card);
 
+  // Estado do form persistido fora de renderBody pra não resetar quando
+  // a lista de membros/convites é re-renderizada.
+  let selectedRole = 'editor';
+  let savedLabel = '';
+
   const renderBody = async () => {
     body.innerHTML = '';
     body.appendChild(el('p', { class: 'text-sm text-slate-600' },
@@ -738,17 +743,32 @@ async function openInviteModal() {
     // Form pra criar novo convite — apelido + role
     const labelInput = el('input', {
       type: 'text', placeholder: 'Apelido (opcional, ex: "Maria")',
+      value: savedLabel,
       class: 'w-full text-sm rounded border border-slate-300 px-2 py-1.5 outline-none focus:border-cyan-400',
     });
-    let selectedRole = 'editor';
-    const roleBtn = (text, value, desc) => el('button', {
-      type: 'button',
-      class: `flex-1 text-sm rounded border px-3 py-2 text-left transition-colors ${selectedRole === value ? 'border-cyan-600 bg-cyan-50' : 'border-slate-300 hover:bg-slate-50'}`,
-      onClick: (e) => { e.preventDefault(); selectedRole = value; renderBody(); },
-    },
-      el('div', { class: `text-xs font-semibold ${selectedRole === value ? 'text-cyan-700' : 'text-slate-700'}` }, text),
-      el('div', { class: 'text-[11px] text-slate-500 mt-0.5' }, desc),
+    labelInput.oninput = (e) => { savedLabel = e.target.value; };
+
+    const editorBtn = el('button', { type: 'button', class: '' },
+      el('div', { class: 'text-xs font-semibold' }, 'Editor'),
+      el('div', { class: 'text-[11px] text-slate-500 mt-0.5' }, 'Adiciona, edita e exclui'),
     );
+    const viewerBtn = el('button', { type: 'button', class: '' },
+      el('div', { class: 'text-xs font-semibold' }, 'Leitor'),
+      el('div', { class: 'text-[11px] text-slate-500 mt-0.5' }, 'Só visualiza, não altera'),
+    );
+    const applyRoleStyles = () => {
+      const base = 'flex-1 text-sm rounded border px-3 py-2 text-left transition-colors';
+      const sel = 'border-cyan-600 bg-cyan-50';
+      const unsel = 'border-slate-300 hover:bg-slate-50';
+      editorBtn.className = `${base} ${selectedRole === 'editor' ? sel : unsel}`;
+      viewerBtn.className = `${base} ${selectedRole === 'viewer' ? sel : unsel}`;
+      editorBtn.querySelector('div').className = `text-xs font-semibold ${selectedRole === 'editor' ? 'text-cyan-700' : 'text-slate-700'}`;
+      viewerBtn.querySelector('div').className = `text-xs font-semibold ${selectedRole === 'viewer' ? 'text-cyan-700' : 'text-slate-700'}`;
+    };
+    applyRoleStyles();
+    editorBtn.onclick = (e) => { e.preventDefault(); selectedRole = 'editor'; applyRoleStyles(); };
+    viewerBtn.onclick = (e) => { e.preventDefault(); selectedRole = 'viewer'; applyRoleStyles(); };
+
     const createBtn = el('button', {
       type: 'button',
       class: 'w-full text-sm rounded bg-cyan-600 hover:bg-cyan-700 text-white font-medium px-3 py-2',
@@ -756,6 +776,7 @@ async function openInviteModal() {
         createBtn.disabled = true; createBtn.textContent = 'Gerando…';
         try {
           await api.createInvite({ label: labelInput.value.trim() || null, role: selectedRole });
+          savedLabel = ''; // limpa apelido após gerar
           await renderBody();
         } catch (err) {
           alert('Erro: ' + err.message);
@@ -765,10 +786,7 @@ async function openInviteModal() {
     }, 'Gerar link');
     body.appendChild(el('div', { class: 'space-y-2' },
       labelInput,
-      el('div', { class: 'flex gap-2' },
-        roleBtn('Editor', 'editor', 'Adiciona, edita e exclui'),
-        roleBtn('Leitor', 'viewer', 'Só visualiza, não altera'),
-      ),
+      el('div', { class: 'flex gap-2' }, editorBtn, viewerBtn),
       createBtn,
     ));
 
