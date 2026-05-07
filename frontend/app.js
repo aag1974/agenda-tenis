@@ -3469,13 +3469,37 @@ function renderReceiptsGallery(container, t, data) {
     const meta = RECEIPT_CATEGORY_META[cat] || { icon: '📋', label: cat };
     const grid = el('div', { class: 'grid grid-cols-3 sm:grid-cols-4 gap-2' });
     for (const r of items) {
-      grid.appendChild(el('button', {
+      const cell = el('div', {
         class: 'relative group aspect-square overflow-hidden rounded border border-slate-200 hover:border-emerald-400',
+      });
+      // Imagem clicável — abre o viewer
+      cell.appendChild(el('button', {
+        class: 'block w-full h-full',
         onClick: () => openReceiptViewer(t, r, items),
       },
         el('img', { src: r.viewUrl, alt: '', class: 'w-full h-full object-cover', loading: 'lazy' }),
-        el('div', { class: 'absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1 py-0.5 truncate' }, meta.icon + ' ' + meta.label.slice(0, 3)),
       ));
+      // Faixa da categoria (não clicável)
+      cell.appendChild(el('div', {
+        class: 'absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1 py-0.5 truncate pointer-events-none',
+      }, meta.icon + ' ' + meta.label.slice(0, 3)));
+      // Botão X — exclui o comprovante sem abrir o viewer
+      cell.appendChild(el('button', {
+        class: 'absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 hover:bg-red-600 text-white text-xs leading-none flex items-center justify-center shadow',
+        title: 'Excluir comprovante',
+        onClick: async (e) => {
+          e.stopPropagation();
+          if (!confirm('Excluir este comprovante?')) return;
+          try {
+            await api.deleteReceipt(profileId, t.id, r.id);
+            const fresh = await api.listReceipts(profileId, t.id);
+            renderReceiptsGallery(container, t, fresh);
+          } catch (err) {
+            alert('Erro ao excluir: ' + err.message);
+          }
+        },
+      }, '×'));
+      grid.appendChild(cell);
     }
     container.appendChild(el('div', { class: 'space-y-1' },
       el('div', { class: 'text-xs font-medium text-slate-700' }, `${meta.icon} ${meta.label} (${items.length})`),
@@ -3489,15 +3513,15 @@ function pickCategory() {
     const root = document.getElementById('modal-root');
     const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-[60]' });
     const panel = el('div', { class: 'fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center z-[61] p-4' },
-      el('div', { class: 'bg-white rounded-lg shadow-xl w-full max-w-sm sm:mx-auto p-4' },
-        el('h3', { class: 'text-base font-semibold mb-3' }, 'Categoria do comprovante'),
+      el('div', { class: 'bg-white text-slate-900 rounded-lg shadow-xl w-full max-w-sm sm:mx-auto p-4' },
+        el('h3', { class: 'text-base font-semibold mb-3 text-slate-900' }, 'Categoria do comprovante'),
         el('div', { class: 'grid grid-cols-1 gap-2' },
           ...RECEIPT_CATEGORY_ORDER.map(cat => {
             const m = RECEIPT_CATEGORY_META[cat];
             return el('button', {
-              class: 'w-full text-left bg-white border border-slate-300 hover:bg-slate-50 px-4 py-3 rounded text-sm flex items-center gap-3',
+              class: 'w-full text-left bg-white text-slate-900 border border-slate-300 hover:bg-slate-50 px-4 py-3 rounded text-sm flex items-center gap-3',
               onClick: () => { cleanup(); resolve(cat); },
-            }, el('span', { class: 'text-xl' }, m.icon), el('span', null, m.label));
+            }, el('span', { class: 'text-xl' }, m.icon), el('span', { class: 'font-medium' }, m.label));
           }),
           el('button', {
             class: 'w-full text-center text-sm text-slate-500 hover:text-slate-800 underline mt-2',
