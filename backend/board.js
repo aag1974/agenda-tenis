@@ -9,7 +9,7 @@ import { deriveStatus } from './scraper.js';
 // descoberta → decisão → ação → execução → estados finais.
 // Emojis alinhados ao significado de cada coluna.
 export const COLUMNS = [
-  { id: 'vou_jogar',           label: 'Monitorar',          icon: '🔭', auto: true,  manual: true },
+  { id: 'vou_jogar',           label: 'Monitorar',          icon: '⭐', auto: true,  manual: true },
   { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟', auto: true,  manual: true },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',    icon: '💰', auto: true,  manual: true },
   { id: 'confirmado',          label: 'Confirmado',         icon: '🎾', auto: true,  manual: true },

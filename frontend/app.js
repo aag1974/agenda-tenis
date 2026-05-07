@@ -1041,7 +1041,7 @@ function applyHeaderFilters(tournaments) {
 // ===== Kanban =====
 // Labels, ordem e ícones têm que bater com backend/board.js. Mantém ids estáveis.
 const KANBAN_COLUMNS = [
-  { id: 'vou_jogar',           label: 'Monitorar',          icon: '🔭' },
+  { id: 'vou_jogar',           label: 'Monitorar',          icon: '⭐' },
   { id: 'inscricoes_abertas', label: 'Inscrições Abertas', icon: '🌟' },
   { id: 'pagar_inscricao',     label: 'Pagar inscrição',    icon: '💰' },
   { id: 'confirmado',          label: 'Confirmado',         icon: '🎾' },
