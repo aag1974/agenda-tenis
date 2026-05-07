@@ -560,9 +560,11 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
     ...tournaments
       .filter(t => (t.isAnnaInscribed || !!t.pendingPayment) && t.startDate)
       .map(t => t.id),
-    // "Iniciado" — precisa de cancelDeadline pra saber se inscrição ainda abre
+    // "Iniciado" / "Confirmado" — status vagos onde a página de detalhes
+    // tem datas concretas (registrationOpensAt + registrationDeadline)
+    // que vão definir o estado real da janela de inscrição.
     ...tournaments
-      .filter(t => /inicia/i.test(t.registrationStatus || '') && isFutureWithStartDate(t))
+      .filter(t => /inicia|confirmado/i.test(t.registrationStatus || '') && isFutureWithStartDate(t))
       .map(t => t.id),
   ]);
   const tournamentsById = new Map(tournaments.map(t => [t.id, t]));

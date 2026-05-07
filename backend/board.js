@@ -34,19 +34,13 @@ export function isRegistrationOpen(t) {
   return getRegistrationWindowState(t) === 'open';
 }
 
-// Helper: parse "DD/MM/YYYY" → Date ou null. Hora opcional (default = 00:00).
-function parseBrDate(s, hour = 0, min = 0) {
+// Helper: parse "DD/MM/YYYY" → Date (00:00) ou null
+function parseBrDate(s) {
   if (!s) return null;
   const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (!m) return null;
-  return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]), hour, min);
+  return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
 }
-
-// TI fecha inscrições às 16:00 do dia do registrationDeadline,
-// e cancelamentos às 23:59 do cancelDeadline.
-const REG_CUTOFF_HOUR = 16;
-const CANCEL_CUTOFF_HOUR = 23;
-const CANCEL_CUTOFF_MIN = 59;
 
 // Estado da janela de inscrição.
 // 'closed' — passou o prazo ou status TI explícito (Encerrada/Finalizado)
@@ -64,25 +58,35 @@ const CANCEL_CUTOFF_MIN = 59;
 export function getRegistrationWindowState(t) {
   if (!t) return 'unknown';
   const s = t.registrationStatus || '';
-  const now = new Date();
-  // Prioridade 1: prazo de inscrição já passou (com corte das 16h)
-  const regDeadline = parseBrDate(t.registrationDeadline, REG_CUTOFF_HOUR);
-  if (regDeadline && regDeadline <= now) return 'closed';
-  // Prioridade 2: cancelDeadline já passou (fallback) — corte 23:59
-  if (!regDeadline) {
-    const cancel = parseBrDate(t.cancelDeadline, CANCEL_CUTOFF_HOUR, CANCEL_CUTOFF_MIN);
-    if (cancel && cancel <= now) return 'closed';
-  }
-  // Prioridade 3: texto explícito de fechamento
-  if (isRegistrationClosed(s)) return 'closed';
-  // Prioridade 4: registrationOpensAt no futuro → pending (ainda vai abrir)
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const regOpens = parseBrDate(t.registrationOpensAt);
-  if (regOpens && regOpens > now) return 'pending';
-  // Prioridade 5: "a iniciar" textual
+  const regDeadline = parseBrDate(t.registrationDeadline);
+
+  // Datas vencem o texto: se temos a janela completa e ela está vigente,
+  // é 'open' independente de TI dizer "Confirmado" ou outro texto vago.
+  if (regOpens && regDeadline) {
+    if (regDeadline < today) return 'closed';
+    if (regOpens > today) return 'pending';
+    return 'open';
+  }
+  // Só temos o fim do prazo
+  if (regDeadline) {
+    if (regDeadline < today) return 'closed';
+    if (!isRegistrationClosed(s)) return 'open';
+  }
+  // Fallback cancelDeadline (sem registrationDeadline disponível)
+  if (!regDeadline) {
+    const cancel = parseBrDate(t.cancelDeadline);
+    if (cancel && cancel < today) return 'closed';
+  }
+  // Só temos o início → pending se ainda não chegou
+  if (regOpens && !regDeadline) {
+    if (regOpens > today) return 'pending';
+  }
+  // Texto-only fallback
+  if (isRegistrationClosed(s)) return 'closed';
   if (/a\s*iniciar/i.test(s)) return 'pending';
-  // Prioridade 6: aberta explícita ou "Iniciado" (já passou pelos checks de prazo)
   if (/Aberto|aberta|inicia/i.test(s)) return 'open';
-  // Resto: "Confirmado" sem datas confiáveis, vazio, etc → desconhecida
   return 'unknown';
 }
 

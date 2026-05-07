@@ -1047,27 +1047,32 @@ function orderedKanbanColumns() {
 }
 
 // Mantém em sincronia com backend/board.js#getRegistrationWindowState.
-// TI fecha inscrições às 16:00 do registrationDeadline e
-// cancelamentos às 23:59 do cancelDeadline.
-function brDateAt(s, hour = 0, min = 0) {
-  if (!s) return null;
-  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!m) return null;
-  return new Date(+m[3], +m[2] - 1, +m[1], hour, min);
-}
+// Lógica por dia (sem corte de hora) — TI tem 16h pra inscrição e
+// 23:59 pra cancelamento, mas mostramos isso no texto, não na regra.
 function getWindowState(t) {
   if (!t) return 'unknown';
   const s = t.registrationStatus || '';
-  const now = new Date();
-  const regDeadline = brDateAt(t.registrationDeadline, 16);
-  if (regDeadline && regDeadline <= now) return 'closed';
+  const today = startOfToday();
+  const regOpens = t.registrationOpensAt ? brToDate(t.registrationOpensAt) : null;
+  const regDeadline = t.registrationDeadline ? brToDate(t.registrationDeadline) : null;
+  // Datas vencem o texto quando temos a janela completa
+  if (regOpens && regDeadline) {
+    if (regDeadline < today) return 'closed';
+    if (regOpens > today) return 'pending';
+    return 'open';
+  }
+  if (regDeadline) {
+    if (regDeadline < today) return 'closed';
+    if (!regStatusClosed(s)) return 'open';
+  }
   if (!regDeadline && t.cancelDeadline) {
-    const d = brDateAt(t.cancelDeadline, 23, 59);
-    if (d && d <= now) return 'closed';
+    const d = brToDate(t.cancelDeadline);
+    if (d && d < today) return 'closed';
+  }
+  if (regOpens && !regDeadline) {
+    if (regOpens > today) return 'pending';
   }
   if (regStatusClosed(s)) return 'closed';
-  const regOpens = brDateAt(t.registrationOpensAt);
-  if (regOpens && regOpens > now) return 'pending';
   if (/a\s*iniciar/i.test(s)) return 'pending';
   if (/Aberto|aberta|inicia/i.test(s)) return 'open';
   return 'unknown';
@@ -3537,14 +3542,17 @@ async function openTournament(tid) {
         // Extrai data de encerramento/abertura do registrationStatus do TI
         // (ex: "Aberta até 19/05/2026", "Iniciado", "Encerrada em 14/05/2026")
         const win = getWindowState(merged);
-        // Prefere registrationDeadline (prazo real) sobre cancelDeadline.
-        // regDate fallback: data extraída do texto (ex: "Aberta até DD/MM/YYYY").
         const regDateText = (t.registrationStatus || '').match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || null;
         const closeDate = merged.registrationDeadline || regDateText || merged.cancelDeadline;
         const opensDate = merged.registrationOpensAt;
+        // TI aceita até 16h no dia do registrationDeadline (nosso default
+        // mais comum). No fallback cancelDeadline o corte é 23:59.
+        const closeHour = merged.registrationDeadline ? '16h' : (merged.cancelDeadline ? '23:59' : null);
         let regLine = null;
         if (win === 'open') {
-          regLine = closeDate ? `Inscrições abertas até ${closeDate}` : 'Inscrições abertas';
+          regLine = closeDate
+            ? `Inscrições abertas até ${closeDate}${closeHour ? ` (${closeHour})` : ''}`
+            : 'Inscrições abertas';
         } else if (win === 'closed') {
           regLine = closeDate ? `Inscrições encerraram em ${closeDate}` : 'Inscrições encerradas';
         } else if (win === 'pending') {
@@ -3552,11 +3560,15 @@ async function openTournament(tid) {
         } else if (t.registrationStatus) {
           regLine = `Inscrições: ${t.registrationStatus}`;
         }
+        // Linha extra do cancelamento (sempre 23:59), só quando relevante
+        const cancelLine = (merged.cancelDeadline && win !== 'closed')
+          ? `Cancelamento até ${merged.cancelDeadline} (23:59)`
+          : (merged.cancelDeadline ? `Cancelamento até ${merged.cancelDeadline}` : null);
         return el('section', null,
           el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, 'Datas'),
           el('p', { class: 'text-sm' }, `${t.startDate || '—'} a ${t.endDate || '—'}`),
           regLine && el('p', { class: 'text-xs text-slate-500 mt-0.5' }, regLine),
-          merged.cancelDeadline && el('p', { class: 'text-xs text-slate-500 mt-0.5' }, `Cancelamento até ${merged.cancelDeadline}`),
+          cancelLine && el('p', { class: 'text-xs text-slate-500 mt-0.5' }, cancelLine),
         );
       })(),
 
