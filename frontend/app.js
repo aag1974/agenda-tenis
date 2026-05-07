@@ -1841,7 +1841,7 @@ function toggleGearMenu() {
     athleteHeader,
     athleteActions.length > 0 && el('div', { class: 'py-1' },
       ...athleteActions.map(it => el('button', {
-        class: 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-100',
+        class: 'block w-full text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[#1f5b75] hover:bg-slate-100',
         onClick: () => { menu.remove(); it.onClick(); },
       }, it.label)),
     ),
@@ -1872,7 +1872,7 @@ function toggleGearMenu() {
     profile && tierPillRow,
     accountActions.length > 0 && el('div', { class: 'border-t border-slate-200 py-1' },
       ...accountActions.map(it => el('button', {
-        class: 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-100 text-slate-700',
+        class: 'block w-full text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[#1f5b75] hover:bg-slate-100',
         onClick: () => { menu.remove(); it.onClick(); },
       }, it.label)),
     ),
