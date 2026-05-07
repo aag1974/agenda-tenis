@@ -170,7 +170,8 @@ app.post('/api/admin', (req, res) => {
     else if (cmd === 'delete-user') result = admin.deleteUser(args[0]);
     else if (cmd === 'reset-password') result = admin.resetPassword(args[0], args[1]);
     else if (cmd === 'show-household') result = admin.showHousehold(args[0]);
-    else return res.status(400).json({ error: 'cmd inválido (use: list-users | delete-user | reset-password | show-household)' });
+    else if (cmd === 'find-tournament') result = admin.findTournament(args[0], args[1]);
+    else return res.status(400).json({ error: 'cmd inválido (use: list-users | delete-user | reset-password | show-household | find-tournament)' });
     res.json({ ok: true, result });
   } catch (err) {
     res.status(400).json({ error: err.message });

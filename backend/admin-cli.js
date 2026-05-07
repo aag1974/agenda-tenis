@@ -69,6 +69,39 @@ export function showHousehold(email) {
   };
 }
 
+export function findTournament(email, namePartial) {
+  const u = findUser(email);
+  if (!u) throw new Error('Usuário não encontrado');
+  const profiles = readJson(PROFILES_FILE, []);
+  const myProfiles = profiles.filter(p => (p.householdId || p.userId) === u.householdId);
+  const needle = (namePartial || '').toLowerCase();
+  const matches = [];
+  for (const p of myProfiles) {
+    const synced = readJson(join(DATA_DIR, `profile-${p.id}`, 'synced.json'), null);
+    if (!synced?.tournaments) continue;
+    for (const t of synced.tournaments) {
+      if (!needle || (t.name || '').toLowerCase().includes(needle) || (t.city || '').toLowerCase().includes(needle)) {
+        matches.push({
+          athleteName: p.athleteName,
+          id: t.id,
+          name: t.name,
+          city: t.city,
+          state: t.state,
+          startDate: t.startDate,
+          endDate: t.endDate,
+          registrationStatus: t.registrationStatus,
+          isAnnaInscribed: t.isAnnaInscribed,
+          pendingPayment: t.pendingPayment,
+          tier: t.tier,
+          tiers: t.tiers,
+          firstSeenAt: t.firstSeenAt,
+        });
+      }
+    }
+  }
+  return matches;
+}
+
 // ===== CLI runner =====
 const isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
@@ -86,8 +119,10 @@ if (isMain) {
       console.log('✓', resetPassword(arg1, arg2));
     } else if (cmd === 'show-household') {
       console.log(JSON.stringify(showHousehold(arg1), null, 2));
+    } else if (cmd === 'find-tournament') {
+      console.log(JSON.stringify(findTournament(arg1, arg2), null, 2));
     } else {
-      console.log('Comandos: list-users | delete-user <email> | reset-password <email> <novaSenha> | show-household <email>');
+      console.log('Comandos: list-users | delete-user <email> | reset-password <email> <novaSenha> | show-household <email> | find-tournament <email> <nome>');
     }
   } catch (err) {
     console.error('Erro:', err.message);

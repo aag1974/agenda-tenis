@@ -147,7 +147,9 @@ export function deriveAutoLabels(tournament, notes = {}) {
     out.push({ autoKey: 'pendingPayment', ...AUTO_LABEL_DEFS.pendingPayment, auto: true });
   } else if (inscribed) {
     out.push({ autoKey: 'inscribed', ...AUTO_LABEL_DEFS.inscribed, auto: true });
-  } else if (/encerrad/i.test(tournament.registrationStatus || '') && status !== 'past') {
+  } else if (status !== 'past' && !/Aberto|aberta/i.test(tournament.registrationStatus || '')) {
+    // Inscrições encerradas: tudo que não está aberto, não tem boleto e não foi inscrito
+    // (mesma regra usada pra montar a coluna "Inscrições Encerradas")
     out.push({ autoKey: 'closedRegistration', ...AUTO_LABEL_DEFS.closedRegistration, auto: true });
   }
 
