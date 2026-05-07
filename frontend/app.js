@@ -2499,13 +2499,6 @@ async function openTournament(tid) {
         ),
       ),
 
-      isFuture && !isLost && !t.pendingPayment && !t.isAnnaInscribed && !t.notes?.manualInscribed && t.url && el('section', null,
-        el('a', {
-          href: t.url, target: '_blank', rel: 'noopener',
-          class: 'inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded',
-        }, '🎾 Inscrever no Tênis Integrado ↗'),
-      ),
-
       t.pendingPayment && el('section', { class: 'rounded-lg bg-amber-50 border border-amber-300 px-3 py-2 flex items-center justify-between gap-3' },
         el('div', { class: 'min-w-0' },
           el('div', { class: 'text-sm font-medium text-amber-900' }, `💰 Vence ${t.pendingPayment.dueDate || '?'} · ${fmtValueNoCents(t.pendingPayment.value)}`),
