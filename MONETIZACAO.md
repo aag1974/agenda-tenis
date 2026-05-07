@@ -5,13 +5,16 @@
 
 ## Visão geral
 
-Transformar o Tennis Flow de ferramenta pessoal em produto com 2 planos:
+Transformar o Tennis Flow de ferramenta pessoal em produto com 3 níveis:
 
-- **Free** — qualquer um cria conta e usa. Limitado, mas útil. Funciona como
-  "demo perpétua" — pessoa que quer mais já entende o valor.
-- **Pro vitalício R$297** — pagamento único via Pix. Sem mensalidade, sem
-  cartão, sem renovação. Mata atrito de cobrança recorrente e o número
-  baixo (~5 meses de iFood) reduz fricção.
+- **Trial 15 dias** — qualquer um cria conta e ganha 15 dias de Pro completo,
+  sem cartão, sem cadastro de pagamento. Período pra experimentar todos os
+  recursos sem fricção.
+- **Free (pós-trial)** — depois dos 15 dias, se não pagou, vira Free
+  degradado. Mantém acesso à conta e a um quadro útil mas limitado.
+- **Pro vitalício** — pagamento único via Pix. Preço sugerido: **R$197
+  (fundador) / R$297 (regular)** — explico abaixo. Sem mensalidade, sem
+  cartão, sem renovação. Garantia de reembolso 15 dias.
 
 Estratégia de aquisição: **virar viral pelo botão Compartilhar**. Quando o
 dono compartilha um torneio no WhatsApp, o link abre um **card público lindo**
@@ -23,20 +26,27 @@ com CTA "Experimente grátis". Cada compartilhamento vira marketing.
 
 ### Modelo de dados
 
-`data/users.json` ganha campo `plan` por usuário:
+`data/users.json` ganha campos por usuário:
 
 ```json
 {
   "id": "u_abc",
   "email": "...",
-  "plan": "free",            // "free" | "pro"
-  "planActivatedAt": null,    // ISO date quando virou pro
-  "planNote": null            // texto livre — "Pix recebido em X, valor Y"
+  "plan": "trial",           // "trial" | "free" | "pro"
+  "trialStartedAt": "...",    // ISO — set no signup
+  "planActivatedAt": null,    // ISO — quando virou pro
+  "planNote": null            // texto livre — "Pix R$197 em X"
 }
 ```
 
-Default: novos signups entram como `free`. Você vira `pro` manualmente via
-admin CLI quando confirma o Pix.
+Lógica `effectivePlan(user)`:
+- Se `plan === 'pro'` → Pro
+- Se `plan === 'trial'` e dentro de 15 dias do `trialStartedAt` → Pro
+- Caso contrário → Free degradado
+
+Default: novos signups entram como `trial` com `trialStartedAt = now`. Após
+15 dias, automaticamente caem pra Free. Você ativa `pro` manual via admin
+CLI quando confirma o Pix.
 
 ### Limites do Free
 
@@ -241,23 +251,41 @@ ter algo útil.
 
 ---
 
-## Riscos / pontos pra você decidir
+## Decisões fechadas
 
-1. **R$297 é o preço certo?** Faz sentido com média de famílias atletas
-   gastando R$500+/mês em torneios + viagens. Mas posso testar R$197 ou
-   R$397 — Vitalício é difícil de subir depois sem ressentimento.
-2. **Free perpétuo ou só trial?** Free perpétuo gera funil maior mas pode
-   ter "freeloader". Trial de 14 dias força decisão mais cedo. Eu prefiro
-   Free perpétuo com gating estrutural (atletas, sync, alertas).
-3. **Deve ter "convidados" gratuitos no household?** Se Pro convida 5 pessoas
-   pro household, todas viram Pro de fato. Pode virar burlamento. Sugestão:
-   convidados são read-write mas só dentro do household do Pro — se quiserem
-   ter o próprio quadro, precisam upgrade.
-4. **Privacidade do card público**: dono do perfil deve poder revogar tokens?
-   No MVP eu não faria — link compartilhado vira público pra sempre. Se quiser
-   revogar, criamos depois.
-5. **Política de reembolso**: 7 dias sem perguntas? Ou nada (vitalício é
-   risco do comprador)? Sugestão: 7 dias pra reduzir fricção de venda.
+1. **Trial 15 dias** (Pro completo) → vira Free se não pagar.
+2. **Reembolso 15 dias** sem perguntas, contados a partir do pagamento Pix.
+3. **Convidados household herdam Pro** dentro do quadro do dono. Se um
+   convidado quiser quadro próprio (atleta próprio), precisa Pro próprio.
+4. **Sem revogação de token** no MVP. Card compartilhado fica público
+   indefinidamente. Adicionamos botão "Apagar links" se virar problema.
+5. **Preço sugerido: R$197 fundador / R$297 regular**. Detalhes abaixo.
+
+## Estratégia de preço
+
+Não há concorrente direto no Brasil — Tênis Integrado é gratuito mas pra
+clubes/jogadores; Letzplay e Tornfy são pra organizadores. Tennis Flow
+ocupa nicho vazio: **organização da família/atleta sobre o calendário do TI**.
+
+Preço definido por **valor percebido**, não comparação:
+- Família atleta gasta R$2-5k/mês com torneios/viagens
+- Perder 1 inscrição = R$200-500
+- Multa de boleto = R$50-200
+- ROI imediato em 1 boleto evitado
+
+**Recomendação: dois preços públicos com narrativa.**
+
+| Fase                     | Preço público | Quando             |
+|--------------------------|---------------|--------------------|
+| **Fundador**             | R$197         | Primeiros 100 ou até dez/2026 |
+| **Regular**              | R$297         | Depois             |
+
+A transição R$197 → R$297 vira conteúdo de marketing ("estamos crescendo,
+preço sobe em janeiro") e cria urgência sem precisar de contador no site.
+
+Alternativa simples: **R$297 firme desde o início** — perde algumas
+conversões marginais mas posicionamento é mais sólido. Se você não quer
+gerenciar duas fases, vai nessa.
 
 ---
 
