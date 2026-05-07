@@ -2468,7 +2468,9 @@ async function openTournament(tid) {
     class: 'text-sm bg-white/10 hover:bg-white/15 text-white border border-white/20 rounded px-2 py-1 cursor-pointer',
     title: 'Mudar coluna',
   },
-    ...KANBAN_COLUMNS.map(c => el('option', { value: c.id, selected: c.id === currentCol ? 'selected' : false }, `${c.icon} ${c.label}`)),
+    ...KANBAN_COLUMNS.map(c => el('option', { value: c.id, selected: c.id === currentCol ? 'selected' : false },
+      `${c.icon} ${state.columnLabels[c.id] || c.label}`,
+    )),
   );
   colSelect.onchange = async () => {
     const newCol = colSelect.value;
