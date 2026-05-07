@@ -1821,12 +1821,14 @@ function toggleGearMenu() {
   );
 
   // Separa as ações em "Atleta" e "Conta" pra deixar mais organizado
+  const athleteFirstName = (profile?.athleteName || profile?.tiEmail || 'Atleta').split(/\s+/)[0];
   const athleteActions = profile ? [
-    { label: 'Sobre o atleta', onClick: () => openAthleteCard() },
+    { label: `Sobre ${athleteFirstName}`, onClick: () => openAthleteCard() },
     { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
-    { label: 'Editar atleta', onClick: () => openProfileForm(profile) },
+    { label: 'TI do atleta', onClick: () => openProfileForm(profile) },
   ] : [];
   const accountActions = state.user ? [
+    { label: 'Convidar membro', onClick: () => openInviteModal() },
     { label: 'Sair', onClick: () => logout() },
   ] : [];
 
