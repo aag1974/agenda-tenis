@@ -1959,26 +1959,56 @@ function renderHeaderEl() {
 
   // Busca livre — vive no header e filtra por nome/cidade/UF/etiqueta/chave.
   // font-size: 16px obrigatório pra iOS Safari não dar zoom no foco do input.
+  // type=text (não search) pra evitar o "X" nativo que iOS esconde mas que
+  // alguns browsers desktop renderizam de forma inconsistente. Usamos um
+  // botão custom no canto direito.
   const searchInput = profile && el('input', {
     id: 'header-search',
-    type: 'search',
+    type: 'text',
+    autocomplete: 'off',
+    autocorrect: 'off',
+    spellcheck: 'false',
     placeholder: 'Buscar…',
     value: state.searchQuery || '',
-    class: 'w-full bg-white/10 hover:bg-white/15 focus:bg-white/20 text-white placeholder-white/50 border border-white/20 rounded px-3 py-1.5 outline-none focus:border-cyan-300',
+    class: 'w-full bg-white/10 hover:bg-white/15 focus:bg-white/20 text-white placeholder-white/50 border border-white/20 rounded pl-3 pr-8 py-1.5 outline-none focus:border-cyan-300',
     style: 'font-size: 16px;',
   });
+  let searchClearBtn = null;
   if (searchInput) {
+    // Debounce do rerender pra não interferir com a digitação (iOS perde
+    // foco se o DOM é trocado a cada keystroke).
+    let pending = null;
+    const updateClearBtnVisibility = () => {
+      if (!searchClearBtn) return;
+      searchClearBtn.style.display = (state.searchQuery && state.searchQuery.length) ? '' : 'none';
+    };
     searchInput.oninput = (e) => {
       state.searchQuery = e.target.value;
-      rerenderBody();
-      const live = $('header-search');
-      if (live && document.activeElement !== live) live.focus();
+      updateClearBtnVisibility();
+      if (pending) cancelAnimationFrame(pending);
+      pending = requestAnimationFrame(() => { pending = null; rerenderBody(); });
     };
+    searchClearBtn = el('button', {
+      type: 'button',
+      class: 'absolute inset-y-0 right-1 my-auto w-6 h-6 rounded-full text-white/70 hover:text-white hover:bg-white/20 flex items-center justify-center text-base leading-none',
+      title: 'Limpar busca',
+      onClick: (e) => {
+        e.preventDefault();
+        state.searchQuery = '';
+        searchInput.value = '';
+        updateClearBtnVisibility();
+        rerenderBody();
+        searchInput.focus();
+      },
+    }, '×');
+    // Inicial: esconde se não tem busca
+    if (!state.searchQuery) searchClearBtn.style.display = 'none';
   }
+  const searchWrap = profile && el('div', { class: 'relative w-full' }, searchInput, searchClearBtn);
 
   return el('header', { id: 'header-bar', class: 'flex items-center gap-2 sm:gap-3 pb-2 border-b border-slate-200 relative' },
     logo,
-    profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchInput),
+    profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchWrap),
     el('div', { class: 'flex items-center gap-1 sm:gap-2 shrink-0' },
       memberStack,
       profile && renderFiltersButton(),
