@@ -535,12 +535,23 @@ app.delete('/api/profiles/:id', requireAuth, ensureOwnedProfile, (req, res) => {
   res.status(204).end();
 });
 
-// Sync — only triggered explicitly by the user
+// Sync — só dispara quando o usuário pede explicitamente
 app.post('/api/profiles/:id/sync', requireAuth, ensureOwnedProfile, (req, res) => {
   const p = getProfile(req.params.id);
   if (!p) return res.status(404).json({ error: 'Perfil não encontrado' });
   syncProfile(req.params.id).catch(err => console.error(`[sync ${req.params.id}]`, err.message));
   res.json({ status: 'started' });
+});
+
+// Sync de todos os atletas da household — uma chamada, dispara em paralelo.
+// Retorna a lista dos profileIds disparados pra o frontend acompanhar.
+app.post('/api/sync-all', requireAuth, (req, res) => {
+  const profiles = listProfiles({ householdId: req.householdId });
+  const ids = profiles.map(p => p.id);
+  for (const id of ids) {
+    syncProfile(id).catch(err => console.error(`[sync ${id}]`, err.message));
+  }
+  res.json({ profileIds: ids });
 });
 
 app.get('/api/profiles/:id/sync-status', requireAuth, ensureOwnedProfile, (req, res) => {
@@ -666,7 +677,7 @@ app.get('/api/profiles/:id/debug-inscriptions', requireAuth, ensureOwnedProfile,
     const found = tid ? data.unionIds.includes(String(tid)) : null;
     let perTournament = null;
     if (tid && data.athleteId) {
-      perTournament = await getAthleteStatusInTournament(tid, data.athleteId).catch(err => ({ error: err.message }));
+      perTournament = await getAthleteStatusInTournament(tid, data.athleteId, null, { debug: true }).catch(err => ({ error: err.message }));
     }
     res.json({ ...data, queryTid: tid || null, found, perTournamentCheck: perTournament });
   } catch (err) {

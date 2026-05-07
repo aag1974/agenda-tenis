@@ -252,6 +252,10 @@ const api = {
     const r = await fetch(`/api/profiles/${id}/sync`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
     return r.json();
   },
+  async syncAll() {
+    const r = await fetch('/api/sync-all', { method: 'POST' });
+    return r.json();
+  },
   async syncStatus(id) { return (await fetch(`/api/profiles/${id}/sync-status`)).json(); },
   async updateNotes(profileId, tid, body) {
     const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/notes`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -3066,11 +3070,12 @@ async function resetAllData() {
 }
 
 async function syncNow() {
-  if (!state.activeProfileId) return;
+  // Dispara sync pra TODOS os atletas da household. O modal segue
+  // mostrando o status do atleta ativo (que é o que o user está vendo).
   state.syncStatus = { state: 'running', startedAt: new Date().toISOString() };
   renderHeader();
   openSyncProgressModal();
-  try { await api.sync(state.activeProfileId); } catch {}
+  try { await api.syncAll(); } catch {}
   pollSyncStatus();
 }
 

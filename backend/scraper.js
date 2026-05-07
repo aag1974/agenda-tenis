@@ -339,31 +339,56 @@ async function fetchCatalog(client, { category = JUVENIL_CATEGORY, year = new Da
 // Verifica se a atleta está na página "Inscritos" do torneio.
 // Source of truth — o perfil dela (/perfil2/inicio + /perfil2/programa)
 // pode estar desatualizado, mas a página de Inscritos do torneio reflete
-// o estado real. Retorna { inscribed, confirmed } ou null se não achou.
+// o estado real. Retorna { inscribed, confirmed, debug? } ou null em erro.
 //
 // Pattern do TI: linha com "ID:472658" próximo de status "Confirmado",
 // "Pendente", etc. Faz match no texto inteiro da página.
-export async function getAthleteStatusInTournament(tournamentId, athleteId, client = null) {
+export async function getAthleteStatusInTournament(tournamentId, athleteId, client = null, opts = {}) {
   if (!athleteId) return null;
-  const url = `${BASE}/torneio_painel_inscritos/index/${tournamentId}`;
+  const path = `/torneio_painel_inscritos/index/${tournamentId}`;
+  const url = `${BASE}${path}`;
+  const debug = !!opts.debug;
   let html;
+  let status = null;
   try {
     if (client) {
-      html = await client.getText(`/torneio_painel_inscritos/index/${tournamentId}`);
+      const res = await client.request(path);
+      status = res.status;
+      if (!res.ok) {
+        if (debug) return { inscribed: false, confirmed: false, debug: { url, status, error: 'non-ok' } };
+        return null;
+      }
+      html = await res.text();
     } else {
       const res = await fetch(url, { headers: { 'User-Agent': UA } });
-      if (!res.ok) return null;
+      status = res.status;
+      if (!res.ok) {
+        if (debug) return { inscribed: false, confirmed: false, debug: { url, status, error: 'non-ok' } };
+        return null;
+      }
       html = await res.text();
     }
-  } catch { return null; }
+  } catch (err) {
+    if (debug) return { inscribed: false, confirmed: false, debug: { url, status, error: err.message } };
+    return null;
+  }
   const text = elementInnerText(cheerio.load(html)('body'));
-  // Localiza o trecho ao redor de "ID:<athleteId>" e checa o status próximo
   const idPattern = new RegExp(`ID\\s*:\\s*${athleteId}\\b`, 'i');
   const m = idPattern.exec(text);
-  if (!m) return { inscribed: false, confirmed: false };
-  // Olha 200 chars antes e depois do match pra capturar o status financeiro
+  if (!m) {
+    if (debug) {
+      const isLoginPage = /entrar|email\s*:|senha\s*:|login/i.test(text.slice(0, 500));
+      return {
+        inscribed: false,
+        confirmed: false,
+        debug: { url, status, htmlLength: html.length, isLoginPage, sample: text.slice(0, 300) },
+      };
+    }
+    return { inscribed: false, confirmed: false };
+  }
   const window = text.slice(Math.max(0, m.index - 200), Math.min(text.length, m.index + 400));
   const confirmed = /Confirmado/i.test(window);
+  if (debug) return { inscribed: true, confirmed, debug: { url, status, window } };
   return { inscribed: true, confirmed };
 }
 
