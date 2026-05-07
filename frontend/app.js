@@ -1794,7 +1794,7 @@ function toggleGearMenu() {
       class: 'w-full flex items-center justify-between gap-2 text-left rounded px-2 py-1.5 hover:bg-slate-100',
       onClick: () => { state.athleteSwitcherOpen = !state.athleteSwitcherOpen; reopen(); },
     },
-      el('span', { class: 'text-sm font-medium text-slate-900 truncate' }, profile.athleteName || profile.tiEmail || 'Atleta'),
+      el('span', { class: 'text-[10px] font-normal uppercase tracking-wide text-slate-900 truncate' }, profile.athleteName || profile.tiEmail || 'Atleta'),
       el('span', { class: 'text-xs text-slate-400 shrink-0' }, state.athleteSwitcherOpen ? '▴' : '▾'),
     ),
     state.athleteSwitcherOpen && el('div', { class: 'mt-1 space-y-0.5' },
