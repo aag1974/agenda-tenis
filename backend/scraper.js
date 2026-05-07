@@ -477,12 +477,14 @@ function parseDetailsHtml(html, id, url) {
     observations = text.slice(obsIdx + 'Informações/Observações'.length, endIdx).trim().slice(0, 3000);
   }
 
-  // Tiers do panel: extraídos APENAS de marcações entre parênteses
-  // (formato real das categorias: "12 Anos Feminino Simples (G1+)").
-  // Evita falsos positivos vindos de prosa nas observações (ex.: "...categorias GA no Circuito Nacional e GA+ no Brasileirão").
-  const tiers = [...new Set(
-    [...text.matchAll(/\((GA\+|GA|G1\+|G1|G2|G3)\)/g)].map(m => m[1])
-  )];
+  // Tiers do panel: 2 fontes complementares
+  // a) Categorias formais entre parênteses: "12 Anos Feminino Simples (G1+)"
+  // b) Texto "CHAVE G1+" / "CHAVE GA" nas observações (alguns torneios têm
+  //    múltiplas chaves sequenciais anunciadas só em texto, não na Categorias)
+  const tiers = [...new Set([
+    ...[...text.matchAll(/\((GA\+|GA|G1\+|G1|G2|G3)\)/g)].map(m => m[1]),
+    ...[...text.matchAll(/\bCHAVE\s+(GA\+|GA|G1\+|G1|G2|G3)\b/gi)].map(m => m[1].toUpperCase()),
+  ])];
 
   return {
     id, url,
