@@ -2703,8 +2703,6 @@ function toggleGearMenu() {
     isMobile && { label: 'Convidar membro', onClick: () => openInviteModal() },
     profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
-    profile && { label: 'Resetar movimentações', onClick: () => resetBoardOverrides() },
-    profile && { label: 'Resetar tudo', onClick: () => resetAllData() },
     { label: planLabel, onClick: () => window.open('/upgrade', '_blank') },
     { label: 'Manual', onClick: () => window.open('/manual', '_blank') },
     { label: 'Sair', onClick: () => logout() },

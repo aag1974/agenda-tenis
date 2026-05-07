@@ -54,6 +54,28 @@ Pra polir antes do lançamento comercial:
 - Trocar `<script>` por `<link rel="stylesheet">`
 - Reduz ~3MB JS → ~30KB CSS, melhora Lighthouse e first paint
 
+## Painel administrativo
+
+Conforme o app crescer (múltiplos usuários, suporte), precisamos de uma
+interface de admin pro alexandre@opiniao.inf.br controlar e corrigir
+problemas que os usuários enfrentam. O que entra:
+
+- **Reset de quadro** (movido pra cá em 07/05/2026): "Resetar movimentações"
+  e "Resetar tudo" — endpoints já existem (`/api/profiles/:id/reset-board-overrides`
+  e `/api/profiles/:id/reset-all`), só foram tirados do menu do usuário comum
+  porque o impacto destrutivo é alto pra quem não entende. No painel admin,
+  ficam disponíveis pra qualquer profileId mediante seleção.
+- **Listar usuários** (households + profiles), data de cadastro, último login,
+  status do plano (trial/free/pro), data de expiração do trial.
+- **Forçar upgrade manual de plano** (após receber Pix) — hoje precisa
+  editar JSON. Botão "Marcar como Pro vitalício" no admin.
+- **Re-enviar email de boas-vindas / reset de senha** quando suporte demandar.
+- **Logs de sync por perfil** — debug rápido de "minha sync travou".
+- **Gating do acesso**: só email do admin (`alexandre@opiniao.inf.br`)
+  vê a rota `/admin`. Middleware backend valida.
+
+Não precisa ser bonito — funcional pra atender suporte.
+
 ## Ideias soltas
 
 - Login com Google (OAuth)
