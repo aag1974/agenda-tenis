@@ -1722,7 +1722,7 @@ function toggleGearMenu() {
       onClick: (e) => { e.preventDefault(); onClick(); },
     }, text);
     return el('div', { class: 'px-3 py-2' },
-      el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5' }, label),
+      el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5' }, label),
       el('div', { class: 'flex flex-wrap gap-1.5' },
         pill('Todos', allActive, onClearAll),
         ...options.map(v => pill(v, isSelected(v), () => onTogglePill(v))),
@@ -1789,12 +1789,12 @@ function toggleGearMenu() {
   // Bloco do atleta — clique abre submenu pra trocar/adicionar
   const reopen = () => { const m = $('gear-menu'); if (m) { m.remove(); toggleGearMenu(); } };
   const athleteHeader = profile && el('div', { class: 'px-3 py-2.5 border-b border-slate-200' },
-    el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1' }, 'Atleta'),
+    el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1' }, 'Atleta'),
     el('button', {
       class: 'w-full flex items-center justify-between gap-2 text-left rounded px-2 py-1.5 hover:bg-slate-100',
       onClick: () => { state.athleteSwitcherOpen = !state.athleteSwitcherOpen; reopen(); },
     },
-      el('span', { class: 'text-[10px] font-normal uppercase tracking-wide text-slate-900 truncate' }, profile.athleteName || profile.tiEmail || 'Atleta'),
+      el('span', { class: 'text-xs font-normal uppercase tracking-wide text-slate-900 truncate' }, profile.athleteName || profile.tiEmail || 'Atleta'),
       el('span', { class: 'text-xs text-slate-400 shrink-0' }, state.athleteSwitcherOpen ? '▴' : '▾'),
     ),
     state.athleteSwitcherOpen && el('div', { class: 'mt-1 space-y-0.5' },
@@ -1845,7 +1845,7 @@ function toggleGearMenu() {
     athleteHeader,
     athleteActions.length > 0 && el('div', { class: 'py-1' },
       ...athleteActions.map(it => el('button', {
-        class: 'block w-full text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[#1f5b75] hover:bg-slate-100',
+        class: 'block w-full text-left px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#1f5b75] hover:bg-slate-100',
         onClick: () => { menu.remove(); it.onClick(); },
       }, it.label)),
     ),
@@ -1876,7 +1876,7 @@ function toggleGearMenu() {
     profile && tierPillRow,
     accountActions.length > 0 && el('div', { class: 'border-t border-slate-200 py-1' },
       ...accountActions.map(it => el('button', {
-        class: 'block w-full text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[#1f5b75] hover:bg-slate-100',
+        class: 'block w-full text-left px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#1f5b75] hover:bg-slate-100',
         onClick: () => { menu.remove(); it.onClick(); },
       }, it.label)),
     ),
