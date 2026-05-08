@@ -4147,7 +4147,13 @@ async function openTournament(tid) {
   // Activity panel (right sidebar on md+, stacked below on mobile)
   const activityPanel = renderActivityPanel(t);
 
-  const panel = el('div', { class: 'fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 pointer-events-none' },
+  const panel = el('div', {
+    class: 'fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 pointer-events-none',
+    // Inline safe-area pra PWA standalone do iPhone — header do modal não
+    // pode invadir o notch/status bar nem a área do home indicator. Inline
+    // tem prioridade máxima e não depende de match de selector CSS.
+    style: 'padding-top: max(0.5rem, env(safe-area-inset-top)); padding-bottom: max(0.5rem, env(safe-area-inset-bottom));',
+  },
     el('div', { class: 'pointer-events-auto bg-white text-slate-900 rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden' },
       // Header bar (dark navy like the kanban background)
       el('div', { class: 'shrink-0 bg-[#0e3a4d] text-white px-4 sm:px-5 py-3 flex items-center justify-between gap-3' },
