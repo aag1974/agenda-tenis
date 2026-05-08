@@ -92,6 +92,8 @@ Discutido em 2026-05-08. Plano detalhado em `~/.claude/plans/temporal-rolling-po
 
 **Volume**: filtro `(isAnnaInscribed || isAnnaConfirmada) && endDate < hoje` reduz de ~83 torneios pra ~10-20 disputados de fato. Backfill de 5-10s, não 5min.
 
+**Modelo de rede (insight 2026-05-08)**: scouting fica REALMENTE útil quando vira colaborativo — treinador na conta dele busca atleta X, vê os jogos reportados pela rede inteira (não só os da sua casa). Identidade canônica = `athleteId` do TI; quando o mesmo ID aparece em `profile.athleteId` de uma conta e `match.opponentId` de outra, é a mesma pessoa. Endpoint `/api/scouting/athlete/{tiId}` quebra o isolamento por household pra expor só dados derivados do TI público. Tipo de conta "Coach" sem atleta próprio se aproveita da infra de roles (vincula como Editor aos perfis dos alunos). Growth driver: cobertura cresce com novos usuários → alvo prioritário = clubes/academias inteiros.
+
 **Sequenciamento sugerido**:
 1. Investigar endpoint TI de chaves (`/torneio_painel_chave/index/{tid}/{catId}`?) — pré-requisito.
 2. Scraper de matches (~1 semana) — alimenta `matches.json` separado.
