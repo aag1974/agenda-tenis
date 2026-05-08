@@ -1,7 +1,7 @@
 // Service worker — network-first pra HTML e app.js (sempre serve a versão
 // nova quando online; cai pro cache só offline). Stale-while-revalidate
 // pra ícones / manifest / assets pesados que mudam pouco.
-const CACHE = 'agenda-tenis-v159';
+const CACHE = 'agenda-tenis-v160';
 const SHELL_OFFLINE = ['/', '/app.js', '/manifest.webmanifest', '/icon-192.svg', '/icon-512.svg'];
 
 self.addEventListener('install', (e) => {
@@ -49,5 +49,52 @@ self.addEventListener('fetch', (e) => {
       return res;
     }).catch(() => null);
     return cached || (await networkPromise) || new Response('Offline', { status: 503 });
+  })());
+});
+
+// ===== Web Push =====
+// O servidor manda payload JSON: { title, body, badge, tag, url }
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
+  const title = data.title || '🎾 Tennis Flow';
+  const body = data.body || 'Há um novo alerta no seu quadro.';
+  const tag = data.tag || 'alerts';
+  const url = data.url || '/';
+  const options = {
+    body,
+    tag,
+    renotify: true,
+    icon: '/icon-192.svg',
+    badge: '/icon-192.svg',
+    data: { url },
+  };
+  event.waitUntil((async () => {
+    await self.registration.showNotification(title, options);
+    // App badge no ícone (iOS PWA / Android / desktop)
+    if (typeof data.badge === 'number' && self.navigator.setAppBadge) {
+      try {
+        if (data.badge > 0) await self.navigator.setAppBadge(data.badge);
+        else await self.navigator.clearAppBadge?.();
+      } catch {}
+    }
+  })());
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || '/';
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // Se já tem janela do app aberta, foca ela
+    for (const client of all) {
+      if (client.url.includes(self.location.origin)) {
+        await client.focus();
+        client.postMessage({ type: 'open-url', url: targetUrl });
+        return;
+      }
+    }
+    // Senão, abre nova
+    await self.clients.openWindow(targetUrl);
   })());
 });

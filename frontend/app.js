@@ -396,6 +396,30 @@ const api = {
   async deleteAlertEvent(profileId, eventId) {
     await fetch(`/api/profiles/${profileId}/alerts/${eventId}`, { method: 'DELETE' });
   },
+  async pushInfo() {
+    const r = await fetch('/api/push/info');
+    if (!r.ok) return null;
+    return r.json();
+  },
+  async pushSubscribe(subscription) {
+    const r = await fetch('/api/push/subscribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro ao registrar');
+    return r.json();
+  },
+  async pushUnsubscribe(endpoint) {
+    await fetch('/api/push/subscribe', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint }),
+    });
+  },
+  async pushTest() {
+    const r = await fetch('/api/push/test', { method: 'POST' });
+    if (!r.ok) throw new Error('Erro');
+    return r.json();
+  },
   async createShareLink(profileId, tid) {
     const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/share`, { method: 'POST' });
     if (!r.ok) throw new Error('Erro ao gerar link');
@@ -469,6 +493,7 @@ async function init() {
   await refreshActive();
   render();
   pollSyncStatus();
+  maybeOpenAlertsFromUrl();
 }
 
 // Configuração do board (labels + ordem de colunas) é compartilhada na household.
@@ -919,6 +944,7 @@ async function refreshActive() {
   try {
     const unseen = await api.listAlerts(state.activeProfileId, { unseen: true });
     state.unseenAlertsCount = unseen.length;
+    updateAppBadge(unseen.length);
     if (!state.alertOnLoadShown && unseen.length > 0) {
       state.alertOnLoadShown = true;
       setTimeout(() => openAlertsListModal({ onlyUnseen: true }), 400);
@@ -934,7 +960,10 @@ async function pollSyncStatus() {
     const s = await api.syncStatus(state.activeProfileId);
     const wasRunning = state.syncStatus?.state === 'running';
     state.syncStatus = s;
-    if (typeof s.unseenAlerts === 'number') state.unseenAlertsCount = s.unseenAlerts;
+    if (typeof s.unseenAlerts === 'number') {
+      state.unseenAlertsCount = s.unseenAlerts;
+      updateAppBadge(s.unseenAlerts);
+    }
     if (wasRunning && s.state !== 'running') {
       await refreshActive();
       render();
@@ -1984,6 +2013,104 @@ function isViewer() {
   return state.user?.role === 'viewer';
 }
 
+// ===== Web Push helpers =====
+function urlBase64ToUint8Array(b64) {
+  const padding = '='.repeat((4 - b64.length % 4) % 4);
+  const base64 = (b64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+
+async function pushSupported() {
+  return 'serviceWorker' in navigator
+    && 'PushManager' in window
+    && 'Notification' in window;
+}
+
+async function getPushSubscription() {
+  if (!await pushSupported()) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+
+async function subscribeToPush() {
+  const reg = await navigator.serviceWorker.ready;
+  const info = await api.pushInfo();
+  if (!info?.enabled || !info.publicKey) {
+    throw new Error('Notificações não habilitadas no servidor');
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    throw new Error('Permissão negada');
+  }
+  const subscription = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(info.publicKey),
+  });
+  await api.pushSubscribe(subscription.toJSON());
+  return subscription;
+}
+
+async function unsubscribeFromPush() {
+  const sub = await getPushSubscription();
+  if (sub) {
+    await api.pushUnsubscribe(sub.endpoint);
+    await sub.unsubscribe();
+  }
+}
+
+// Bolinha-com-número no canto do ícone do app (iOS PWA, Android, macOS)
+async function updateAppBadge(count) {
+  if (!('setAppBadge' in navigator)) return;
+  try {
+    if (count > 0) await navigator.setAppBadge(count);
+    else await navigator.clearAppBadge?.();
+  } catch {}
+}
+
+// Render do bloco de opt-in do push — null se já tá inscrito ou se push não é suportado
+async function renderPushOptIn() {
+  if (!await pushSupported()) return null;
+  const info = await api.pushInfo();
+  if (!info?.enabled) return null;
+  const sub = await getPushSubscription();
+  if (sub) {
+    // Já inscrito — mostra status sutil + opção de desativar
+    return el('div', { class: 'mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 flex items-center justify-between gap-2' },
+      el('div', { class: 'text-xs text-emerald-800' }, '🔔 Notificações ativadas neste dispositivo'),
+      el('button', {
+        class: 'text-[11px] text-emerald-700 hover:underline',
+        onClick: async () => {
+          if (!confirm('Desativar notificações neste dispositivo?')) return;
+          try { await unsubscribeFromPush(); openAlertsListModal(); }
+          catch (err) { alert('Erro: ' + err.message); }
+        },
+      }, 'Desativar'),
+    );
+  }
+  // Não inscrito — mostra CTA
+  return el('div', { class: 'mb-3 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-3 space-y-2' },
+    el('div', { class: 'text-sm font-medium text-cyan-900' }, '🔔 Receber alertas no celular'),
+    el('p', { class: 'text-xs text-cyan-800' },
+      'Ative pra receber notificações nativas (com bolinha no ícone do app) quando rolar boleto novo, inscrição abrir, ranking mudar, etc.'),
+    el('button', {
+      class: 'w-full text-sm rounded bg-cyan-600 hover:bg-cyan-700 text-white font-medium px-3 py-2',
+      onClick: async (e) => {
+        const btn = e.target;
+        btn.disabled = true; btn.textContent = 'Ativando…';
+        try {
+          await subscribeToPush();
+          await api.pushTest(); // dispara push de teste
+          openAlertsListModal();
+        } catch (err) {
+          btn.disabled = false; btn.textContent = 'Ativar notificações neste dispositivo';
+          alert('Não foi possível ativar: ' + err.message);
+        }
+      },
+    }, 'Ativar notificações neste dispositivo'),
+  );
+}
+
 function userInitials(emailOrName) {
   if (!emailOrName) return '?';
   const s = emailOrName.trim();
@@ -2674,6 +2801,11 @@ function openAlertsListModal({ onlyUnseen = false } = {}) {
   const reload = async () => {
     body.innerHTML = '';
     footer.innerHTML = '';
+
+    // Opt-in de push notifications — só aparece se não estiver inscrito
+    const pushSection = await renderPushOptIn();
+    if (pushSection) body.appendChild(pushSection);
+
     const events = await api.listAlerts(state.activeProfileId, { unseen: onlyUnseen });
 
     if (events.length === 0) {
@@ -2694,6 +2826,7 @@ function openAlertsListModal({ onlyUnseen = false } = {}) {
               onClick: async () => {
                 await api.markAlertsSeen(state.activeProfileId, [e.id]);
                 state.unseenAlertsCount = Math.max(0, (state.unseenAlertsCount || 0) - 1);
+                updateAppBadge(state.unseenAlertsCount);
                 renderHeader();
                 reload();
               },
@@ -2719,6 +2852,7 @@ function openAlertsListModal({ onlyUnseen = false } = {}) {
         onClick: async () => {
           await api.markAllAlertsSeen(state.activeProfileId);
           state.unseenAlertsCount = 0;
+          updateAppBadge(0);
           renderHeader();
           close();
         },
@@ -4318,6 +4452,29 @@ if ('serviceWorker' in navigator) {
     if (!hadController) return;
     showUpdateBanner();
   });
+
+  // Mensagens vindas do SW — notificação clicada manda 'open-url'.
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type === 'open-url') {
+      // Atualiza alertas e abre o modal se a URL pedir
+      if ((e.data.url || '').includes('openAlerts')) {
+        if (state.activeProfileId) openAlertsListModal({ onlyUnseen: true });
+      }
+    }
+  });
+}
+
+// Se a app foi aberta com ?openAlerts=1 (vindo de uma notificação clicada),
+// abre o modal automaticamente após o carregamento dos dados.
+function maybeOpenAlertsFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('openAlerts') === '1' && state.activeProfileId) {
+    setTimeout(() => openAlertsListModal({ onlyUnseen: true }), 400);
+    // Limpa o param sem recarregar
+    params.delete('openAlerts');
+    const q = params.toString();
+    history.replaceState({}, '', window.location.pathname + (q ? '?' + q : ''));
+  }
 }
 
 function showUpdateBanner() {

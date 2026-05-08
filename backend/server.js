@@ -38,6 +38,11 @@ import {
   getHouseholdBoardConfig, setHouseholdBoardConfig,
 } from './household.js';
 import * as admin from './admin-cli.js';
+import {
+  pushIsConfigured, getVapidPublicKey,
+  saveSubscription, removeSubscription, listSubscriptionsForUser,
+  sendPushToUsers,
+} from './push.js';
 
 migrateHouseholdsOnBoot();
 migrateUsersAddPlan();
@@ -197,6 +202,43 @@ app.post('/api/invite/:token/accept', requireAuth, (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// ===== Web Push =====
+app.get('/api/push/info', requireAuth, (req, res) => {
+  const subs = listSubscriptionsForUser(req.userId);
+  res.json({
+    enabled: pushIsConfigured(),
+    publicKey: getVapidPublicKey(),
+    subscriptionCount: subs.length,
+  });
+});
+
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+  const sub = req.body?.subscription;
+  if (!sub?.endpoint || !sub?.keys) {
+    return res.status(400).json({ error: 'subscription inválida' });
+  }
+  const entry = saveSubscription(req.userId, sub);
+  res.status(201).json({ id: entry.id });
+});
+
+app.delete('/api/push/subscribe', requireAuth, (req, res) => {
+  const endpoint = req.body?.endpoint;
+  if (!endpoint) return res.status(400).json({ error: 'endpoint obrigatório' });
+  removeSubscription(req.userId, endpoint);
+  res.status(204).end();
+});
+
+// Botão "testar" no frontend — envia push de teste pro próprio user
+app.post('/api/push/test', requireAuth, async (req, res) => {
+  const sent = await sendPushToUsers([req.userId], {
+    title: '🎾 Tennis Flow',
+    body: 'Notificações ativadas. Você vai receber alertas aqui quando algo importante acontecer.',
+    tag: 'test',
+    url: '/',
+  });
+  res.json({ sent });
 });
 
 // Endpoint admin — protegido por env var ADMIN_TOKEN.

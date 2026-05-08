@@ -2,11 +2,13 @@ import { syncAthlete } from './scraper.js';
 import {
   listProfiles, getProfile, getProfileCredentials, getSyncedData, saveSyncedData,
   updateProfile, getNotes, updateTournamentNotes, addAutoActivity,
-  getAlertRules, addAlertEvents,
+  getAlertRules, addAlertEvents, getAlertEvents,
 } from './storage.js';
 import { cleanupExpiredReceipts } from './receipts.js';
 import { diffTournamentForActivity } from './board.js';
 import { evaluateRules } from './alerts.js';
+import { sendPushToUsers } from './push.js';
+import { listHouseholdMembers } from './household.js';
 
 const inFlight = new Map(); // profileId -> Promise
 const status = new Map();   // profileId -> { state, startedAt, finishedAt, error }
@@ -125,6 +127,36 @@ export async function syncProfile(profileId) {
         }
       }
       summary.newAlerts = triggeredAlerts.length;
+
+      // Push notifications — manda pra todos os membros do household.
+      // Falha silenciosa: erro no push não derruba o sync.
+      if (triggeredAlerts.length > 0) {
+        try {
+          const profile = getProfile(profileId);
+          const householdId = profile?.householdId || profile?.userId;
+          const members = householdId ? listHouseholdMembers(householdId) : [];
+          const userIds = members.map(m => m.id);
+          const unseenCount = getAlertEvents(profileId).filter(e => !e.seen).length;
+          // Resumo curto pro título; primeiro alerta vira o body.
+          const first = triggeredAlerts[0];
+          const more = triggeredAlerts.length - 1;
+          const title = triggeredAlerts.length === 1
+            ? '🎾 Tennis Flow'
+            : `🎾 ${triggeredAlerts.length} novos alertas`;
+          const body = more > 0
+            ? `${first.message} (+${more} outro${more > 1 ? 's' : ''})`
+            : first.message;
+          await sendPushToUsers(userIds, {
+            title,
+            body,
+            badge: unseenCount,
+            tag: 'alerts',
+            url: '/?openAlerts=1',
+          });
+        } catch (err) {
+          console.error(`[push ${profileId}]`, err.message);
+        }
+      }
 
       saveSyncedData(profileId, result);
       const p = getProfile(profileId);
