@@ -71,6 +71,23 @@ export function deleteUser(email) {
   return { removed: u.email, id: u.id, householdId: u.householdId };
 }
 
+// Define firstName/lastName de um usuário existente. Usado pra
+// preencher os campos retroativamente em users criados antes do
+// signup exigir nome+sobrenome.
+// CLI: node backend/admin-cli.js set-name user@email.com "Anna Cláudia" "Garcia"
+export function setName(email, firstName, lastName) {
+  if (!firstName?.trim() || !lastName?.trim()) {
+    throw new Error('firstName e lastName obrigatórios');
+  }
+  const users = readJson(USERS_FILE, []);
+  const u = users.find(x => x.email?.toLowerCase() === email?.toLowerCase());
+  if (!u) throw new Error(`Usuário não encontrado: ${email}`);
+  u.firstName = firstName.trim();
+  u.lastName = lastName.trim();
+  writeJson(USERS_FILE, users);
+  return { email: u.email, firstName: u.firstName, lastName: u.lastName };
+}
+
 export function resetPassword(email, novaSenha) {
   if (!novaSenha || novaSenha.length < 6) throw new Error('Senha precisa ter pelo menos 6 caracteres');
   const users = readJson(USERS_FILE, []);
@@ -180,6 +197,9 @@ if (isMain) {
       console.log('✓', deleteUser(arg1));
     } else if (cmd === 'reset-password') {
       console.log('✓', resetPassword(arg1, arg2));
+    } else if (cmd === 'set-name') {
+      // node backend/admin-cli.js set-name user@email.com "Anna Cláudia" "Garcia"
+      console.log('✓', setName(arg1, arg2, process.argv[5]));
     } else if (cmd === 'activate-pro') {
       // node backend/admin-cli.js activate-pro user@email.com "Pix R$297 em 07/05/2026"
       console.log('✓ Ativado:', activatePro(arg1, arg2));
@@ -192,7 +212,7 @@ if (isMain) {
     } else if (cmd === 'normalize-activity-logs') {
       console.log('✓', normalizeActivityLogs());
     } else {
-      console.log('Comandos: list-users | delete-user | reset-password | activate-pro | set-plan-trial | show-household | find-tournament | normalize-activity-logs');
+      console.log('Comandos: list-users | delete-user | reset-password | set-name | activate-pro | set-plan-trial | show-household | find-tournament | normalize-activity-logs');
     }
   } catch (err) {
     console.error('Erro:', err.message);

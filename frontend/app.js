@@ -2232,10 +2232,13 @@ function avatarColor(seed) {
 function userInitials(emailOrName) {
   if (!emailOrName) return '?';
   const s = String(emailOrName).trim();
-  // Nome próprio (preferível) — primeira letra do primeiro + primeira do último.
+  // Nome próprio (preferível) — primeira letra dos DOIS primeiros nomes.
+  // Famílias com mesmo sobrenome (ex.: Garcia) ficavam com iniciais idênticas
+  // se usássemos primeiro+último; usar os dois primeiros distingue ("Anna
+  // Cláudia Garcia"=AC, "Anna Luiza Garcia"=AL).
   if (!s.includes('@')) {
     const parts = s.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   }
   // Fallback: email — pega 2 primeiras letras antes do @, separando por . _ -

@@ -268,6 +268,9 @@ app.post('/api/admin', (req, res) => {
     if (cmd === 'list-users') result = admin.listUsers();
     else if (cmd === 'delete-user') result = admin.deleteUser(args[0]);
     else if (cmd === 'reset-password') result = admin.resetPassword(args[0], args[1]);
+    else if (cmd === 'set-name') result = admin.setName(args[0], args[1], args[2]);
+    else if (cmd === 'activate-pro') result = admin.activatePro(args[0], args[1]);
+    else if (cmd === 'set-plan-trial') result = admin.setPlanTrial(args[0]);
     else if (cmd === 'show-household') result = admin.showHousehold(args[0]);
     else if (cmd === 'find-tournament') result = admin.findTournament(args[0], args[1]);
     else if (cmd === 'normalize-activity-logs') result = admin.normalizeActivityLogs();
