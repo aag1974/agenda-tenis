@@ -79,6 +79,28 @@ saber rapidamente onde cada um está sem rolar a coluna inteira.
 (3) "Dim das colunas sem match" foi descartado — estético mas não
 acrescenta info que (1)+(2) não cobrem.
 
+## Próxima fronteira: Performance + Scouting (visão estratégica)
+
+Discutido em 2026-05-08. Plano detalhado em `~/.claude/plans/temporal-rolling-pony.md`.
+
+**Visão**: evoluir o Tennis Flow de "agenda de torneios" pra "ecossistema de gestão de carreira do atleta", adicionando:
+
+1. **Performance**: histórico de jogos do atleta (W/L, evolução temporal, win rate por categoria/superfície, streaks).
+2. **Scouting head-to-head**: análise de adversário com base em jogos já disputados contra ele.
+
+**Insight chave**: as duas views se alimentam do MESMO dataset. Scrapeia só os jogos do próprio atleta — o nome do adversário vem "de graça" no resultado. Sem scraping de outros perfis = sem privacy concerns.
+
+**Volume**: filtro `(isAnnaInscribed || isAnnaConfirmada) && endDate < hoje` reduz de ~83 torneios pra ~10-20 disputados de fato. Backfill de 5-10s, não 5min.
+
+**Sequenciamento sugerido**:
+1. Investigar endpoint TI de chaves (`/torneio_painel_chave/index/{tid}/{catId}`?) — pré-requisito.
+2. Scraper de matches (~1 semana) — alimenta `matches.json` separado.
+3. View Scouting (~3-5 dias) — primeira interface visível.
+4. View Performance (~1 semana) — dashboard global.
+5. Extensões: predição de chave, comparativo entre atletas da família, export pra coach.
+
+**Arquivos que serão tocados**: `backend/scraper.js`, `backend/sync-manager.js`, `backend/storage.js`, `frontend/app.js`. Novo: `data/profile-{id}/matches.json`.
+
 ## Performance / produção
 
 ### Pré-compilar Tailwind (sair do CDN)
