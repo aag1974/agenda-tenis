@@ -828,7 +828,7 @@ async function openInviteModal() {
               ? el('span', { class: 'text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800' }, 'Dono')
               : el('span', { class: `text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${m.role === 'viewer' ? 'bg-slate-200 text-slate-700' : 'bg-cyan-100 text-cyan-800'}` }, m.role === 'viewer' ? 'Leitor' : 'Editor');
             return el('li', { class: 'flex items-center gap-2 text-sm py-1' },
-              el('span', { class: 'w-7 h-7 rounded-full bg-cyan-600 text-white text-[10px] font-semibold flex items-center justify-center shrink-0' }, userInitials(m.email || m.name)),
+              el('span', { class: `w-7 h-7 rounded-full ${avatarColor(m.id || m.email).bg} text-white text-[10px] font-semibold flex items-center justify-center shrink-0` }, userInitials(m.email || m.name)),
               el('div', { class: 'min-w-0 flex-1' },
                 el('div', { class: 'truncate text-sm text-slate-800' }, m.email || m.name || 'membro'),
                 el('div', { class: 'flex items-center gap-1.5 mt-0.5' },
@@ -2111,6 +2111,28 @@ async function renderPushOptIn() {
   );
 }
 
+// Cor estável e distinta por usuário, baseada em hash do email/id.
+// Paleta escolhida pra ter contraste suficiente em texto branco.
+const AVATAR_COLORS = [
+  { bg: 'bg-cyan-600',    hover: 'hover:bg-cyan-700' },
+  { bg: 'bg-emerald-600', hover: 'hover:bg-emerald-700' },
+  { bg: 'bg-violet-600',  hover: 'hover:bg-violet-700' },
+  { bg: 'bg-rose-600',    hover: 'hover:bg-rose-700' },
+  { bg: 'bg-amber-600',   hover: 'hover:bg-amber-700' },
+  { bg: 'bg-sky-600',     hover: 'hover:bg-sky-700' },
+  { bg: 'bg-fuchsia-600', hover: 'hover:bg-fuchsia-700' },
+  { bg: 'bg-teal-600',    hover: 'hover:bg-teal-700' },
+  { bg: 'bg-indigo-600',  hover: 'hover:bg-indigo-700' },
+  { bg: 'bg-orange-600',  hover: 'hover:bg-orange-700' },
+];
+function avatarColor(seed) {
+  if (!seed) return AVATAR_COLORS[0];
+  let h = 0;
+  const s = String(seed).toLowerCase();
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
 function userInitials(emailOrName) {
   if (!emailOrName) return '?';
   const s = emailOrName.trim();
@@ -2135,9 +2157,10 @@ function renderHeaderEl() {
   );
 
   const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
+  const myColor = avatarColor(state.user?.id || state.user?.email);
   const avatarButton = state.user && el('button', {
     id: 'avatar-button',
-    class: 'w-9 h-9 rounded-full bg-cyan-600 text-white text-xs font-semibold flex items-center justify-center hover:bg-cyan-700 shrink-0',
+    class: `w-9 h-9 rounded-full ${myColor.bg} text-white text-xs font-semibold flex items-center justify-center ${myColor.hover} shrink-0`,
     title: state.user.email || 'Conta',
     onClick: (e) => { e.stopPropagation(); toggleGearMenu(); },
   }, initials);
@@ -2145,11 +2168,14 @@ function renderHeaderEl() {
   // Bolinhas dos membros + botão "+" — só desktop (mobile usa item do menu)
   const otherMembers = (state.user?.members || []).filter(m => m.id !== state.user?.id);
   const memberStack = state.user && el('div', { class: 'hidden md:flex items-center -space-x-2 shrink-0' },
-    ...otherMembers.slice(0, 4).map(m => el('button', {
-      class: 'w-8 h-8 rounded-full bg-emerald-600 text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-[#0e3a4d] hover:bg-emerald-500',
-      title: m.email,
-      onClick: (e) => { e.stopPropagation(); openInviteModal(); },
-    }, userInitials(m.email || m.name))),
+    ...otherMembers.slice(0, 4).map(m => {
+      const c = avatarColor(m.id || m.email);
+      return el('button', {
+        class: `w-8 h-8 rounded-full ${c.bg} text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-[#0e3a4d] ${c.hover}`,
+        title: m.email,
+        onClick: (e) => { e.stopPropagation(); openInviteModal(); },
+      }, userInitials(m.email || m.name));
+    }),
     otherMembers.length > 4 && el('span', {
       class: 'w-8 h-8 rounded-full bg-slate-500 text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-[#0e3a4d]',
       title: `+${otherMembers.length - 4} membros`,
@@ -3056,6 +3082,7 @@ function toggleGearMenu() {
   // Cabeçalho do menu (estilo Trello): avatar + nome + email
   const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
   const displayName = state.user?.name && state.user.name !== state.user.email ? state.user.name : null;
+  const myColor = avatarColor(state.user?.id || state.user?.email);
   const planLine = (() => {
     const p = state.user?.plan;
     if (!p) return null;
@@ -3064,7 +3091,7 @@ function toggleGearMenu() {
     return { text: 'Free · fazer upgrade', color: 'text-cyan-700' };
   })();
   const userHeader = state.user && el('div', { class: 'px-3 py-3 border-b border-slate-200 flex items-center gap-3 bg-slate-50' },
-    el('span', { class: 'w-10 h-10 rounded-full bg-cyan-600 text-white text-sm font-semibold flex items-center justify-center shrink-0' }, initials),
+    el('span', { class: `w-10 h-10 rounded-full ${myColor.bg} text-white text-sm font-semibold flex items-center justify-center shrink-0` }, initials),
     el('div', { class: 'min-w-0 flex-1' },
       displayName && el('div', { class: 'text-sm font-bold text-slate-700 truncate' }, displayName),
       el('div', { class: `${displayName ? 'text-xs text-slate-500' : 'text-sm font-bold text-slate-700'} truncate` }, state.user.email || 'Conta'),
