@@ -71,8 +71,14 @@ export function listHouseholdMembers(householdId) {
     .filter(u => u.householdId === householdId)
     .map(u => {
       const isFounder = u.id === householdId;
+      const fullName = (u.firstName && u.lastName)
+        ? `${u.firstName} ${u.lastName}`
+        : (u.name || null);
       return {
-        id: u.id, email: u.email, name: u.name || null,
+        id: u.id, email: u.email,
+        name: fullName,
+        firstName: u.firstName || null,
+        lastName: u.lastName || null,
         joinedAt: u.householdJoinedAt || u.createdAt,
         isFounder,
         role: isFounder ? 'editor' : (u.role || 'editor'),

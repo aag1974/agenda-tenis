@@ -29,7 +29,7 @@ import { deriveStatus, fetchTournamentDetails, debugAthleteInscriptions, getAthl
 import { getProfileCredentials } from './storage.js';
 import {
   createUser, authenticate, signCookie, authMiddleware, requireAuth, requireEditor,
-  userCount, listUsers, findUserById, getPlanInfo, migrateUsersAddPlan,
+  userCount, listUsers, findUserById, getPlanInfo, migrateUsersAddPlan, updateUserName,
 } from './auth.js';
 import {
   migrateHouseholdsOnBoot, listHouseholdMembers, profileBelongsToHousehold,
@@ -72,25 +72,39 @@ app.get('/api/auth/me', (req, res) => {
   res.json({
     userId: req.userId || null,
     email: req.userEmail || null,
+    firstName: user?.firstName || null,
+    lastName: user?.lastName || null,
     householdId,
     members,
     hasUsers: userCount() > 0,
     plan: user ? getPlanInfo(user) : null,
     role: req.userRole || null,
     isFounder: req.userId && req.userId === householdId,
+    needsProfile: user ? !(user.firstName && user.lastName) : false,
   });
 });
 
 app.post('/api/auth/signup', (req, res) => {
-  const { email, password } = req.body || {};
+  const { email, password, firstName, lastName } = req.body || {};
   try {
-    const user = createUser({ email, password });
+    const user = createUser({ email, password, firstName, lastName });
     if (user.isFirst) {
       const claimed = claimOrphanProfiles(user.id);
       if (claimed > 0) console.log(`[auth] Primeiro usuário ${user.email} herdou ${claimed} perfis existentes.`);
     }
     res.setHeader('Set-Cookie', `session=${signCookie(user.id)}; ${COOKIE_OPTIONS(req)}`);
     res.status(201).json({ userId: user.id, email: user.email });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Pra usuários antigos que não tinham nome — modal "Complete seu cadastro"
+app.post('/api/auth/complete-profile', requireAuth, (req, res) => {
+  const { firstName, lastName } = req.body || {};
+  try {
+    const result = updateUserName(req.userId, { firstName, lastName });
+    res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

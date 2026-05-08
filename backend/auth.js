@@ -85,9 +85,14 @@ export function findUserById(id) {
   return readUsers().find(u => u.id === id) || null;
 }
 
-export function createUser({ email, password }) {
+export function createUser({ email, password, firstName, lastName }) {
   if (!email || !password) throw new Error('email e senha obrigatórios');
   if (password.length < 6) throw new Error('senha precisa ter pelo menos 6 caracteres');
+  const fn = (firstName || '').trim();
+  const ln = (lastName || '').trim();
+  if (!fn) throw new Error('Nome obrigatório');
+  if (!ln) throw new Error('Sobrenome obrigatório');
+  if (fn.length > 40 || ln.length > 60) throw new Error('Nome ou sobrenome muito longos');
   const users = readUsers();
   if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
     throw new Error('Já existe uma conta com este email');
@@ -98,6 +103,8 @@ export function createUser({ email, password }) {
   const user = {
     id,
     email: email.toLowerCase(),
+    firstName: fn,
+    lastName: ln,
     passwordHash: hashPassword(password),
     householdId: id, // solo household por default — invite muda isso
     createdAt: now,
@@ -111,6 +118,23 @@ export function createUser({ email, password }) {
   users.push(user);
   writeUsers(users);
   return { id, email: user.email, householdId: user.householdId, createdAt: user.createdAt, isFirst: isFirstUser };
+}
+
+// Atualiza nome/sobrenome de um user (usado pelo modal "complete seu cadastro"
+// pra usuários que existiam antes do campo virar obrigatório).
+export function updateUserName(userId, { firstName, lastName }) {
+  const fn = (firstName || '').trim();
+  const ln = (lastName || '').trim();
+  if (!fn) throw new Error('Nome obrigatório');
+  if (!ln) throw new Error('Sobrenome obrigatório');
+  if (fn.length > 40 || ln.length > 60) throw new Error('Nome ou sobrenome muito longos');
+  const users = readUsers();
+  const u = users.find(x => x.id === userId);
+  if (!u) throw new Error('Usuário não encontrado');
+  u.firstName = fn;
+  u.lastName = ln;
+  writeUsers(users);
+  return { id: u.id, firstName: u.firstName, lastName: u.lastName };
 }
 
 // ===== Planos =====

@@ -238,8 +238,19 @@ const api = {
     if (!r.ok) throw new Error((await r.json()).error || 'Erro');
     return r.json();
   },
-  async signup(email, password) {
-    const r = await fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  async signup({ email, password, firstName, lastName }) {
+    const r = await fetch('/api/auth/signup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, firstName, lastName }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    return r.json();
+  },
+  async completeProfile({ firstName, lastName }) {
+    const r = await fetch('/api/auth/complete-profile', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstName, lastName }),
+    });
     if (!r.ok) throw new Error((await r.json()).error || 'Erro');
     return r.json();
   },
@@ -445,10 +456,14 @@ async function init() {
   const me = await api.me();
   state.user = me.userId ? {
     id: me.userId, email: me.email,
+    firstName: me.firstName || null,
+    lastName: me.lastName || null,
+    name: me.firstName && me.lastName ? `${me.firstName} ${me.lastName}` : null,
     householdId: me.householdId, members: me.members || [],
     plan: me.plan || null,
     role: me.role || 'editor',
     isFounder: !!me.isFounder,
+    needsProfile: !!me.needsProfile,
   } : null;
   state.hasUsers = !!me.hasUsers;
 
@@ -494,6 +509,71 @@ async function init() {
   render();
   pollSyncStatus();
   maybeOpenAlertsFromUrl();
+  if (state.user?.needsProfile) {
+    openCompleteProfileModal();
+  }
+}
+
+function openCompleteProfileModal() {
+  const root = $('modal-root');
+  root.innerHTML = '';
+  // Modal não pode ser fechado sem preencher — overlay sem onClick
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-[70]' });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[71] w-[calc(100%-2rem)] max-w-sm bg-white text-slate-900 rounded-2xl shadow-2xl p-5 space-y-4',
+    style: 'padding-top: max(1.25rem, env(safe-area-inset-top)); padding-bottom: max(1.25rem, env(safe-area-inset-bottom));',
+  });
+  const fnInp = el('input', { type: 'text', placeholder: 'Nome', class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400' });
+  const lnInp = el('input', { type: 'text', placeholder: 'Sobrenome', class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400' });
+  const errBox = el('div', { class: 'text-sm text-rose-700', style: 'display:none' });
+  const submitBtn = el('button', {
+    class: 'w-full rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-sm px-4 py-2.5 transition-colors disabled:opacity-60',
+    onClick: async () => {
+      errBox.style.display = 'none';
+      const firstName = fnInp.value.trim();
+      const lastName = lnInp.value.trim();
+      if (!firstName || !lastName) {
+        errBox.textContent = 'Nome e sobrenome são obrigatórios.';
+        errBox.style.display = 'block';
+        return;
+      }
+      submitBtn.disabled = true; submitBtn.textContent = 'Salvando…';
+      try {
+        await api.completeProfile({ firstName, lastName });
+        state.user.firstName = firstName;
+        state.user.lastName = lastName;
+        state.user.name = `${firstName} ${lastName}`;
+        state.user.needsProfile = false;
+        overlay.remove(); card.remove();
+        renderHeader();
+      } catch (err) {
+        errBox.textContent = err.message;
+        errBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Salvar';
+      }
+    },
+  }, 'Salvar');
+
+  card.append(
+    el('div', null,
+      el('h3', { class: 'text-base font-semibold text-slate-900' }, 'Complete seu cadastro'),
+      el('p', { class: 'text-xs text-slate-600 mt-1' },
+        'Pra personalizar a experiência, precisamos do seu nome completo. Aparece no avatar e na lista de membros da família.'),
+    ),
+    el('label', { class: 'block' },
+      el('span', { class: 'block text-xs text-slate-700 mb-1 font-medium' }, 'Nome'), fnInp),
+    el('label', { class: 'block' },
+      el('span', { class: 'block text-xs text-slate-700 mb-1 font-medium' }, 'Sobrenome'), lnInp),
+    errBox,
+    submitBtn,
+  );
+  fnInp.addEventListener('keydown', (e) => { if (e.key === 'Enter') lnInp.focus(); });
+  lnInp.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitBtn.click(); });
+
+  root.appendChild(overlay);
+  root.appendChild(card);
+  setTimeout(() => fnInp.focus(), 0);
 }
 
 // Configuração do board (labels + ordem de colunas) é compartilhada na household.
@@ -571,11 +651,23 @@ function renderAuth() {
       const email = inputs.email.value.trim();
       const password = inputs.password.value;
       if (!email || !password) { showError('Email e senha são obrigatórios'); return; }
+      if (mode === 'signup') {
+        const firstName = inputs.firstName?.value.trim();
+        const lastName = inputs.lastName?.value.trim();
+        if (!firstName || !lastName) { showError('Nome e sobrenome são obrigatórios'); return; }
+      }
       submitBtn.disabled = true;
       submitBtn.textContent = mode === 'signup' ? 'Criando…' : 'Entrando…';
       try {
-        if (mode === 'signup') await api.signup(email, password);
-        else await api.login(email, password);
+        if (mode === 'signup') {
+          await api.signup({
+            email, password,
+            firstName: inputs.firstName.value.trim(),
+            lastName: inputs.lastName.value.trim(),
+          });
+        } else {
+          await api.login(email, password);
+        }
         await init();
       } catch (e) {
         showError(e.message);
@@ -613,6 +705,10 @@ function renderAuth() {
       ),
       inviteBanner,
 
+      mode === 'signup' && el('div', { class: 'grid grid-cols-2 gap-2' },
+        field('firstName', 'Nome', 'text', 'Maria', '👤'),
+        field('lastName', 'Sobrenome', 'text', 'Silva', '👤'),
+      ),
       field('email', 'Email', 'email', 'voce@email.com', '✉'),
       field('password', mode === 'signup' ? 'Senha (mín. 6 caracteres)' : 'Senha', 'password', '••••••••', '🔒'),
 
@@ -2135,10 +2231,15 @@ function avatarColor(seed) {
 
 function userInitials(emailOrName) {
   if (!emailOrName) return '?';
-  const s = emailOrName.trim();
-  // If it's an email, take the first 2 letters before @
+  const s = String(emailOrName).trim();
+  // Nome próprio (preferível) — primeira letra do primeiro + primeira do último.
+  if (!s.includes('@')) {
+    const parts = s.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  }
+  // Fallback: email — pega 2 primeiras letras antes do @, separando por . _ -
   const local = s.includes('@') ? s.split('@')[0] : s;
-  // Split on common separators and take initials
   const parts = local.split(/[._\s-]+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return local.slice(0, 2).toUpperCase();
@@ -2156,7 +2257,7 @@ function renderHeaderEl() {
     ),
   );
 
-  const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
+  const initials = userInitials(state.user?.name || state.user?.email || profile?.athleteName);
   const myColor = avatarColor(state.user?.id || state.user?.email);
   const avatarButton = state.user && el('button', {
     id: 'avatar-button',
@@ -3080,8 +3181,8 @@ function toggleGearMenu() {
   const profile = state.profiles.find(p => p.id === state.activeProfileId);
 
   // Cabeçalho do menu (estilo Trello): avatar + nome + email
-  const initials = userInitials(state.user?.email || state.user?.name || profile?.athleteName);
-  const displayName = state.user?.name && state.user.name !== state.user.email ? state.user.name : null;
+  const initials = userInitials(state.user?.name || state.user?.email || profile?.athleteName);
+  const displayName = state.user?.name || null;
   const myColor = avatarColor(state.user?.id || state.user?.email);
   const planLine = (() => {
     const p = state.user?.plan;
