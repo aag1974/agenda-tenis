@@ -4,7 +4,7 @@ Snapshot pra retomar o trabalho em qualquer máquina. Atualizado em 06/05/2026.
 
 ## Onde rodando
 
-- **Produção (24/7):** https://tennis-flow.com (custom domain) — fallback: https://agenda-tenis-integrado.onrender.com
+- **Produção (24/7):** https://tennis-flow.com.br (custom domain, registro.br) — fallback: https://agenda-tenis-integrado.onrender.com
 - **GitHub:** https://github.com/aag1974/tennisflow (branch `main`) — repo movido (URL antiga `aag1974/agenda-tenis` redireciona)
 - **Último commit:** `07086a3` — Kanban Fase 1.3: frontend board com SortableJS + paleta TI
 - **Plano Render:** Starter (US$ 7/mês) — necessário pelo disco persistente em `/opt/render/project/src/data`
