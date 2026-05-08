@@ -31,6 +31,7 @@ export function listUsers() {
   const users = readJson(USERS_FILE, []);
   return users.map(u => ({
     email: u.email, id: u.id, householdId: u.householdId, createdAt: u.createdAt,
+    firstName: u.firstName || null, lastName: u.lastName || null,
     plan: u.plan || 'pro', planActivatedAt: u.planActivatedAt, planNote: u.planNote,
     trialStartedAt: u.trialStartedAt,
   }));
@@ -191,7 +192,8 @@ if (isMain) {
       console.log(`${list.length} usuário(s):`);
       list.forEach(u => {
         const plan = u.plan === 'pro' ? 'PRO' : (u.plan === 'trial' ? `trial (desde ${u.trialStartedAt?.slice(0,10)})` : u.plan);
-        console.log(`  ${u.email}  [${plan}]  id=${u.id}  household=${u.householdId}`);
+        const name = (u.firstName && u.lastName) ? `${u.firstName} ${u.lastName}` : '(sem nome)';
+        console.log(`  ${u.email}  → ${name}  [${plan}]  id=${u.id}  household=${u.householdId}`);
       });
     } else if (cmd === 'delete-user') {
       console.log('✓', deleteUser(arg1));
