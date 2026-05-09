@@ -570,16 +570,19 @@ function parseDetailsHtml(html, id, url) {
     observations = text.slice(obsIdx + 'Informações/Observações'.length, endIdx).trim().slice(0, 3000);
   }
 
-  // Tiers do panel: 2 fontes complementares
+  // Tiers do panel: 3 fontes complementares
   // a) Categorias formais entre parênteses: "(G1+)" — `)` no fim previne
   //    falsos positivos. Alternação ordenada longest-first pra capturar
   //    "G1+" antes de cair em "G1".
   // b) Texto "CHAVE G1+" / "CHAVE GA" nas observações (alguns torneios têm
   //    múltiplas chaves sequenciais anunciadas só em texto). Lookahead
   //    `(?![+\d])` previne backtrack de G1+ pra G1.
+  // c) Nome do torneio via extractAllTiers — captura "GA/GA+" do título
+  //    quando o painel só lista uma chave (caso real: Brasileirão Juvenil).
   const tiers = [...new Set([
     ...[...text.matchAll(/\((GA\+|G1\+|GA|G1|G2|G3)\)/g)].map(m => m[1]),
     ...[...text.matchAll(/\bCHAVE\s+(GA\+|G1\+|GA|G1|G2|G3)(?![+\dA-Za-z])/gi)].map(m => m[1].toUpperCase()),
+    ...extractAllTiers(name || ''),
   ])];
 
   return {
