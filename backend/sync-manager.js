@@ -44,9 +44,16 @@ export async function syncProfile(profileId) {
         if (!lastScraped[y]) yearsToScrape.push(y);
       }
 
-      const result = await syncAthlete({ ...creds, starredIds, yearsToScrape });
-      // Preserve firstSeenAt per tournament across syncs (used by "🆕" badge for 7 days)
+      // Lê previous AGORA (antes do sync) pra passar pro scraper —
+      // permite skip de inscritos check em torneios passados já confirmados.
       const previous = getSyncedData(profileId);
+      const result = await syncAthlete({
+        ...creds,
+        starredIds,
+        yearsToScrape,
+        previousTournaments: previous?.tournaments || null,
+      });
+      // Preserve firstSeenAt per tournament across syncs (used by "🆕" badge for 7 days)
       const firstSeenById = new Map(
         (previous?.tournaments || []).map(t => [t.id, t.firstSeenAt]).filter(([_, ts]) => ts)
       );

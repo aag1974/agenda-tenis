@@ -672,12 +672,15 @@ export async function debugAthleteInscriptions({ email, password }, opts = {}) {
   return out;
 }
 
-export async function syncAthlete({ email, password, starredIds = [], yearsToScrape = null }) {
+export async function syncAthlete({ email, password, starredIds = [], yearsToScrape = null, previousTournaments = null }) {
   const client = new TIClient();
   await client.login(email, password);
 
-  const athlete = await getAthleteInfo(client);
-  const programaIds = await getProgramaIds(client).catch(() => []);
+  // Paralelo: ambos só dependem de login.
+  const [athlete, programaIds] = await Promise.all([
+    getAthleteInfo(client),
+    getProgramaIds(client).catch(() => []),
+  ]);
   const annaIds = new Set([...athlete.tournamentIds, ...programaIds]);
 
   const pendingPayments = extractPendingPayments(athlete.inicioText);
@@ -809,7 +812,28 @@ export async function syncAthlete({ email, password, starredIds = [], yearsToScr
       const date = new Date(y, m - 1, d);
       return date >= cutoffPast && date <= cutoffFuture;
     };
-    const candidates = tournaments.filter(inScope).slice(0, 200);
+    // Pula torneios já passados (endDate < hoje) que JÁ tinham status
+    // inscrita/confirmada no sync anterior — estado imutável, não muda mais.
+    // Reduz bastante chamadas em perfis maduros (Anna ~15-30 torneios passados/ano).
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+    const prevById = new Map(
+      (previousTournaments || []).map(p => [p.id, p])
+    );
+    const isStableInscribed = (t) => {
+      if (!t.endDate) return false;
+      const [d, m, y] = t.endDate.split('/').map(Number);
+      if (new Date(y, m - 1, d) >= today0) return false; // ainda futuro/em curso
+      const prev = prevById.get(t.id);
+      return !!(prev && (prev.isAnnaInscribed || prev.isAnnaConfirmada));
+    };
+    // Replica do sync anterior pros estáveis e candidata só os que precisam check.
+    for (const t of tournaments) {
+      if (!isStableInscribed(t)) continue;
+      const prev = prevById.get(t.id);
+      if (prev?.isAnnaInscribed) t.isAnnaInscribed = true;
+      if (prev?.isAnnaConfirmada) t.isAnnaConfirmada = true;
+    }
+    const candidates = tournaments.filter(t => inScope(t) && !isStableInscribed(t)).slice(0, 200);
 
     // Concorrência limitada: 8 simultâneos pra não saturar TI.
     const CONCURRENCY = 8;
@@ -836,13 +860,10 @@ export async function syncAthlete({ email, password, starredIds = [], yearsToScr
   // Ranking regional (qualquer UF — detecta dinamicamente da página do TI)
   const currentYear = new Date().getFullYear();
   const nationalRanking12F = (athlete.rankings || []).find(r => r.year === currentYear && r.category === '12F') || null;
-  const regionalRanking = await getRegionalPosition(client, client.athleteId, '12F').catch(() => null);
-  const desempenho = await getDesempenho(client).catch(() => null);
 
-  // Matches scrape — em paralelo por ano. yearsToScrape vem do sync-manager
-  // (decide backfill vs incremental). null = pula scrape.
-  let matchesByYear = null;
-  if (yearsToScrape && yearsToScrape.length) {
+  // Paralelo: 3 chamadas independentes (regional / desempenho / matches por ano).
+  const matchesPromise = (async () => {
+    if (!yearsToScrape?.length) return null;
     const { fetchAthleteMatches } = await import('./match-scraper.js');
     const results = await Promise.all(
       yearsToScrape.map(y =>
@@ -854,11 +875,16 @@ export async function syncAthlete({ email, password, starredIds = [], yearsToScr
           })
       )
     );
-    matchesByYear = {};
-    for (const r of results) {
-      if (r.matches) matchesByYear[r.year] = r.matches;
-    }
-  }
+    const out = {};
+    for (const r of results) if (r.matches) out[r.year] = r.matches;
+    return out;
+  })();
+
+  const [regionalRanking, desempenho, matchesByYear] = await Promise.all([
+    getRegionalPosition(client, client.athleteId, '12F').catch(() => null),
+    getDesempenho(client).catch(() => null),
+    matchesPromise,
+  ]);
 
   return {
     athlete: {
