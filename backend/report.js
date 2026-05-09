@@ -12,6 +12,7 @@ import {
 } from './storage.js';
 import { detectGender, detectMainCategory, categoryFullLabel, genderTerms } from './gender.js';
 import { computeArchetypes } from './competitive-metrics.js';
+import { radarChart, calendarHeatmap } from './charts.js';
 const G_DEFAULT = genderTerms('M');
 
 // ─── Configurações ──────────────────────────────────────────────────────
@@ -319,17 +320,38 @@ function renderDnaAndMetrics(ctx) {
     res.components.h2hCandidates > 0 ? `${res.components.h2hComebacks}/${res.components.h2hCandidates} h2h revertidos depois de começar atrás (${res.components.h2hComebackRate}%)` : null,
   ].filter(Boolean).join(' · ') : 'Amostra insuficiente em situações adversas.';
 
+  // Radar 5-eixos: 3 índices proprietários + 2 buckets (vs forte / vs parelho).
+  // Reúne num só visual o "DNA" do atleta. Vs-fraco intencionalmente fora —
+  // pra atletas competitivos, ganhar dos mais fracos é o piso, não diferencial.
+  const b = analysis.bucketPerformance || {};
+  const totalEven = (b.even?.w || 0) + (b.even?.l || 0);
+  const totalStrong = (b.strong?.w || 0) + (b.strong?.l || 0);
+  const evenPct = totalEven >= 3 ? Math.round((b.even.w / totalEven) * 100) : 0;
+  const strongPct = totalStrong >= 3 ? Math.round((b.strong.w / totalStrong) * 100) : 0;
+  const radarData = [
+    { label: 'Dominância', value: cdi?.score || 0 },
+    { label: 'Clutch', value: clutch?.score || 0 },
+    { label: 'Resiliência', value: res?.score || 0 },
+    { label: 'vs Parelhos', value: evenPct },
+    { label: 'vs Fortes', value: strongPct },
+  ];
+
   return `
     <section class="chapter dna-section">
       <div class="chapter-num">PERFIL COMPETITIVO</div>
       <h2 class="chapter-title">Como ${escapeHtml(athleteFirstName)} compete</h2>
-      <p class="dna-intro">Análise vai além do binário ganha/perde — lê textura competitiva real: dominância de placar, performance em pontos decisivos e capacidade de virar adversidade.</p>
+      <p class="dna-intro">Análise vai além do binário ganha/perde — lê textura competitiva real: dominância de placar, performance em pontos decisivos, capacidade de virar adversidade e desempenho contra rivais ${G.gender === 'F' ? 'parelhas e mais fortes' : 'parelhos e mais fortes'}.</p>
 
       ${archetypes && archetypes.length ? `
       <div class="dna-grid">
         ${archCards}
       </div>
       ` : ''}
+
+      <div class="dna-radar-wrap">
+        ${radarChart(radarData, { width: 380, height: 320 })}
+      </div>
+      <p class="footnote dna-radar-caption">Radar dos 5 eixos do perfil. Quanto mais o polígono violeta se estende, mais ${G.atleta} performa naquele eixo. Pontuações 0–100.</p>
 
       <h3 class="metrics-h3">Índices proprietários Tennis Flow</h3>
       <div class="metric-grid">
@@ -442,58 +464,25 @@ function renderChapter2(ctx) {
       <div class="chapter-num">CAPÍTULO 2</div>
       <h2 class="chapter-title">Como esta análise foi feita</h2>
 
-      <h3>Fonte dos dados</h3>
-      <p>As partidas analisadas foram obtidas a partir do perfil oficial ${G.do_atleta} no <em>Tênis Integrado</em> (tenisintegrado.com.br), plataforma utilizada pela CBT e pelas federações estaduais para registro de torneios oficiais. O acesso foi feito via login autenticado ${G.do_atleta}, com consentimento do responsável legal.</p>
+      <h3>Fonte e critérios</h3>
+      <p>As partidas vêm do perfil oficial ${G.do_atleta} no <em>Tênis Integrado</em>, com consentimento do responsável legal. <strong>Incluídas:</strong> singles com ${G.adversario} ${G.gender === 'F' ? 'identificada' : 'identificado'} e resultado oficial. <strong>Excluídas:</strong> duplas, W.O. e partidas sem identificação ${G.gender === 'F' ? 'da adversária' : 'do adversário'}.</p>
 
-      <h3>Critérios de inclusão e exclusão</h3>
-      <p>Para garantir comparabilidade e qualidade estatística, foram aplicados os seguintes critérios:</p>
+      <h3>Quatro lentes complementares</h3>
+      <p>O relatório combina:</p>
       <ul>
-        <li><strong>Incluídas:</strong> partidas de simples com ${G.adversario} ${G.gender === 'F' ? 'identificada' : 'identificado'} e resultado oficial registrado.</li>
-        <li><strong>Excluídas:</strong> partidas de duplas (modelo estatístico próprio, futura versão), W.O. (não houve disputa efetiva), partidas sem identificação ${G.gender === 'F' ? 'clara da adversária' : 'clara do adversário'}.</li>
+        <li><strong>Glicko-2</strong> — sistema de Mark Glickman (Harvard, 2012) que estima nível como rating + incerteza ("±X"). Vencer alguém mais forte vale mais; perder pra alguém muito acima quase não tira pontos. 1500 é a média neutra.</li>
+        <li><strong>Forma temporal</strong> — janelas 90d / 12m / all-time pra detectar tendência recente.</li>
+        <li><strong>Performance estratificada</strong> — buckets de força (mais ${G.gender === 'F' ? 'forte / parelha / mais fraca' : 'forte / parelho / mais fraco'}, cutoff ±100 Glicko).</li>
+        <li><strong>Métricas proprietárias Tennis Flow</strong> — Dominância (CDI), Clutch e Resiliência, derivadas de placares (não só V/D).</li>
       </ul>
 
-      <h3>O sistema Glicko-2 — como o nível de jogo é estimado</h3>
-      <p>O <strong>Glicko-2</strong> é um sistema de pontuação estatística criado pelo Prof. Mark Glickman, da Universidade de Harvard, em 2012. É a evolução do sistema Glicko (1998), que por sua vez veio do Elo — sistema usado para ranquear jogadores de xadrez desde os anos 1960. Hoje, o Glicko-2 é usado em xadrez (USCF), tênis (algumas plataformas analíticas), jogos eletrônicos competitivos e em pesquisas estatísticas sobre esportes.</p>
-
-      <h3>Por que esse sistema e não outro?</h3>
-      <p>Sistemas mais simples (como o Elo) atribuem apenas um número ${G.do_atleta}. O Glicko-2 atribui dois: o <strong>rating</strong> (estimativa do nível) e a <strong>incerteza</strong> dessa estimativa. Isso faz toda a diferença: ${G.gender === 'F' ? 'duas atletas' : 'dois atletas'} com rating 1400 mas ${G.gender === 'F' ? 'uma' : 'um'} com 50 partidas e ${G.gender === 'F' ? 'outra' : 'outro'} com 5 não devem ter o mesmo grau de confiança no número. ${G.gender === 'F' ? 'A primeira' : 'O primeiro'} tem incerteza baixa; ${G.gender === 'F' ? 'a segunda' : 'o segundo'}, alta. Esse é o "± X" que aparece neste relatório.</p>
-
-      <h3>Como o número se atualiza</h3>
-      <ol>
-        <li>O sistema observa o rating ${G.do_atleta} antes do jogo.</li>
-        <li>Observa o rating ${G.gender === 'F' ? 'da adversária' : 'do adversário'} antes do jogo.</li>
-        <li>Calcula a probabilidade de vitória dada a diferença.</li>
-        <li>Compara o que era esperado com o que aconteceu de fato.</li>
-        <li>Atualiza ambos os ratings — o ${G.do_atleta} e o ${G.gender === 'F' ? 'da adversária' : 'do adversário'}.</li>
-      </ol>
-      <p>O efeito prático: vencer alguém mais ${G.gender === 'F' ? 'forte' : 'forte'} vale mais (em pontos de rating) do que vencer alguém mais ${G.gender === 'F' ? 'fraca' : 'fraco'}. Da mesma forma, perder ${G.gender === 'F' ? 'pra uma atleta muito acima' : 'pra um atleta muito acima'} do seu nível quase não tira pontos.</p>
-
-      <h3>Como ler o número</h3>
-      <ul>
-        <li>1500 é a média referencial (${G.gender === 'F' ? 'jogadora "neutra"' : 'jogador "neutro"'}, inicial).</li>
-        <li>Quanto maior, melhor a estimativa.</li>
-        <li>A faixa entre os limites inferior e superior representa onde, com 95% de confiança, está o "nível verdadeiro".</li>
-        <li>Conforme mais torneios, a faixa estreita.</li>
-      </ul>
-
-      <h3>O que este sistema NÃO faz</h3>
-      <ul>
-        <li>Não compara com outras plataformas (cada sistema tem seu universo).</li>
-        <li>Não substitui o ranking CBT (pontos de torneio oficial).</li>
-        <li>Não substitui o WTN (referência mundial pública da ITF).</li>
-      </ul>
-      <p>Os três números são <strong>complementares</strong>: WTN diz onde ${G.atleta} está no mundo, ranking CBT diz onde está no Brasil, Glicko-2 mostra como ${G.ele} está evoluindo dentro do universo de ${G.adversarios} ${G.enfrentadas}.</p>
-
-      <h3>Outras técnicas estatísticas utilizadas</h3>
-      <ul>
-        <li><strong>Janelas temporais</strong> (90d, 12m, all-time) para análise de forma recente.</li>
-        <li><strong>Buckets de força do oponente</strong> (mais ${G.gender === 'F' ? 'forte / parelha / mais fraca' : 'forte / parelho / mais fraco'}, com cutoff de ±100 pontos).</li>
-        <li><strong>Teste Wald-Wolfowitz</strong> para análise de sequências de vitórias e derrotas.</li>
-        <li><strong>Standard error em métricas agregadas</strong> para indicar significância de over/underperformance.</li>
-      </ul>
+      <h3>O que este relatório NÃO substitui</h3>
+      <p>Glicko-2 é uma <strong>terceira lente</strong>, não substitui ranking CBT (pontos oficiais) nem WTN (referência mundial). Os três são complementares — WTN diz onde ${G.atleta} está no mundo, CBT no Brasil, Glicko-2 dentro do universo de ${G.adversarios} ${G.enfrentadas}.</p>
 
       <h3>Limitações</h3>
-      <p>Toda análise estatística com amostra pequena tem incerteza inerente. Conclusões são <strong>direcionais</strong>, não definitivas. Em 6-12 meses, com 50-100 partidas no histórico, as inferências serão muito mais firmes.</p>
+      <p>Análise com amostra ainda em construção tem incerteza inerente. Conclusões são <strong>direcionais</strong>, não definitivas. A faixa Glicko ("± X") quantifica essa incerteza. Em 6–12 meses, com 50–100 partidas no histórico, as inferências ficam muito mais firmes.</p>
+
+      <p class="footnote">Detalhe técnico do Glicko-2 (atualização passo a passo, buckets, testes inferenciais) está no Anexo C — Notas técnicas.</p>
     </section>
   `;
 }
@@ -589,6 +578,11 @@ function renderChapter3(ctx) {
           total: v.w + v.l,
         }))
       )}
+
+      <h3>Calendário de atividade — aproveitamento por mês</h3>
+      <div class="calendar-heatmap-wrap">
+        ${calendarHeatmap(matches.filter(m => !m.isDoubles && !m.wo && (m.result === 'W' || m.result === 'L')))}
+      </div>
 
       <h3>Cobertura</h3>
       <p>De um total de <strong>${matches.length} partidas registradas</strong> no Tênis Integrado durante o período analisado:</p>
@@ -1489,6 +1483,16 @@ function baseHtmlShell(athleteName, dateStr, body) {
   .metric-card.metric-weak   { background: #fef2f2; border-color: #fecaca; }
   .metric-card.metric-weak   .metric-score { color: ${COLORS.rose}; }
   .metric-card.metric-neutral { background: ${COLORS.bgLight}; }
+  .dna-radar-wrap {
+    display: flex; justify-content: center; margin: 16px 0 4px;
+  }
+  .dna-radar-caption {
+    text-align: center; margin-top: -4px;
+  }
+  .calendar-heatmap-wrap {
+    display: flex; justify-content: center; margin: 14px 0 2px;
+    overflow-x: auto;
+  }
 
   /* CHAPTERS ──────────────────────────────────────────────────── */
   .chapter, .annex {
