@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import os from 'node:os';
+import { readFileSync } from 'node:fs';
 import archiver from 'archiver';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -64,6 +65,20 @@ const COOKIE_OPTIONS = (req) => {
     'Max-Age=2592000', // 30 days
   ].filter(Boolean).join('; ');
 };
+
+// Versão do app — lê package.json no boot. Commit hash vem do Render
+// (env var RENDER_GIT_COMMIT setada automaticamente em deploy) ou 'dev' local.
+const VERSION_INFO = (() => {
+  let version = '0.0.0';
+  try {
+    const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+    version = pkg.version || version;
+  } catch {}
+  const commit = (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'dev';
+  return { version, commit };
+})();
+
+app.get('/api/version', (req, res) => res.json(VERSION_INFO));
 
 // ===== Auth =====
 app.get('/api/auth/me', (req, res) => {

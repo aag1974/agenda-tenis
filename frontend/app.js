@@ -196,6 +196,7 @@ const state = {
 
 const api = {
   async me() { return (await fetch('/api/auth/me')).json(); },
+  async version() { return (await fetch('/api/version')).json(); },
   async getBoardConfig() { return (await fetch('/api/household/board-config')).json(); },
   async updateBoardConfig(patch) {
     const r = await fetch('/api/household/board-config', {
@@ -452,6 +453,9 @@ const api = {
 async function init() {
   // Captura token de convite na URL (compartilhado por WhatsApp/email)
   const urlInviteToken = new URLSearchParams(window.location.search).get('invite');
+
+  // Versão do app — fetch em paralelo com /api/auth/me, falha silenciosa.
+  api.version().then(v => { state.version = v; }).catch(() => {});
 
   const me = await api.me();
   state.user = me.userId ? {
@@ -3280,6 +3284,12 @@ function toggleGearMenu() {
         onClick: () => { menu.remove(); it.onClick(); },
       }, it.label)),
     ),
+    state.version && el('div', {
+      class: 'px-3 py-2 border-t border-slate-200 text-[11px] text-slate-400 font-mono',
+      title: 'Versão do Tennis Flow · clique pra forçar atualização',
+      onClick: () => { menu.remove(); window.location.reload(); },
+      style: 'cursor:pointer',
+    }, `v${state.version.version} · ${state.version.commit}`),
   );
 
   // Anexa ao body (fora do #header-bar pra escapar dos overrides do tema kanban)
