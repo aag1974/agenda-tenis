@@ -96,7 +96,7 @@ export function headline(analysis, athleteFirstName) {
     return `Em ${totalSimples} partidas de simples, ${athleteFirstName} venceu ${winsTotal} e perdeu ${lossesTotal} (${pctAll}% no histórico todo). Nos últimos 3 meses, está vencendo ${pct90}% — sua evolução está aparecendo no placar.`;
   }
   if (pct90 !== null && pctAll !== null && pctAll - pct90 >= 10) {
-    return `Em ${totalSimples} partidas de simples, ${athleteFirstName} venceu ${winsTotal} e perdeu ${lossesTotal} (${pctAll}% no histórico todo). Nos últimos 3 meses, está em ${pct90}% — período de adaptação.`;
+    return `Em ${totalSimples} partidas de simples, ${athleteFirstName} venceu ${winsTotal} e perdeu ${lossesTotal} (${pctAll}% no histórico todo). Nos últimos 3 meses, está em ${pct90}% — abaixo da média histórica.`;
   }
   return `Em ${totalSimples} partidas de simples, ${athleteFirstName} venceu ${winsTotal} e perdeu ${lossesTotal} (${pctAll}% de aproveitamento), com desempenho recente similar à média histórica.`;
 }
@@ -134,7 +134,7 @@ export function ratingNarrative(analysis) {
     return `Você está ${levelDesc}, e nos últimos 3 meses o seu nível tem subido. Quando enfrenta atletas parecidas com você, costuma ganhar; contra adversárias mais fortes, ainda perde mais que ganha — o que é normal. A faixa de incerteza (${r.ci95.lower}–${r.ci95.upper}) ainda é ampla porque temos ${analysis.counts.analyzed} partidas; vai estreitar com mais jogos.`;
   }
   if (direction === 'em queda') {
-    return `Você está ${levelDesc}. Nos últimos 3 meses o nível avaliado pelo sistema caiu um pouco — pode ser fase, pode ser amostra pequena. A faixa de ${r.ci95.lower} a ${r.ci95.upper} reflete que ainda não temos jogos suficientes pra cravar.`;
+    return `Você está ${levelDesc}. Nos últimos 3 meses o nível avaliado pelo sistema caiu um pouco. Os números mostram a queda; o **motivo** (volume diferente, adversários mais fortes, lesão, mudança técnica) precisa ser olhado fora do relatório — vale conversar com o coach. A faixa de ${r.ci95.lower} a ${r.ci95.upper} também reflete que ainda precisamos de mais jogos pra cravar.`;
   }
   return `Você está ${levelDesc}. O número estimado de hoje (${r.r}) está ${certainty === 'alta' ? 'bem firme' : 'em estabilização'}, na faixa entre ${r.ci95.lower} e ${r.ci95.upper}. Isso quer dizer que com 95% de certeza seu nível verdadeiro está nesse intervalo.`;
 }
@@ -157,7 +157,7 @@ export function formaNarrative(analysis) {
     return `Os números recentes estão um pouco acima da média histórica. Sinal positivo, mas modesto — vale acompanhar nos próximos torneios pra confirmar a curva.`;
   }
   if (diff <= -10) {
-    return `Os últimos 3 meses estão abaixo da média histórica. Pode ser fase difícil, pode ser que esteja enfrentando adversárias mais fortes. Vale conversar com o coach sobre o que mudou.`;
+    return `Os últimos 3 meses estão abaixo da média histórica. Os números mostram a queda — o motivo precisa de contexto humano: adversárias mais fortes, calendário diferente, lesão, ajuste técnico, fase mental. O relatório aponta o sinal; a leitura do motivo é com o coach.`;
   }
   return `Seu desempenho recente está alinhado com a média histórica. Sem grandes oscilações pra cima ou pra baixo nos últimos 3 meses.`;
 }
