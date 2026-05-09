@@ -279,104 +279,113 @@ export function h2hOpponentNarrative(opponent) {
   const daysSinceLast = Math.round((today - new Date(y, mo - 1, d)) / (1000 * 60 * 60 * 24));
   const isStale = daysSinceLast > 180;
 
-  // Helper: descreve placar típico — variantes alternadas por nome do oponente
+  // Helper: descreve placar típico — voz de coach, sem números técnicos
+  // expostos. Imagem mental no centro: "controlou o ritmo", "não deixou
+  // entrar no jogo", "tudo nos detalhes". Variantes alternadas por nome.
   const seed = opponent.name || '';
   const tacticalLine = () => {
     if (!sig) return null;
     if (sig.blowoutRate >= 0.5 && wins > losses) {
       return pickVariant(seed, [
-        `Domínio claro de placar — ${sig.blowoutCount} de ${sig.totalSets} sets terminaram com diferença ≥4 games.`,
-        `Vitórias com folga consistente — ${Math.round(sig.blowoutRate * 100)}% dos sets fechados sem suspense.`,
-        `Margem média de ${nb1(sig.avgWonMargin)} games nos sets vencidos — adversário não conseguiu impor jogo.`,
+        `Na maior parte dos jogos, ditou o ritmo sem deixar o adversário entrar na partida.`,
+        `Vitórias com tranquilidade — não houve drama, fechou em controle.`,
+        `Quando ganha, ganha com folga — adversário não conseguiu impor jogo.`,
       ]);
     }
     if (sig.blowoutRate >= 0.5 && wins < losses) {
       return pickVariant(seed, [
-        `Sets decididos com folga contra você — diferença média de ${nb1(sig.avgLostMargin || 0)} games nos perdidos.`,
-        `Adversário tem dominado o placar — ${sig.blowoutCount} de ${sig.totalSets} sets fechados com 4+ games de margem.`,
-        `Padrão preocupante: poucos sets disputados (${Math.round(sig.tightRate * 100)}% apertados), maioria larga.`,
+        `Adversário tem ditado o ritmo — quando vence, ganha com folga.`,
+        `Os jogos vêm fugindo do controle — não conseguiu emparelhar.`,
+        `Padrão preocupante: poucos sets equilibrados, maioria fechada em desvantagem.`,
       ]);
     }
     if (sig.tightRate >= 0.6) {
       return pickVariant(seed, [
-        `Jogo apertado — ${Math.round(sig.tightRate * 100)}% dos sets decididos com diferença ≤2 games. Margem fina, todo detalhe pesa.`,
-        `Confronto de placar fino — ${sig.tightCount} de ${sig.totalSets} sets dentro de 2 games. Decisão sai nos detalhes.`,
-        `Equilíbrio set a set — diferenças pequenas, padrão típico de rivalidade tática.`,
+        `Jogo de detalhe — quase tudo é decidido por uma quebra ou outra. Cada ponto pesa.`,
+        `Confronto de margem fina — sai vitorioso quem segura a cabeça nos momentos chave.`,
+        `Rivalidade tática típica — placares próximos, decisão sai nos pontos importantes.`,
       ]);
     }
     if (sig.volatility > 2.5) {
       return pickVariant(seed, [
-        `Performance oscila bastante de jogo pra jogo (stdev ${nb1(sig.volatility)} games).`,
-        `Jogo de altos e baixos — placares variam de set largo a set apertado sem padrão claro.`,
-        `Volatilidade alta nos placares — adversário em fase de ajuste, ou contexto (cansaço, superfície) influenciando.`,
+        `Tem dias muito fortes e outros mais instáveis contra esse adversário — não há padrão fixo.`,
+        `Jogo de altos e baixos — varia de set para set sem leitura clara.`,
+        `Confronto imprevisível — pode tanto fechar tranquilo quanto virar uma briga.`,
       ]);
     }
     if (wins > losses && sig.avgWonMargin) {
       return pickVariant(seed, [
-        `Margem média de ${nb1(sig.avgWonMargin)} games nos sets vencidos — vitórias controladas.`,
-        `Vitórias sem drama — placar costuma fechar com folga moderada (${nb1(sig.avgWonMargin)} games).`,
-        `Você tende a ditar o ritmo — sets vencidos por margem confortável.`,
+        `Vitórias controladas — costuma vencer com folga moderada, sem sustos.`,
+        `Quando passa do início, fecha em ritmo — sem deixar o jogo apertar.`,
+        `Tende a ditar o jogo — sai com folga sem precisar forçar.`,
       ]);
     }
     if (wins < losses && sig.avgLostMargin) {
       return pickVariant(seed, [
-        `Diferença média de ${nb1(sig.avgLostMargin)} games nos sets perdidos — jogo sob pressão.`,
-        `Adversário impõe ritmo — você não consegue virar a moeda nos momentos chave.`,
-        `Padrão de derrota com placar moderado — não é blowout, mas é consistente.`,
+        `Quando perde, perde por margem moderada — não é blowout, mas é consistente.`,
+        `Dificuldade de impor ritmo — adversário consegue ditar o desenrolar.`,
+        `Padrão de derrota previsível: jogos similares, sem oscilação grande.`,
       ]);
     }
     return null;
   };
 
-  // Helper: linha de recomendação variada
+  // Helper: linha de recomendação — voz prática de quadra
   const recommendDominance = () => pickVariant(seed, [
-    `Cuidado paradoxal: adversário derrotado várias vezes seguidas costuma chegar com plano novo no próximo encontro.`,
-    `Confiança alta justificada — manter o roteiro que funciona, mas esperar ajuste tático no próximo confronto.`,
-    `Mantenha a leitura, mas atenção ao que o adversário traz de novo — vitórias seguidas geram preparação adversa.`,
+    `Cuidado paradoxal: adversário que perde várias vezes costuma chegar com plano novo no próximo encontro.`,
+    `Confiança alta vale, mas o adversário vai ajustar — manter o roteiro com atenção redobrada.`,
+    `Atenção: vitórias seguidas viram alvo. O adversário vai estudar o que tem te dado certo.`,
     `Histórico favorável é alavanca, não garantia — chegue afiado, evite leveza.`,
   ]);
 
   const recommendStudy = () => pickVariant(seed, [
-    `Recomendação: estudar especificamente esse adversário antes do próximo encontro.`,
-    `Próximo passo: revisar mentalmente os jogos anteriores e desenhar plano específico.`,
-    `Antes do próximo confronto, vale conversar com o coach sobre o que tem travado.`,
-    `Plano tático específico vale mais que jogo padrão nesse caso.`,
+    `Vale revisar com o coach o que travou nos jogos anteriores antes do próximo encontro.`,
+    `Antes do próximo confronto, plano específico de jogo — não jogo padrão.`,
+    `Recomendação: olhar com calma os pontos que decidiram os jogos passados — tem padrão a quebrar.`,
+    `Esse pede preparação tática específica — não confiar só em ajuste de quadra.`,
   ]);
 
-  // 1) Sem vitórias ainda — barreira
+  // 1) Sem vitórias ainda — arquétipo barreira (técnica, atual ou aberta)
   if (wins === 0) {
     const lines = [];
     if (isStale) {
-      lines.push(`${total} confrontos, todos derrota — último em ${escapeBr(lastDate)} (mais de 6 meses atrás).`);
+      lines.push(pickVariant(seed, [
+        `**Rival do passado.** ${total} derrotas em ${total} encontros, último em ${escapeBr(lastDate)} — faz mais de 6 meses.`,
+        `**Histórico antigo.** ${total} jogos, ${total} derrotas. Última vez foi em ${escapeBr(lastDate)}, há mais de meio ano.`,
+      ]));
     } else if (daysSinceLast <= 90) {
-      lines.push(`Barreira atual — ${total} derrotas em ${total} confrontos, sendo o último ${daysSinceLast} dia${daysSinceLast === 1 ? '' : 's'} atrás.`);
+      lines.push(pickVariant(seed, [
+        `**Barreira atual.** ${total} derrotas em ${total} encontros, sendo o último faz só ${daysSinceLast} dia${daysSinceLast === 1 ? '' : 's'}.`,
+        `**Adversário difícil de quebrar.** ${total}D em ${total} encontros, todos recentes (último há ${daysSinceLast} dia${daysSinceLast === 1 ? '' : 's'}).`,
+      ]));
     } else {
-      lines.push(`Barreira ainda em aberto — ${total} confrontos, ${total} derrotas (último em ${escapeBr(lastDate)}).`);
+      lines.push(pickVariant(seed, [
+        `**Barreira em aberto.** ${total} encontros, ${total} derrotas. Último em ${escapeBr(lastDate)}.`,
+        `**Rival ainda não vencido.** ${total}D em ${total} jogos (último em ${escapeBr(lastDate)}).`,
+      ]));
     }
     const tac = tacticalLine();
     if (tac) lines.push(tac);
-    // Tendência: último jogo foi mais próximo?
     const firstClose = isCloseLoss(ms[0]);
     const lastClose = isCloseLoss(ms[ms.length - 1]);
     if (lastClose && !firstClose) {
-      lines.push(`Sinal positivo: o último foi consideravelmente mais apertado que o primeiro — você está chegando perto.`);
+      lines.push(`Sinal positivo: o último foi consideravelmente mais apertado que o primeiro — chegando perto da virada.`);
     } else if (!lastClose && firstClose) {
-      lines.push(`Sinal de atenção: o jogo está ficando mais distante a cada encontro — adversário aprendeu a jogar contra você.`);
+      lines.push(`Sinal de atenção: o jogo está ficando mais distante a cada encontro — adversário aprendeu a jogar contra.`);
     }
-    if (isStale) lines.push(`Como o tempo passou, vale chegar no próximo confronto sem peso do histórico — você é outro atleta agora.`);
+    if (isStale) lines.push(`Tempo passou — chegue no próximo confronto sem o peso do histórico.`);
     else lines.push(recommendStudy());
     return lines.join(' ');
   }
 
-  // 2) Sem derrotas — domínio absoluto
+  // 2) Sem derrotas — arquétipo "rival dominado"
   if (losses === 0) {
-    const opener = pickVariant(seed, [
-      `${total}V em ${total} — confronto sem perdas no histórico.`,
-      `Aproveitamento de 100% — ${total} encontros, ${total} vitórias.`,
-      `Domínio completo no histórico — ${total}V em ${total}.`,
-      `Adversário sob controle — ${total}V em ${total} confrontos.`,
-    ]);
-    const lines = [opener];
+    const lines = [pickVariant(seed, [
+      `**Rival dominado.** ${total}V em ${total} encontros — sem perdas no histórico.`,
+      `**Sob controle.** Aproveitamento de 100% (${total}V em ${total}).`,
+      `**Adversário com tarefa.** ${total} confrontos, ${total} vitórias.`,
+      `**Confronto resolvido.** ${total}V × 0D no histórico recente.`,
+    ])];
     const tac = tacticalLine();
     if (tac) lines.push(tac);
     lines.push(recommendDominance());
@@ -389,41 +398,69 @@ export function h2hOpponentNarrative(opponent) {
   const firstWinRate = firstHalf.filter(m => m.result === 'W').length / firstHalf.length;
   const lastWinRate = lastHalf.filter(m => m.result === 'W').length / lastHalf.length;
 
-  // 3a) Virada favorável — começou mal, virou
+  // 3a) Virada favorável — arquétipo "rival em queda"
   if (lastWinRate > firstWinRate + 0.3) {
-    const lines = [`Virada favorável — em ${escapeBr(firstDate)} ainda apanhava; nos últimos encontros, tem dominado.`];
+    const lines = [pickVariant(seed, [
+      `**Histórico revertido.** No primeiro encontro (${escapeBr(firstDate)}) ainda apanhava; nos últimos, tem dominado.`,
+      `**Rival em queda.** Começou perdendo, virou a chave — saldo recente bem favorável.`,
+    ])];
     const tac = tacticalLine();
     if (tac) lines.push(tac);
-    lines.push(`Recomendação: documentar (mentalmente ou com o coach) o que mudou — replicar a fórmula. E ficar atento: adversário que perdeu duas vezes seguidas costuma chegar com plano novo na 3ª.`);
+    lines.push(`Vale anotar com o coach o que mudou — fórmula vencedora, replicar. Atenção: depois de duas derrotas seguidas, o adversário tende a chegar com plano novo no próximo encontro.`);
     return lines.join(' ');
   }
 
-  // 3b) Regressão — começou bem, está piorando
+  // 3b) Regressão — arquétipo "rival em evolução"
   if (firstWinRate > lastWinRate + 0.3) {
-    const lines = [`Sinal de atenção — histórico recente está pior que o inicial. Em ${escapeBr(firstDate)} levou vantagem; ultimamente vem perdendo.`];
+    const lines = [pickVariant(seed, [
+      `**Rival em evolução.** Em ${escapeBr(firstDate)} levou vantagem; ultimamente vem perdendo — adversário cresceu.`,
+      `**Sinal de atenção.** Quem antes era controlado virou problema — o histórico recente está pior que o inicial.`,
+    ])];
     const tac = tacticalLine();
     if (tac) lines.push(tac);
-    lines.push(`Recomendação: adversário evoluiu a partir das primeiras derrotas. Vale revisitar o que mudou e ajustar o plano de jogo antes do próximo encontro.`);
+    lines.push(`O adversário evoluiu a partir das primeiras derrotas. Antes do próximo encontro, vale ajustar o plano — manter o que funcionava antes não basta.`);
     return lines.join(' ');
   }
 
-  // 3c) Equilíbrio — leitura por momentum recente
+  // 3c) Equilíbrio — arquétipos "rival de detalhe", "rival perigoso"
   const lastMatch = ms[ms.length - 1];
   const lines = [];
   if (balance > 0) {
-    lines.push(`Saldo positivo (${wins}-${losses})${lastMatch.result === 'L' ? `, mas o último foi derrota — adversário está se aproximando.` : `, mantendo a vantagem nos últimos confrontos.`}`);
+    if (lastMatch.result === 'L') {
+      lines.push(pickVariant(seed, [
+        `**Rival de aproximação.** Saldo positivo (${wins}-${losses}), mas o último foi derrota — adversário se aproximando.`,
+        `**Vantagem ameaçada.** ${wins}V × ${losses}D no total, mas a tendência recente vem virando.`,
+      ]));
+    } else {
+      lines.push(pickVariant(seed, [
+        `**Rivalidade controlada.** Saldo positivo (${wins}-${losses}), mantendo a vantagem nos últimos.`,
+        `**Frente sob domínio.** ${wins}V × ${losses}D — leve mas consistente.`,
+      ]));
+    }
   } else if (balance < 0) {
-    lines.push(`Saldo negativo (${wins}-${losses})${lastMatch.result === 'W' ? `, mas o último foi vitória — sinal de aproximação.` : ` e tendência de derrota recente.`}`);
+    if (lastMatch.result === 'W') {
+      lines.push(pickVariant(seed, [
+        `**Rival perigoso, mas em aproximação.** Saldo negativo (${wins}-${losses}), mas o último foi vitória — sinal positivo.`,
+        `**Reagindo ao histórico.** ${wins}V × ${losses}D, com vitória no último — começando a virar.`,
+      ]));
+    } else {
+      lines.push(pickVariant(seed, [
+        `**Rival perigoso.** Saldo negativo (${wins}-${losses}) e tendência de derrota recente.`,
+        `**Adversário difícil.** ${losses} derrotas em ${total} jogos, sem reação no último.`,
+      ]));
+    }
   } else {
-    lines.push(`Equilíbrio absoluto (${wins}V ${losses}D) — sem vantagem clara pra nenhum lado.`);
+    lines.push(pickVariant(seed, [
+      `**Rival de detalhe.** ${wins}V × ${losses}D — equilíbrio absoluto, sem dono no histórico.`,
+      `**Confronto sem dono.** Histórico ${wins} a ${losses}, decisão nos detalhes.`,
+    ]));
   }
   const tac = tacticalLine();
   if (tac) lines.push(tac);
-  // Recomendação variável conforme momentum
   if (recentResult.endsWith('LL') && total >= 3) {
-    lines.push(`Recomendação: duas derrotas seguidas — vale plano específico antes do próximo encontro, não confiar só em jogo padrão.`);
+    lines.push(`Duas derrotas seguidas pedem ajuste — não confiar só em jogo padrão.`);
   } else if (recentResult.endsWith('WW') && total >= 3) {
-    lines.push(`Recomendação: duas vitórias seguidas — manter o que está funcionando, mas esperar adversário ajustado no próximo.`);
+    lines.push(`Duas vitórias seguidas — manter o que funciona, mas esperar adversário estudado no próximo.`);
   } else {
     lines.push(`Próximo confronto tende a ser parelho — pequeno ajuste tático pode definir.`);
   }

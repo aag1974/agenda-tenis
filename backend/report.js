@@ -353,19 +353,19 @@ function renderDnaAndMetrics(ctx) {
       </div>
       <p class="footnote dna-radar-caption">Radar dos 5 eixos do perfil. Quanto mais o polígono violeta se estende, mais ${G.atleta} performa naquele eixo. Pontuações 0–100.</p>
 
-      <h3 class="metrics-h3">Índices proprietários Tennis Flow</h3>
+      <h3 class="metrics-h3">Três leituras que importam</h3>
       <div class="metric-grid">
-        ${metricCard('Dominância (CDI)', cdi,
-          'Quão larga é a margem nas vitórias.',
+        ${metricCard('Quanto controla o jogo quando vence', cdi,
+          'Vitórias por margem larga ou apertada?',
           cdiBreak)}
-        ${metricCard('Clutch', clutch,
-          'Performance em pontos decisivos.',
+        ${metricCard('Como joga quando o jogo aperta', clutch,
+          'Tie-breaks, super-tiebreaks e sets decisivos.',
           clutchBreak)}
-        ${metricCard('Resiliência', res,
-          'Reação à adversidade.',
+        ${metricCard('Como reage depois de perder um set', res,
+          'Capacidade de virar quando começa atrás.',
           resBreak)}
       </div>
-      <p class="footnote">Cada índice é normalizado em escala 0–100. Forte ≥65, médio 45–64, em desenvolvimento &lt;45. Combinam múltiplos componentes (detalhes em cada cartão).</p>
+      <p class="footnote">Notas de 0 a 100 (forte ≥ 65 · médio 45–64 · em desenvolvimento &lt; 45). Detalhe técnico no Anexo C.</p>
     </section>
   `;
 }
