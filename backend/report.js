@@ -1370,12 +1370,50 @@ function baseHtmlShell(athleteName, dateStr, body) {
     font-size: 13px;
   }
   @media print {
-    body { background: white; padding: 0; max-width: none; }
+    body {
+      background: white; padding: 0; max-width: none;
+      /* Evita quebra com 1-2 linhas órfãs/viúvas em parágrafos */
+      orphans: 3; widows: 3;
+    }
     .no-print { display: none !important; }
-    section { page-break-inside: avoid; }
-    .chapter, .annex { page-break-before: always; }
-    .cover { page-break-after: always; }
-    .exec-summary { page-break-after: always; }
+
+    /* Capítulos/anexos começam em nova página, mas SEM forçar break-inside.
+       Antes: section { page-break-inside: avoid } gerava páginas em branco
+       quando o conteúdo era grande demais pra caber numa folha A4.
+
+       Cover: break-after garante exec-summary começar em nova página.
+       Exec-summary NÃO tem break-after — o próximo bloco (.chapter) já
+       força break-before, e duas forças seguidas geram página em branco
+       entre elas. */
+    .chapter, .annex { page-break-before: always; break-before: page; }
+    .cover { page-break-after: always; break-after: page; }
+
+    /* Cabeçalho NUNCA fica órfão no fim da página — sempre acompanha o
+       primeiro parágrafo do bloco. */
+    h2, h3, h4, .chapter-title, .chapter-num {
+      page-break-after: avoid; break-after: avoid;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+
+    /* Blocos visuais menores não quebram no meio — só inteiros ou
+       começam em nova página. Critério: blocos curtos o suficiente
+       pra caber sempre em uma folha. */
+    .signature-phrase, .archetype-badge, .insight-block, .metric-card,
+    .h2h-card, .ranking-box, .dual-box, .profile-card, .closing-note,
+    .exec-headline, .exec-warning, .stat-box, .rating-display,
+    .ev-display, .radar-interpretation, .player-card-radar {
+      page-break-inside: avoid; break-inside: avoid;
+    }
+
+    /* Tabelas: cabeçalho repete em quebra, linhas não quebram no meio. */
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; break-inside: avoid; }
+
+    /* Imagens/SVGs (sparkline, radar, heatmap, histograma) inteiros. */
+    svg { page-break-inside: avoid; break-inside: avoid; }
+
+    /* Parágrafos: evita 1 linha solta no fim/início da página. */
+    p { page-break-inside: avoid; break-inside: avoid; }
   }
 
   .no-print {
