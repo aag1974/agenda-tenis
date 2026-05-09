@@ -226,6 +226,13 @@ function renderExecutiveSummary(ctx) {
         })()}
       </div>
 
+      ${narratives.signature ? `
+      <div class="signature-phrase">
+        <div class="signature-quote-mark">“</div>
+        <div class="signature-text">${escapeHtml(narratives.signature)}</div>
+      </div>
+      ` : ''}
+
       <div class="exec-headline">
         <div class="exec-headline-label">Em uma frase</div>
         <div class="exec-headline-text">${escapeHtml(narratives.headline || '—')}</div>
@@ -712,51 +719,91 @@ function renderChapter4(ctx) {
 }
 
 // ─── 4.5 Análise de confrontos recorrentes (deep dive) ───────────────
+// Filosofia editorial: corpo principal só com rivais relevantes pro
+// próximo passo do atleta. Filtro: jogos recentes (≤365 dias) OU saldo
+// negativo OU 3+ encontros. Demais ficam no Anexo D pra histórico
+// completo. Pra Rafael (17 rivais), reduz pra ~7-10 cards visíveis.
+function rankH2hRelevance(opp) {
+  // Score combinando: recência (último jogo), volume, e sinal (rivais que
+  // não vencemos pesam mais). Quanto maior, mais relevante pra entrar no
+  // corpo principal.
+  if (!opp || !opp.matches?.length) return 0;
+  const last = opp.matches[opp.matches.length - 1];
+  let score = 0;
+  if (last?.endDate) {
+    const [d, m, y] = last.endDate.split('/').map(Number);
+    const days = (new Date() - new Date(y, m - 1, d)) / (1000 * 60 * 60 * 24);
+    if (days <= 90) score += 50;
+    else if (days <= 180) score += 30;
+    else if (days <= 365) score += 15;
+  }
+  score += Math.min(opp.total, 10) * 3; // mais encontros = mais relevante
+  if (opp.losses > opp.wins) score += 25; // rivais não vencidos pesam mais
+  if (opp.wins === 0 && opp.losses >= 2) score += 15; // barreiras absolutas
+  return score;
+}
+
 function renderHeadToHeadDeep(ctx) {
   const { analysis, narratives, G } = ctx;
   const opps = analysis.recurrentOpponents || [];
   const h2hNarr = narratives.h2h || [];
   if (!opps.length) return '';
 
+  // Particiona em "principais" (corpo) e "demais" (anexo)
+  const ranked = [...opps]
+    .map(o => ({ opp: o, relevance: rankH2hRelevance(o) }))
+    .sort((a, b) => b.relevance - a.relevance);
+  // Se tem ≤ 6 rivais, mostra todos. Se mais, só os top 8.
+  const cutoff = opps.length <= 6 ? opps.length : Math.min(8, opps.length);
+  const main = ranked.slice(0, cutoff).map(x => x.opp);
+  const remaining = ranked.slice(cutoff).map(x => x.opp);
+
+  const renderCard = (opp) => {
+    const narr = h2hNarr.find(n => n.opponent.name === opp.name);
+    const balance = opp.wins - opp.losses;
+    const isPositive = balance > 0;
+    const isNegative = balance < 0;
+    const titleSymbol = isPositive ? '★' : isNegative ? '⚠' : '⚖';
+    const cardClass = isPositive ? 'positive' : isNegative ? 'negative' : 'balanced';
+    return `
+      <div class="h2h-card ${cardClass}">
+        <div class="h2h-header">
+          <span class="h2h-symbol">${titleSymbol}</span>
+          <span class="h2h-name">${escapeHtml(opp.name)}</span>
+          <span class="h2h-record">${opp.wins} V × ${opp.losses} D</span>
+        </div>
+        <table class="data-table small h2h-table">
+          <thead>
+            <tr><th>Data</th><th>Tier</th><th>Torneio</th><th>Fase</th><th>R</th><th>Placar</th></tr>
+          </thead>
+          <tbody>
+            ${opp.matches.map(m => `
+              <tr>
+                <td>${escapeHtml(m.endDate)}</td>
+                <td>${escapeHtml(m.tier || '—')}</td>
+                <td>${escapeHtml((m.tournamentName || '').slice(0, 35))}</td>
+                <td>${escapeHtml(m.round || '—')}</td>
+                <td class="${m.result === 'W' ? 'win' : 'loss'}">${m.result === 'W' ? 'V' : 'D'}</td>
+                <td>${escapeHtml(m.scoreRaw || '—')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ${narr?.paragraph ? `<p class="h2h-narrative">${md(narr.paragraph)}</p>` : ''}
+      </div>
+    `;
+  };
+
+  // Stash dos restantes pro Anexo D (consumido em renderAnnexH2hRest)
+  ctx._h2hRest = remaining;
+
   return `
     <h3>4.5 Confrontos recorrentes (head-to-head)</h3>
-    <p>Análise individual ${G.gender === 'F' ? 'das' : 'dos'} ${opps.length} ${G.adversarios} ${G.enfrentadas} 2 ou mais vezes. Cada confronto repetido conta uma história — entender essa história é essencial pra preparação dos próximos encontros.</p>
-    ${opps.map((opp, i) => {
-      const narr = h2hNarr.find(n => n.opponent.name === opp.name);
-      const balance = opp.wins - opp.losses;
-      const isPositive = balance > 0;
-      const isNegative = balance < 0;
-      const isBalanced = balance === 0;
-      const titleSymbol = isPositive ? '★' : isNegative ? '⚠' : '⚖';
-      const cardClass = isPositive ? 'positive' : isNegative ? 'negative' : 'balanced';
-      return `
-        <div class="h2h-card ${cardClass}">
-          <div class="h2h-header">
-            <span class="h2h-symbol">${titleSymbol}</span>
-            <span class="h2h-name">${escapeHtml(opp.name)}</span>
-            <span class="h2h-record">${opp.wins} V × ${opp.losses} D</span>
-          </div>
-          <table class="data-table small h2h-table">
-            <thead>
-              <tr><th>Data</th><th>Tier</th><th>Torneio</th><th>Fase</th><th>R</th><th>Placar</th></tr>
-            </thead>
-            <tbody>
-              ${opp.matches.map(m => `
-                <tr>
-                  <td>${escapeHtml(m.endDate)}</td>
-                  <td>${escapeHtml(m.tier || '—')}</td>
-                  <td>${escapeHtml((m.tournamentName || '').slice(0, 35))}</td>
-                  <td>${escapeHtml(m.round || '—')}</td>
-                  <td class="${m.result === 'W' ? 'win' : 'loss'}">${m.result === 'W' ? 'V' : 'D'}</td>
-                  <td>${escapeHtml(m.scoreRaw || '—')}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          ${narr?.paragraph ? `<p class="h2h-narrative">${md(narr.paragraph)}</p>` : ''}
-        </div>
-      `;
-    }).join('')}
+    <p>${main.length === opps.length
+      ? `Análise individual ${G.gender === 'F' ? 'das' : 'dos'} ${opps.length} ${G.adversarios} ${G.enfrentadas} 2 ou mais vezes.`
+      : `Análise dos ${main.length} confrontos mais relevantes — recentes ou em aberto. Os outros ${remaining.length} estão listados no Anexo D.`}
+      Cada confronto repetido conta uma história — entender essa história é essencial pra preparação dos próximos encontros.</p>
+    ${main.map(renderCard).join('')}
 
     <h4>Síntese dos head-to-head</h4>
     ${(() => {
@@ -811,17 +858,6 @@ function renderTemporalSection(ctx) {
       </tbody>
     </table>
     <p class="footnote">A aparente concentração nos primeiros meses do ano corrente é uma <strong>ilusão estatística</strong>. O calendário CBT juvenil é distribuído ao longo do ano todo — basta olhar 2025 (ano completo no histórico) pra ver atividade em março, maio, julho, agosto e dezembro. A razão dos meses "vazios" no ano corrente é que o Tênis Integrado popula os torneios cerca de 2 meses antes do início, então o segundo semestre ainda não foi totalmente publicado. Não é falta de calendário — é defasagem da fonte de dados.</p>
-
-    <h4>Análise de sequências (teste Wald-Wolfowitz)</h4>
-    ${t.runsTest.z !== null ? `
-      <div class="stat-box">
-        <div><strong>Sequência observada:</strong> <code>${escapeHtml(t.runsTest.sequence)}</code></div>
-        <div><strong>Total de blocos (runs):</strong> ${t.runsTest.runs}</div>
-        <div><strong>Esperado se aleatório:</strong> ${nb(t.runsTest.expected, 2)}</div>
-        <div><strong>Estatística z:</strong> ${nb(t.runsTest.z, 2)}</div>
-        <div><strong>Significância (95%):</strong> ${t.runsTest.significant ? 'SIM (não-aleatório)' : 'não detectada'}</div>
-      </div>
-    ` : '<p>Amostra insuficiente para o teste.</p>'}
 
     <h4>Maiores sequências registradas</h4>
     <ul>
@@ -1152,6 +1188,40 @@ function renderAnnexC(ctx) {
   `;
 }
 
+// ─── Anexo D: H2H restantes (rivais menos recentes/relevantes) ─────────
+function renderAnnexH2hRest(ctx) {
+  const rest = ctx._h2hRest || [];
+  if (!rest.length) return '';
+  return `
+    <section class="annex">
+      <div class="chapter-num">ANEXO D</div>
+      <h2 class="chapter-title">Demais confrontos recorrentes</h2>
+      <p>Adversários enfrentados 2+ vezes que não entraram no corpo principal por serem menos recentes ou menos críticos pra preparação imediata. Histórico completo abaixo.</p>
+      <table class="data-table small">
+        <thead>
+          <tr><th>${ctx.G.Adversario}</th><th>Saldo</th><th>Último encontro</th><th>Datas</th></tr>
+        </thead>
+        <tbody>
+          ${rest.map(opp => {
+            const dates = opp.matches
+              .map(m => `${escapeHtml(m.endDate)} (${m.result === 'W' ? 'V' : 'D'} ${escapeHtml(m.scoreRaw || '—')})`)
+              .join(' · ');
+            const lastDate = opp.matches[opp.matches.length - 1]?.endDate || '—';
+            return `
+              <tr>
+                <td><strong>${escapeHtml(opp.name)}</strong></td>
+                <td>${opp.wins}V × ${opp.losses}D</td>
+                <td>${escapeHtml(lastDate)}</td>
+                <td style="font-size:10px;">${dates}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </section>
+  `;
+}
+
 // ─── Renderizador principal ─────────────────────────────────────────────
 
 export function generateReportHtml(profileId) {
@@ -1233,6 +1303,7 @@ export function generateReportHtmlFromData({ profile, synced, matches: rawMatche
     ${renderAnnexA(ctx)}
     ${renderAnnexB(ctx)}
     ${renderAnnexC(ctx)}
+    ${renderAnnexH2hRest(ctx)}
   `;
 
   return baseHtmlShell(athleteName, dateStr, body);
@@ -1423,6 +1494,23 @@ function baseHtmlShell(athleteName, dateStr, body) {
     margin-top: 16px; padding-top: 12px;
     border-top: 1px solid ${COLORS.borderLight};
     font-size: 11px; color: ${COLORS.textMuted};
+  }
+
+  /* FRASE DO ATLETA — assinatura editorial ───────────────────── */
+  .signature-phrase {
+    background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyLight} 100%);
+    color: white; padding: 22px 28px 22px 36px; margin: 16px 0;
+    border-radius: 12px; position: relative;
+    page-break-inside: avoid;
+  }
+  .signature-quote-mark {
+    position: absolute; top: -4px; left: 14px;
+    font-size: 64px; line-height: 1; color: ${COLORS.cyan};
+    font-weight: 800;
+  }
+  .signature-text {
+    font-size: 16px; line-height: 1.4; font-weight: 500;
+    color: white; padding-left: 8px;
   }
 
   /* DNA + MÉTRICAS PROPRIETÁRIAS ─────────────────────────────── */

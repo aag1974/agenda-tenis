@@ -9,6 +9,72 @@
 // (ex: report assinado pelo estatístico) usa o nome dela. Pra view do app,
 // 2ª pessoa funciona melhor.
 
+// ─── A frase do atleta (assinatura editorial) ───────────────────────────
+// Frase de marca pessoal — combina maior força visível + maior gap pra
+// próximo nível. Memorável, conversável, "explicável em 30 segundos".
+// Aparece em destaque no resumo executivo, pode virar até citação no PDF.
+export function athleteSignaturePhrase(analysis, athleteFirstName) {
+  const cdi = analysis.competitiveDominance?.score;
+  const clutch = analysis.clutchScore?.score;
+  const res = analysis.resilience?.score;
+  const f = analysis.forma;
+  const b = analysis.bucketPerformance || {};
+  const evenTotal = (b.even?.w || 0) + (b.even?.l || 0);
+  const evenRate = evenTotal >= 3 ? b.even.w / evenTotal : null;
+  const strongTotal = (b.strong?.w || 0) + (b.strong?.l || 0);
+  const strongRate = strongTotal >= 3 ? b.strong.w / strongTotal : null;
+  const weakTotal = (b.weak?.w || 0) + (b.weak?.l || 0);
+  const weakRate = weakTotal >= 3 ? b.weak.w / weakTotal : null;
+  const win90 = f?.last90 && f.last90.total >= 3 ? f.last90.wins / f.last90.total : null;
+  const winAll = f?.allTime && f.allTime.total >= 3 ? f.allTime.wins / f.allTime.total : null;
+  const trendingUp = win90 !== null && winAll !== null && win90 - winAll >= 0.10;
+
+  // Padrão "domina inferiores, trava em parelhos" → tema "fechar parelhos"
+  if (weakRate !== null && weakRate >= 0.75 && evenRate !== null && evenRate < 0.45) {
+    return `${athleteFirstName} já domina quem está abaixo dele. O próximo salto é aprender a fechar os jogos equilibrados.`;
+  }
+
+  // Vence largado mas trava no clutch → tema "decidir no detalhe"
+  if (cdi !== null && cdi >= 60 && clutch !== null && clutch < 50) {
+    return `${athleteFirstName} sabe vencer com folga. Falta aprender a fechar quando o jogo aperta.`;
+  }
+
+  // Boa em parelhos mas perde quando começa atrás → tema "reagir"
+  if (evenRate !== null && evenRate >= 0.55 && res !== null && res < 40) {
+    return `${athleteFirstName} segura bem o equilíbrio. O desafio agora é não desligar quando o jogo começa errado.`;
+  }
+
+  // Em ascensão recente → tema "consolidar"
+  if (trendingUp && winAll < 0.5) {
+    return `${athleteFirstName} entrou em ritmo de evolução. Próximos meses vão dizer se é tendência ou fase.`;
+  }
+  if (trendingUp && winAll >= 0.5) {
+    return `${athleteFirstName} está jogando o melhor tênis do histórico. Hora de testar contra adversários mais fortes.`;
+  }
+
+  // Vence muito acima do nível → tema "subir o nível"
+  if (strongRate !== null && strongRate >= 0.4) {
+    return `${athleteFirstName} vem ganhando jogos contra adversários acima do nível dele. Está pedindo torneio mais forte.`;
+  }
+
+  // Muito clutch → tema "fechador"
+  if (clutch !== null && clutch >= 65) {
+    return `${athleteFirstName} é dos que aparecem quando o jogo aperta. Decide nos detalhes — quem encontra ele, sabe que vai sofrer pra fechar.`;
+  }
+
+  // Resiliente — vira jogos
+  if (res !== null && res >= 60) {
+    return `${athleteFirstName} é difícil de quebrar. Mesmo perdendo o primeiro set, costuma achar o caminho de volta.`;
+  }
+
+  // Fallback: amostra ainda construindo
+  if ((analysis.counts?.analyzed || 0) < 30) {
+    return `${athleteFirstName} ainda está construindo histórico — o perfil competitivo vai se cristalizar nos próximos torneios.`;
+  }
+
+  return `${athleteFirstName} tem perfil em definição. Os próximos torneios vão indicar pra qual caminho ele cresce mais rápido.`;
+}
+
 // ─── Headline "em uma frase" ────────────────────────────────────────────
 export function headline(analysis, athleteFirstName) {
   const c = analysis.counts;
@@ -295,8 +361,9 @@ export function h2hOpponentNarrative(opponent) {
     if (sig.blowoutRate >= 0.5 && wins < losses) {
       return pickVariant(seed, [
         `Adversário tem ditado o ritmo — quando vence, ganha com folga.`,
-        `Os jogos vêm fugindo do controle — não conseguiu emparelhar.`,
-        `Padrão preocupante: poucos sets equilibrados, maioria fechada em desvantagem.`,
+        `Os jogos contra esse rival estão difíceis — não conseguiu emparelhar.`,
+        `Os sets estão fugindo cedo — pouco espaço pra reagir.`,
+        `Quando o jogo aperta, é ele quem fecha. Pouco equilíbrio.`,
       ]);
     }
     if (sig.tightRate >= 0.6) {
@@ -330,19 +397,30 @@ export function h2hOpponentNarrative(opponent) {
     return null;
   };
 
-  // Helper: linha de recomendação — voz prática de quadra
+  // Banco narrativo expandido (8 variantes cada) pra reduzir sensação de
+  // template. Tom: head coach explicando pra atleta + família. Sem palavras
+  // raras (paradoxal, intrínseco, etc.) e sem repetir "chegue afiado" /
+  // "vale revisar com o coach" mais que o necessário.
   const recommendDominance = () => pickVariant(seed, [
-    `Cuidado paradoxal: adversário que perde várias vezes costuma chegar com plano novo no próximo encontro.`,
-    `Confiança alta vale, mas o adversário vai ajustar — manter o roteiro com atenção redobrada.`,
-    `Atenção: vitórias seguidas viram alvo. O adversário vai estudar o que tem te dado certo.`,
-    `Histórico favorável é alavanca, não garantia — chegue afiado, evite leveza.`,
+    `Quem perde várias vezes costuma voltar com algo novo. Esperar isso.`,
+    `Confiança alta vale, mas o adversário vai ajustar. Manter o roteiro com atenção.`,
+    `Vitórias seguidas viram alvo — ele vai estudar o que tem dado certo.`,
+    `Histórico bom é alavanca, não garantia. Entrar no próximo afiado.`,
+    `Cuidado: jogo fácil no papel costuma ser o mais traiçoeiro.`,
+    `Manter o que está funcionando e ler o que ele vai trazer de novo.`,
+    `Quando o histórico é bom, o erro mora na falta de foco. Manter intensidade.`,
+    `Próximo jogo é o jogo. Não confiar no histórico — preparar como se fosse o primeiro.`,
   ]);
 
   const recommendStudy = () => pickVariant(seed, [
-    `Vale revisar com o coach o que travou nos jogos anteriores antes do próximo encontro.`,
-    `Antes do próximo confronto, plano específico de jogo — não jogo padrão.`,
-    `Recomendação: olhar com calma os pontos que decidiram os jogos passados — tem padrão a quebrar.`,
-    `Esse pede preparação tática específica — não confiar só em ajuste de quadra.`,
+    `Vale conversar com o coach sobre o que travou nos jogos anteriores.`,
+    `Antes do próximo, plano de jogo específico — não jogo padrão.`,
+    `Olhar com calma os pontos que decidiram os jogos passados.`,
+    `Esse pede preparação tática focada — não dá pra ir no automático.`,
+    `Pedir pro coach assistir um jogo dele e desenhar leitura específica.`,
+    `Não é caso de jogo padrão — esse adversário pede roteiro próprio.`,
+    `Estudar como ele vence pode dar a chave. Tem padrão pra quebrar.`,
+    `Antes de pisar na quadra, ter um plano A e um B claros pra ele.`,
   ]);
 
   // 1) Sem vitórias ainda — arquétipo barreira (técnica, atual ou aberta)
@@ -493,13 +571,15 @@ export function temporalNarrative(temporal, analysis) {
     parts.push(`A melhor sequência foi de **${temporal.streaks.maxW} vitórias consecutivas** — momento de pico que mostra capacidade de manter ritmo competitivo quando as engrenagens se alinham.`);
   }
 
-  // Runs test
+  // Sequências: traduzido pra linguagem de quadra. Detalhe técnico
+  // (Wald-Wolfowitz, z-score) fica no Anexo C — corpo principal só
+  // entrega a leitura útil.
   const w = temporal.runsTest;
   if (w.z !== null) {
     if (w.significant) {
-      parts.push(`O teste de Wald-Wolfowitz aponta padrão estatisticamente não-aleatório nas sequências (z = ${w.z.toFixed(2).replace('.', ',')}). Isso sugere que vitórias e derrotas tendem a se agrupar em "fases" — comum no esporte, onde estado de confiança influencia os resultados subsequentes.`);
+      parts.push(`As vitórias e derrotas se agrupam em **fases** claras — quando entra numa boa, sustenta; quando trava, demora a sair. Padrão comum em jovens, onde confiança influencia o resultado seguinte.`);
     } else {
-      parts.push(`Aplicando o teste de Wald-Wolfowitz, com ${analysis.counts.analyzed} jogos, **não dá pra cravar** estatisticamente que as sequências de vitórias e derrotas formem padrão não-aleatório (z = ${w.z.toFixed(2).replace('.', ',')}). À medida que mais jogos forem disputados, esse teste ganha poder de detectar fases reais.`);
+      parts.push(`Vitórias e derrotas vêm distribuídas sem padrão claro de "fases" — cada jogo tem mais a ver com o adversário do dia do que com momento.`);
     }
   }
 
@@ -550,6 +630,7 @@ export function generateAllNarratives(analysis, athleteFirstName) {
     paragraph: h2hOpponentNarrative(opp),
   }));
   return {
+    signature: athleteSignaturePhrase(analysis, athleteFirstName),
     headline: headline(analysis, athleteFirstName),
     rating: ratingNarrative(analysis),
     forma: formaNarrative(analysis),
@@ -678,6 +759,8 @@ export function generateAllNarrativesThirdPerson(analysis, athleteFirstName, ath
   const gender = G?.gender || 'M';
   const second = generateAllNarratives(analysis, athleteFullName || athleteFirstName);
   return {
+    // signature já está em 3ª pessoa por construção (usa nome do atleta)
+    signature: second.signature,
     headline: toThirdPerson(second.headline, athleteFirstName, gender),
     rating: toThirdPerson(second.rating, athleteFirstName, gender),
     forma: toThirdPerson(second.forma, athleteFirstName, gender),
