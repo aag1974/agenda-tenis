@@ -4075,7 +4075,7 @@ function openCompleteReportRequestModal(athleteName) {
     href: '/exemplo-relatorio.pdf',
     target: '_blank',
     rel: 'noopener',
-  }, '📄 Ver exemplo — Relatório de Anna Luiza →'));
+  }, '📄 Veja um exemplo →'));
 
   const consentBox = el('div', { class: 'rounded-lg border border-amber-200 bg-amber-50 p-3' },
     el('div', { class: 'text-[11px] font-semibold uppercase tracking-wide text-amber-800 mb-1.5' },
