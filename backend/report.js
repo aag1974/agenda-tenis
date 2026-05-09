@@ -366,7 +366,7 @@ function renderDnaAndMetrics(ctx) {
 
       <div class="player-card-body">
         <div class="player-card-radar">
-          ${radarChart(radarData, { width: 320, height: 280 })}
+          ${radarChart(radarData, { width: 360, height: 320 })}
           <div class="radar-caption">Quanto mais o polígono se estende, mais ${G.ele} performa naquele eixo</div>
         </div>
         <div class="player-card-metrics">
@@ -1403,11 +1403,11 @@ function baseHtmlShell(athleteName, dateStr, body) {
     margin: 0 auto 32px;
   }
   .cover-title {
-    font-size: 38px; font-weight: 600; letter-spacing: -0.5px;
-    margin: 0 0 16px;
+    font-size: 48px; font-weight: 700; letter-spacing: -1px;
+    margin: 0 0 20px;
   }
   .cover-athlete {
-    font-size: 22px; font-weight: 500; margin-bottom: 6px;
+    font-size: 26px; font-weight: 500; margin-bottom: 8px;
   }
   .cover-meta {
     font-size: 14px; opacity: 0.85; margin-bottom: 4px;
@@ -1476,8 +1476,8 @@ function baseHtmlShell(athleteName, dateStr, body) {
   .exec-row:last-child { border-bottom: none; }
   .exec-row strong { font-weight: 600; }
   .exec-rating {
-    font-size: 36px; font-weight: 700; color: ${COLORS.violet};
-    line-height: 1; margin-top: 6px;
+    font-size: 56px; font-weight: 800; color: ${COLORS.violet};
+    line-height: 1; margin-top: 6px; letter-spacing: -1.5px;
   }
   .exec-rating-meta {
     font-size: 11px; color: ${COLORS.textMuted}; margin-bottom: 4px;
@@ -1509,18 +1509,20 @@ function baseHtmlShell(athleteName, dateStr, body) {
   /* FRASE DO ATLETA — assinatura editorial ───────────────────── */
   .signature-phrase {
     background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyLight} 100%);
-    color: white; padding: 22px 28px 22px 36px; margin: 16px 0;
-    border-radius: 12px; position: relative;
+    color: white; padding: 30px 34px 30px 44px; margin: 18px 0;
+    border-radius: 14px; position: relative;
     page-break-inside: avoid;
+    box-shadow: 0 6px 20px rgba(14,58,77,0.18);
   }
   .signature-quote-mark {
-    position: absolute; top: -4px; left: 14px;
-    font-size: 64px; line-height: 1; color: ${COLORS.cyan};
+    position: absolute; top: -4px; left: 18px;
+    font-size: 88px; line-height: 1; color: ${COLORS.cyan};
     font-weight: 800;
   }
   .signature-text {
-    font-size: 16px; line-height: 1.4; font-weight: 500;
-    color: white; padding-left: 8px;
+    font-size: 20px; line-height: 1.4; font-weight: 500;
+    color: white; padding-left: 10px;
+    letter-spacing: -0.2px;
   }
 
   /* PERFIL COMPETITIVO — Player card layout ──────────────────── */
@@ -1528,54 +1530,61 @@ function baseHtmlShell(athleteName, dateStr, body) {
     display: flex; gap: 12px; margin-bottom: 22px; flex-wrap: wrap;
   }
   .archetype-badge {
-    flex: 1; min-width: 240px;
+    flex: 1; min-width: 260px;
     background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyLight} 100%);
-    color: white; padding: 18px 20px; border-radius: 12px;
-    display: flex; align-items: flex-start; gap: 14px;
-    box-shadow: 0 4px 12px rgba(14,58,77,0.15);
+    color: white; padding: 24px 26px; border-radius: 14px;
+    display: flex; align-items: flex-start; gap: 18px;
+    box-shadow: 0 6px 18px rgba(14,58,77,0.2);
   }
   .badge-icon {
-    font-size: 32px; line-height: 1;
+    font-size: 44px; line-height: 1;
   }
   .badge-content { flex: 1; }
   .badge-tag {
-    font-size: 17px; font-weight: 700; letter-spacing: -0.3px;
-    color: ${COLORS.cyanLight}; margin-bottom: 4px;
+    font-size: 22px; font-weight: 800; letter-spacing: -0.4px;
+    color: ${COLORS.cyanLight}; margin-bottom: 6px;
+    line-height: 1.1;
   }
   .badge-desc {
-    font-size: 12px; line-height: 1.5; color: rgba(255,255,255,0.9);
+    font-size: 13px; line-height: 1.5; color: rgba(255,255,255,0.92);
   }
   .player-card-body {
-    display: grid; grid-template-columns: 340px 1fr; gap: 24px;
-    align-items: start; margin: 4px 0 12px;
+    display: grid; grid-template-columns: 380px 1fr; gap: 28px;
+    align-items: start; margin: 10px 0 14px;
   }
   .player-card-radar {
     display: flex; flex-direction: column; align-items: center;
     background: ${COLORS.bgLight};
-    padding: 12px; border-radius: 10px;
+    padding: 18px; border-radius: 12px;
+    border: 1px solid ${COLORS.borderLight};
   }
   .radar-caption {
-    font-size: 10.5px; color: ${COLORS.textMuted};
-    text-align: center; margin-top: 4px; padding: 0 8px;
+    font-size: 11px; color: ${COLORS.textMuted};
+    text-align: center; margin-top: 8px; padding: 0 8px;
+    line-height: 1.4;
   }
   .player-card-metrics {
-    display: flex; flex-direction: column; gap: 10px;
+    display: flex; flex-direction: column; gap: 12px;
   }
   .player-card-metrics .metric-card {
-    padding: 12px 14px;
+    padding: 16px 18px;
   }
   .player-card-metrics .metric-card .metric-title {
-    font-size: 11px; letter-spacing: 0.6px; text-transform: none;
-    font-weight: 600; color: ${COLORS.navy};
+    font-size: 13px; letter-spacing: -0.1px; text-transform: none;
+    font-weight: 700; color: ${COLORS.navy};
   }
   .player-card-metrics .metric-card .metric-score {
-    font-size: 28px; margin-top: 2px;
+    font-size: 42px; margin-top: 4px; font-weight: 800;
+    letter-spacing: -1px; line-height: 1;
+  }
+  .player-card-metrics .metric-card .metric-unit {
+    font-size: 16px;
   }
   .player-card-metrics .metric-card .metric-sublabel {
-    font-size: 10.5px;
+    font-size: 11px;
   }
   .player-card-metrics .metric-card .metric-breakdown {
-    font-size: 10px;
+    font-size: 11px;
   }
   .metric-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
@@ -1628,24 +1637,26 @@ function baseHtmlShell(athleteName, dateStr, body) {
   .chapter, .annex {
     background: white;
     border: 1px solid ${COLORS.borderLight};
-    border-radius: 10px;
-    padding: 28px 32px;
-    margin-bottom: 24px;
+    border-radius: 12px;
+    padding: 36px 40px;
+    margin-bottom: 28px;
   }
   .chapter-num {
-    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    font-size: 11px; font-weight: 800; letter-spacing: 2.4px;
     color: ${COLORS.cyan}; text-transform: uppercase;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
   }
   .chapter-title {
-    font-size: 22px; font-weight: 600; color: ${COLORS.navy};
-    margin: 0 0 20px; letter-spacing: -0.3px;
+    font-size: 28px; font-weight: 700; color: ${COLORS.navy};
+    margin: 0 0 24px; letter-spacing: -0.5px;
+    line-height: 1.2;
   }
   h3 {
-    font-size: 14px; font-weight: 600; color: ${COLORS.navy};
-    margin: 22px 0 10px; padding-top: 4px;
+    font-size: 15px; font-weight: 700; color: ${COLORS.navy};
+    margin: 26px 0 12px; padding-top: 4px;
+    letter-spacing: -0.1px;
   }
-  .chapter h3:first-of-type { margin-top: 6px; }
+  .chapter h3:first-of-type { margin-top: 8px; }
   p { margin: 8px 0; }
   ul, ol { margin: 8px 0; padding-left: 22px; }
   li { margin-bottom: 4px; }
@@ -1723,14 +1734,14 @@ function baseHtmlShell(athleteName, dateStr, body) {
   .ranking-pts { font-variant-numeric: tabular-nums; color: ${COLORS.textMuted}; font-weight: normal; font-size: 12px; }
 
   .rating-display {
-    display: flex; align-items: baseline; gap: 18px;
+    display: flex; align-items: baseline; gap: 22px;
     background: linear-gradient(135deg, ${COLORS.violetLight} 0%, #fce7f3 100%);
-    border-radius: 8px; padding: 14px 18px;
-    margin: 12px 0 4px;
+    border-radius: 12px; padding: 22px 26px;
+    margin: 14px 0 6px;
   }
   .rating-num {
-    font-size: 42px; font-weight: 700; color: ${COLORS.violet};
-    line-height: 1;
+    font-size: 68px; font-weight: 800; color: ${COLORS.violet};
+    line-height: 1; letter-spacing: -2px;
   }
   .rating-info { font-size: 12px; color: #6b21a8; }
   .rating-info > div:first-child { font-weight: 600; }
