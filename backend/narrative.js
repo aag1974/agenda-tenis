@@ -54,11 +54,15 @@ export function ratingNarrative(analysis) {
     direction = 'estável';
   }
 
+  // Descrição do nível com caveat embutido: incerteza alta (rd>120) força
+  // tom mais cauteloso ("indicando posição avançada" em vez de "está na elite").
+  // Princípio: nunca cravar "elite" com IC largo.
+  const highUncertainty = r.rd >= 120;
   let levelDesc;
   if (r.r < 1300) levelDesc = 'em fase inicial competitiva';
   else if (r.r < 1450) levelDesc = 'em nível intermediário';
-  else if (r.r < 1600) levelDesc = 'em nível avançado';
-  else levelDesc = 'na elite da categoria';
+  else if (r.r < 1600) levelDesc = highUncertainty ? 'apontando pra nível avançado (faixa de incerteza ainda larga)' : 'em nível avançado';
+  else levelDesc = highUncertainty ? 'sinalizando elite da categoria, com cautela inferencial pela amostra atual' : 'em patamar de elite da categoria';
 
   if (direction === 'em ascensão') {
     return `Você está ${levelDesc}, e nos últimos 3 meses o seu nível tem subido. Quando enfrenta atletas parecidas com você, costuma ganhar; contra adversárias mais fortes, ainda perde mais que ganha — o que é normal. A faixa de incerteza (${r.ci95.lower}–${r.ci95.upper}) ainda é ampla porque temos ${analysis.counts.analyzed} partidas; vai estreitar com mais jogos.`;

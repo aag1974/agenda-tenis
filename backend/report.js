@@ -11,6 +11,7 @@ import {
   getMatchesData, getProfile, getSyncedData,
 } from './storage.js';
 import { detectGender, detectMainCategory, categoryFullLabel, genderTerms } from './gender.js';
+import { computeArchetypes } from './competitive-metrics.js';
 const G_DEFAULT = genderTerms('M');
 
 // ─── Configurações ──────────────────────────────────────────────────────
@@ -262,6 +263,87 @@ function renderExecutiveSummary(ctx) {
         Excluídos da análise: ${c.excluded.wo} W.O. e ${c.excluded.doubles} partidas de duplas.
         Detalhes completos a partir da página seguinte →
       </div>
+    </section>
+  `;
+}
+
+// ─── DNA competitivo + Métricas proprietárias ────────────────────────
+// Aparece após o Resumo Executivo. Dá identidade ao atleta (1-2 arquétipos)
+// e três índices proprietários que vão além de V/D: dominância, clutch
+// e resiliência. Cada métrica tem score 0-100 + breakdown.
+function renderDnaAndMetrics(ctx) {
+  const { archetypes, analysis, athleteFirstName, G } = ctx;
+  const cdi = analysis.competitiveDominance;
+  const clutch = analysis.clutchScore;
+  const res = analysis.resilience;
+
+  const archCards = (archetypes || []).map(a => `
+    <div class="dna-card">
+      <div class="dna-icon">${a.icon}</div>
+      <div class="dna-tag">${escapeHtml(a.tag)}</div>
+      <div class="dna-desc">${escapeHtml(a.desc)}</div>
+    </div>
+  `).join('');
+
+  const metricCard = (title, scoreObj, sublabel, breakdownHtml) => {
+    const has = scoreObj && scoreObj.score !== null && scoreObj.score !== undefined;
+    const score = has ? scoreObj.score : null;
+    const tone = !has ? 'neutral'
+      : score >= 65 ? 'strong'
+      : score >= 45 ? 'mid'
+      : 'weak';
+    return `
+      <div class="metric-card metric-${tone}">
+        <div class="metric-title">${escapeHtml(title)}</div>
+        <div class="metric-score">${has ? score : '—'}<span class="metric-unit">/100</span></div>
+        <div class="metric-sublabel">${sublabel}</div>
+        ${has ? `<div class="metric-breakdown">${breakdownHtml}</div>` : ''}
+      </div>
+    `;
+  };
+
+  const cdiBreak = cdi?.components ? `
+    ${cdi.components.dominantRate}% dos sets vencidos foram dominantes (≤2 games cedidos) ·
+    margem média ${cdi.components.avgGameMargin} games ·
+    ${cdi.components.gameWinRate}% dos games totais
+  ` : '';
+
+  const clutchBreak = clutch?.components ? [
+    clutch.components.tbTotal > 0 ? `${clutch.components.tbWon}/${clutch.components.tbTotal} sets em tie-break (${clutch.components.tbRate}%)` : null,
+    clutch.components.stbTotal > 0 ? `${clutch.components.stbWon}/${clutch.components.stbTotal} super-tiebreaks (${clutch.components.stbRate}%)` : null,
+    clutch.components.decidingTotal > 0 ? `${clutch.components.decidingWon}/${clutch.components.decidingTotal} sets decisivos (${clutch.components.decidingRate}%)` : null,
+  ].filter(Boolean).join(' · ') : 'Amostra insuficiente em pontos decisivos.';
+
+  const resBreak = res?.components ? [
+    res.components.lostFirstSetMatches > 0 ? `${res.components.lostFirstSetWon}/${res.components.lostFirstSetMatches} viradas após perder o 1º set (${res.components.lostFirstWinRate}%)` : null,
+    res.components.h2hCandidates > 0 ? `${res.components.h2hComebacks}/${res.components.h2hCandidates} h2h revertidos depois de começar atrás (${res.components.h2hComebackRate}%)` : null,
+  ].filter(Boolean).join(' · ') : 'Amostra insuficiente em situações adversas.';
+
+  return `
+    <section class="chapter dna-section">
+      <div class="chapter-num">PERFIL COMPETITIVO</div>
+      <h2 class="chapter-title">Como ${escapeHtml(athleteFirstName)} compete</h2>
+      <p class="dna-intro">Análise vai além do binário ganha/perde — lê textura competitiva real: dominância de placar, performance em pontos decisivos e capacidade de virar adversidade.</p>
+
+      ${archetypes && archetypes.length ? `
+      <div class="dna-grid">
+        ${archCards}
+      </div>
+      ` : ''}
+
+      <h3 class="metrics-h3">Índices proprietários Tennis Flow</h3>
+      <div class="metric-grid">
+        ${metricCard('Dominância (CDI)', cdi,
+          'Quão larga é a margem nas vitórias.',
+          cdiBreak)}
+        ${metricCard('Clutch', clutch,
+          'Performance em pontos decisivos.',
+          clutchBreak)}
+        ${metricCard('Resiliência', res,
+          'Reação à adversidade.',
+          resBreak)}
+      </div>
+      <p class="footnote">Cada índice é normalizado em escala 0–100. Forte ≥65, médio 45–64, em desenvolvimento &lt;45. Combinam múltiplos componentes (detalhes em cada cartão).</p>
     </section>
   `;
 }
@@ -1133,16 +1215,20 @@ export function generateReportHtmlFromData({ profile, synced, matches: rawMatche
     `);
   }
 
+  const archetypes = computeArchetypes(analysis, gender);
+
   const ctx = {
     profile, synced, matches, analysis, narratives,
     athleteName, athleteFirstName, athleteId, ranking,
     periodFrom, periodTo, dateStr,
     gender, G, mainCategory, categoryLabel,
+    archetypes,
   };
 
   const body = `
     ${renderCover(ctx)}
     ${renderExecutiveSummary(ctx)}
+    ${renderDnaAndMetrics(ctx)}
     ${renderChapter1(ctx)}
     ${renderChapter2(ctx)}
     ${renderChapter3(ctx)}
@@ -1344,6 +1430,65 @@ function baseHtmlShell(athleteName, dateStr, body) {
     border-top: 1px solid ${COLORS.borderLight};
     font-size: 11px; color: ${COLORS.textMuted};
   }
+
+  /* DNA + MÉTRICAS PROPRIETÁRIAS ─────────────────────────────── */
+  .dna-section .dna-intro {
+    color: ${COLORS.textMuted}; font-size: 12px; margin: 4px 0 18px;
+  }
+  .dna-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px;
+  }
+  .dna-grid:has(.dna-card:only-child) { grid-template-columns: 1fr; }
+  .dna-card {
+    background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyLight} 100%);
+    color: white; padding: 16px 18px; border-radius: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .dna-card .dna-icon { font-size: 22px; line-height: 1; }
+  .dna-card .dna-tag {
+    font-size: 16px; font-weight: 700; letter-spacing: -0.2px;
+    color: ${COLORS.cyanLight};
+  }
+  .dna-card .dna-desc {
+    font-size: 12px; line-height: 1.45; color: rgba(255,255,255,0.88);
+  }
+  .metrics-h3 { margin-top: 8px; }
+  .metric-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin-bottom: 12px;
+  }
+  .metric-card {
+    border: 1px solid ${COLORS.borderLight};
+    border-radius: 8px; padding: 14px;
+    page-break-inside: avoid;
+  }
+  .metric-card .metric-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.4px;
+    color: ${COLORS.textMuted}; text-transform: uppercase;
+  }
+  .metric-card .metric-score {
+    font-size: 32px; font-weight: 800; line-height: 1; margin-top: 4px;
+    color: ${COLORS.navy};
+  }
+  .metric-card .metric-unit {
+    font-size: 14px; font-weight: 500; color: ${COLORS.textMuted};
+    margin-left: 2px;
+  }
+  .metric-card .metric-sublabel {
+    font-size: 11px; color: ${COLORS.textMuted}; margin-top: 4px;
+  }
+  .metric-card .metric-breakdown {
+    font-size: 10.5px; color: ${COLORS.textDark}; margin-top: 8px;
+    padding-top: 8px; border-top: 1px dashed ${COLORS.borderLight};
+    line-height: 1.5;
+  }
+  .metric-card.metric-strong { background: #ecfdf5; border-color: #a7f3d0; }
+  .metric-card.metric-strong .metric-score { color: ${COLORS.emerald}; }
+  .metric-card.metric-mid    { background: #fffbeb; border-color: #fde68a; }
+  .metric-card.metric-mid    .metric-score { color: ${COLORS.amber}; }
+  .metric-card.metric-weak   { background: #fef2f2; border-color: #fecaca; }
+  .metric-card.metric-weak   .metric-score { color: ${COLORS.rose}; }
+  .metric-card.metric-neutral { background: ${COLORS.bgLight}; }
 
   /* CHAPTERS ──────────────────────────────────────────────────── */
   .chapter, .annex {

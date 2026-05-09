@@ -11,6 +11,9 @@
 //   7. Identifica top surpresas (matches onde |s_i - E_i| é grande)
 
 import { newPlayer, updatePlayer, winProbability } from './glicko.js';
+import {
+  computeCompetitiveDominance, computeClutchScore, computeResilience,
+} from './competitive-metrics.js';
 
 // Score: 1 (vitória do atleta), 0 (derrota). Empate = 0.5 (não usado no tênis).
 function scoreFor(match) {
@@ -376,6 +379,9 @@ export function analyzeMatches(rawMatches, athleteId) {
     temporal,
     scoreHistogram,
     tightestLoss,
+    competitiveDominance: computeCompetitiveDominance(sorted),
+    clutchScore: computeClutchScore(sorted),
+    resilience: computeResilience(sorted, recurrentOpponents),
     ratingHistory: ratingHistory.map(h => ({
       ...h,
       r: Math.round(h.r),
