@@ -194,66 +194,240 @@ function formatBrDate(isoOrBr) {
   return isoOrBr;
 }
 
-// ─── Head-to-head — narrativa por adversária recorrente ───────────────
-// Gera parágrafo interpretativo da trajetória do confronto.
+// ─── Head-to-head — narrativa por adversário recorrente ───────────────
+// Sprint 3 (h2h scouting): em vez de boilerplate por categoria, lemos a
+// assinatura tática real (placares + momentum) e composamos a narrativa em
+// 3 movimentos:
+//   [OPENER] balanço + leitura ("rivalidade equilibrada", "domínio", etc.)
+//   [ASSINATURA] o que os placares revelam sobre o jogo
+//   [MOMENTUM/RECOMENDAÇÃO] tendência recente + 1 ação concreta
+// Variação intencional entre adversários — evita fadiga textual.
+
+function avgGamesPerSet(matches, side /* 0=atleta, 1=oponente */) {
+  let total = 0, count = 0;
+  for (const m of matches) {
+    if (!m.sets) continue;
+    for (const s of m.sets) {
+      if (!Array.isArray(s) || s.length !== 2) continue;
+      if (s[0] >= 10 || s[1] >= 10) continue;
+      total += s[side];
+      count++;
+    }
+  }
+  return count ? total / count : null;
+}
+
+// Agrega placares pra extrair "assinatura": padrão típico do confronto.
+function scoreSignature(matches) {
+  const sets = [];
+  for (const m of matches) {
+    if (!m.sets) continue;
+    for (const s of m.sets) {
+      if (!Array.isArray(s) || s.length !== 2) continue;
+      if (s[0] >= 10 || s[1] >= 10) continue;
+      sets.push({ a: s[0], o: s[1], won: s[0] > s[1] });
+    }
+  }
+  if (!sets.length) return null;
+  const wonSets = sets.filter(s => s.won);
+  const lostSets = sets.filter(s => !s.won);
+  const avgWonMargin = wonSets.length ? wonSets.reduce((x, s) => x + (s.a - s.o), 0) / wonSets.length : null;
+  const avgLostMargin = lostSets.length ? lostSets.reduce((x, s) => x + (s.o - s.a), 0) / lostSets.length : null;
+  const margins = sets.map(s => s.a - s.o);
+  const meanMargin = margins.reduce((x, y) => x + y, 0) / margins.length;
+  const variance = margins.reduce((x, y) => x + (y - meanMargin) ** 2, 0) / margins.length;
+  const stdev = Math.sqrt(variance);
+  const tightCount = sets.filter(s => Math.abs(s.a - s.o) <= 2).length;
+  const blowoutCount = sets.filter(s => Math.abs(s.a - s.o) >= 4).length;
+  return {
+    totalSets: sets.length,
+    wonSets: wonSets.length, lostSets: lostSets.length,
+    tightCount, blowoutCount,
+    avgWonMargin, avgLostMargin,
+    tightRate: tightCount / sets.length,
+    blowoutRate: blowoutCount / sets.length,
+    volatility: stdev,
+  };
+}
+
+// Determinístico: mesmo oponente sempre gera mesma variante (estável entre renders).
+function pickVariant(seed, options) {
+  let h = 0;
+  for (const c of String(seed || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return options[h % options.length];
+}
+
+function nb1(n) { return Number(n.toFixed(1)).toString().replace('.', ','); }
+
+// Gera a narrativa do head-to-head recorrente.
 export function h2hOpponentNarrative(opponent) {
   if (!opponent || opponent.matches.length < 2) return null;
-  const ms = opponent.matches;  // já ordenados cronologicamente
-  const balance = opponent.wins - opponent.losses;
+  const ms = opponent.matches;
   const total = opponent.total;
+  const wins = opponent.wins;
+  const losses = opponent.losses;
+  const balance = wins - losses;
+  const sig = scoreSignature(ms);
 
-  // Trajetória: como evoluíram os resultados
-  const results = ms.map(m => m.result).join('');
+  // Janela mais recente: últimos 2 (ou 1 se total=2)
+  const recent = ms.slice(-Math.min(2, ms.length));
+  const recentResult = recent.map(m => m.result).join('');
+  const lastDate = ms[ms.length - 1].endDate;
+  const firstDate = ms[0].endDate;
+  const today = new Date();
+  const [d, mo, y] = lastDate.split('/').map(Number);
+  const daysSinceLast = Math.round((today - new Date(y, mo - 1, d)) / (1000 * 60 * 60 * 24));
+  const isStale = daysSinceLast > 180;
 
-  // Caso 1: 0V em todos — barreira
-  if (opponent.wins === 0) {
-    const lastDate = ms[ms.length - 1].endDate;
-    const firstDate = ms[0].endDate;
-    // Se confronto recente (dentro de 3 meses), é "barreira atual"
-    const today = new Date();
-    const [d, mo, y] = lastDate.split('/').map(Number);
-    const daysSinceLast = Math.round((today - new Date(y, mo - 1, d)) / (1000 * 60 * 60 * 24));
-    if (daysSinceLast <= 90) {
-      // Verifica se houve aproximação (placar do último foi mais próximo que o primeiro)
-      const firstClose = isCloseLoss(ms[0]);
-      const lastClose = isCloseLoss(ms[ms.length - 1]);
-      if (lastClose && !firstClose) {
-        return `Adversária ainda não vencida — ${total} confrontos, todos derrota. Mas a evolução é positiva: o segundo jogo (${escapeBr(ms[ms.length - 1].endDate)}) foi muito mais próximo da virada que o primeiro. Está aprendendo a jogar contra ela. No próximo encontro, vale chegar com plano específico pra esses pontos decisivos.`;
-      }
-      return `Barreira atual — ${total} derrotas em ${total} encontros, todos nos últimos 90 dias. Adversária a observar especificamente: vale chegar com plano de jogo específico baseado nos detalhes dos confrontos anteriores.`;
+  // Helper: descreve placar típico — variantes alternadas por nome do oponente
+  const seed = opponent.name || '';
+  const tacticalLine = () => {
+    if (!sig) return null;
+    if (sig.blowoutRate >= 0.5 && wins > losses) {
+      return pickVariant(seed, [
+        `Domínio claro de placar — ${sig.blowoutCount} de ${sig.totalSets} sets terminaram com diferença ≥4 games.`,
+        `Vitórias com folga consistente — ${Math.round(sig.blowoutRate * 100)}% dos sets fechados sem suspense.`,
+        `Margem média de ${nb1(sig.avgWonMargin)} games nos sets vencidos — adversário não conseguiu impor jogo.`,
+      ]);
     }
-    // Confrontos antigos (>90 dias)
-    return `${total} encontros, todos derrota — mas o último foi em ${escapeBr(lastDate)} (mais de 3 meses atrás). Como tempo passou, novo confronto é "do zero" — você é outra atleta agora.`;
+    if (sig.blowoutRate >= 0.5 && wins < losses) {
+      return pickVariant(seed, [
+        `Sets decididos com folga contra você — diferença média de ${nb1(sig.avgLostMargin || 0)} games nos perdidos.`,
+        `Adversário tem dominado o placar — ${sig.blowoutCount} de ${sig.totalSets} sets fechados com 4+ games de margem.`,
+        `Padrão preocupante: poucos sets disputados (${Math.round(sig.tightRate * 100)}% apertados), maioria larga.`,
+      ]);
+    }
+    if (sig.tightRate >= 0.6) {
+      return pickVariant(seed, [
+        `Jogo apertado — ${Math.round(sig.tightRate * 100)}% dos sets decididos com diferença ≤2 games. Margem fina, todo detalhe pesa.`,
+        `Confronto de placar fino — ${sig.tightCount} de ${sig.totalSets} sets dentro de 2 games. Decisão sai nos detalhes.`,
+        `Equilíbrio set a set — diferenças pequenas, padrão típico de rivalidade tática.`,
+      ]);
+    }
+    if (sig.volatility > 2.5) {
+      return pickVariant(seed, [
+        `Performance oscila bastante de jogo pra jogo (stdev ${nb1(sig.volatility)} games).`,
+        `Jogo de altos e baixos — placares variam de set largo a set apertado sem padrão claro.`,
+        `Volatilidade alta nos placares — adversário em fase de ajuste, ou contexto (cansaço, superfície) influenciando.`,
+      ]);
+    }
+    if (wins > losses && sig.avgWonMargin) {
+      return pickVariant(seed, [
+        `Margem média de ${nb1(sig.avgWonMargin)} games nos sets vencidos — vitórias controladas.`,
+        `Vitórias sem drama — placar costuma fechar com folga moderada (${nb1(sig.avgWonMargin)} games).`,
+        `Você tende a ditar o ritmo — sets vencidos por margem confortável.`,
+      ]);
+    }
+    if (wins < losses && sig.avgLostMargin) {
+      return pickVariant(seed, [
+        `Diferença média de ${nb1(sig.avgLostMargin)} games nos sets perdidos — jogo sob pressão.`,
+        `Adversário impõe ritmo — você não consegue virar a moeda nos momentos chave.`,
+        `Padrão de derrota com placar moderado — não é blowout, mas é consistente.`,
+      ]);
+    }
+    return null;
+  };
+
+  // Helper: linha de recomendação variada
+  const recommendDominance = () => pickVariant(seed, [
+    `Cuidado paradoxal: adversário derrotado várias vezes seguidas costuma chegar com plano novo no próximo encontro.`,
+    `Confiança alta justificada — manter o roteiro que funciona, mas esperar ajuste tático no próximo confronto.`,
+    `Mantenha a leitura, mas atenção ao que o adversário traz de novo — vitórias seguidas geram preparação adversa.`,
+    `Histórico favorável é alavanca, não garantia — chegue afiado, evite leveza.`,
+  ]);
+
+  const recommendStudy = () => pickVariant(seed, [
+    `Recomendação: estudar especificamente esse adversário antes do próximo encontro.`,
+    `Próximo passo: revisar mentalmente os jogos anteriores e desenhar plano específico.`,
+    `Antes do próximo confronto, vale conversar com o coach sobre o que tem travado.`,
+    `Plano tático específico vale mais que jogo padrão nesse caso.`,
+  ]);
+
+  // 1) Sem vitórias ainda — barreira
+  if (wins === 0) {
+    const lines = [];
+    if (isStale) {
+      lines.push(`${total} confrontos, todos derrota — último em ${escapeBr(lastDate)} (mais de 6 meses atrás).`);
+    } else if (daysSinceLast <= 90) {
+      lines.push(`Barreira atual — ${total} derrotas em ${total} confrontos, sendo o último ${daysSinceLast} dia${daysSinceLast === 1 ? '' : 's'} atrás.`);
+    } else {
+      lines.push(`Barreira ainda em aberto — ${total} confrontos, ${total} derrotas (último em ${escapeBr(lastDate)}).`);
+    }
+    const tac = tacticalLine();
+    if (tac) lines.push(tac);
+    // Tendência: último jogo foi mais próximo?
+    const firstClose = isCloseLoss(ms[0]);
+    const lastClose = isCloseLoss(ms[ms.length - 1]);
+    if (lastClose && !firstClose) {
+      lines.push(`Sinal positivo: o último foi consideravelmente mais apertado que o primeiro — você está chegando perto.`);
+    } else if (!lastClose && firstClose) {
+      lines.push(`Sinal de atenção: o jogo está ficando mais distante a cada encontro — adversário aprendeu a jogar contra você.`);
+    }
+    if (isStale) lines.push(`Como o tempo passou, vale chegar no próximo confronto sem peso do histórico — você é outro atleta agora.`);
+    else lines.push(recommendStudy());
+    return lines.join(' ');
   }
 
-  // Caso 2: 100% vitórias — domínio
-  if (opponent.losses === 0) {
-    return `Domínio completo — ${total} vitórias em ${total} encontros. Adversária consistentemente derrotada no histórico recente.`;
+  // 2) Sem derrotas — domínio absoluto
+  if (losses === 0) {
+    const opener = pickVariant(seed, [
+      `${total}V em ${total} — confronto sem perdas no histórico.`,
+      `Aproveitamento de 100% — ${total} encontros, ${total} vitórias.`,
+      `Domínio completo no histórico — ${total}V em ${total}.`,
+      `Adversário sob controle — ${total}V em ${total} confrontos.`,
+    ]);
+    const lines = [opener];
+    const tac = tacticalLine();
+    if (tac) lines.push(tac);
+    lines.push(recommendDominance());
+    return lines.join(' ');
   }
 
-  // Caso 3: misturado — analisar trajetória
-  // Compara início vs fim
+  // 3) Histórico misto — analisar trajetória + assinatura
   const firstHalf = ms.slice(0, Math.ceil(ms.length / 2));
   const lastHalf = ms.slice(Math.ceil(ms.length / 2));
   const firstWinRate = firstHalf.filter(m => m.result === 'W').length / firstHalf.length;
   const lastWinRate = lastHalf.filter(m => m.result === 'W').length / lastHalf.length;
 
+  // 3a) Virada favorável — começou mal, virou
   if (lastWinRate > firstWinRate + 0.3) {
-    // Virada favorável
-    return `Caso de virada favorável: o(s) primeiro(s) confronto(s) foi(ram) derrota, mas você reverteu o histórico nos encontros mais recentes. A diferença é evolução real — em ${escapeBr(ms[0].endDate)} você ainda apanhava; hoje, tem domínio. Da próxima vez, lembre-se que adversária que perdeu duas vezes seguidas costuma chegar com plano novo na 3ª.`;
+    const lines = [`Virada favorável — em ${escapeBr(firstDate)} ainda apanhava; nos últimos encontros, tem dominado.`];
+    const tac = tacticalLine();
+    if (tac) lines.push(tac);
+    lines.push(`Recomendação: documentar (mentalmente ou com o coach) o que mudou — replicar a fórmula. E ficar atento: adversário que perdeu duas vezes seguidas costuma chegar com plano novo na 3ª.`);
+    return lines.join(' ');
   }
+
+  // 3b) Regressão — começou bem, está piorando
   if (firstWinRate > lastWinRate + 0.3) {
-    // Regressão — adversária ficou mais forte
-    return `Sinal de atenção: o histórico recente está pior que o inicial. Em ${escapeBr(ms[0].endDate)} você venceu/foi competitiva; nos últimos confrontos vem perdendo. Adversária pode ter evoluído mais rápido que você nesse período. Vale plano específico no próximo encontro.`;
+    const lines = [`Sinal de atenção — histórico recente está pior que o inicial. Em ${escapeBr(firstDate)} levou vantagem; ultimamente vem perdendo.`];
+    const tac = tacticalLine();
+    if (tac) lines.push(tac);
+    lines.push(`Recomendação: adversário evoluiu a partir das primeiras derrotas. Vale revisitar o que mudou e ajustar o plano de jogo antes do próximo encontro.`);
+    return lines.join(' ');
   }
-  // Equilíbrio
+
+  // 3c) Equilíbrio — leitura por momentum recente
+  const lastMatch = ms[ms.length - 1];
+  const lines = [];
   if (balance > 0) {
-    return `Saldo positivo (${opponent.wins}-${opponent.losses}), mas o último jogo foi derrota — equilíbrio crescente. Adversária está evoluindo. Próximos confrontos tendem a ser parelhos.`;
+    lines.push(`Saldo positivo (${wins}-${losses})${lastMatch.result === 'L' ? `, mas o último foi derrota — adversário está se aproximando.` : `, mantendo a vantagem nos últimos confrontos.`}`);
+  } else if (balance < 0) {
+    lines.push(`Saldo negativo (${wins}-${losses})${lastMatch.result === 'W' ? `, mas o último foi vitória — sinal de aproximação.` : ` e tendência de derrota recente.`}`);
+  } else {
+    lines.push(`Equilíbrio absoluto (${wins}V ${losses}D) — sem vantagem clara pra nenhum lado.`);
   }
-  if (balance < 0) {
-    return `Saldo negativo (${opponent.wins}-${opponent.losses}). Adversária ainda leva vantagem nos confrontos diretos. Oportunidade de mapear o que tem funcionado nas vitórias e replicar.`;
+  const tac = tacticalLine();
+  if (tac) lines.push(tac);
+  // Recomendação variável conforme momentum
+  if (recentResult.endsWith('LL') && total >= 3) {
+    lines.push(`Recomendação: duas derrotas seguidas — vale plano específico antes do próximo encontro, não confiar só em jogo padrão.`);
+  } else if (recentResult.endsWith('WW') && total >= 3) {
+    lines.push(`Recomendação: duas vitórias seguidas — manter o que está funcionando, mas esperar adversário ajustado no próximo.`);
+  } else {
+    lines.push(`Próximo confronto tende a ser parelho — pequeno ajuste tático pode definir.`);
   }
-  return `Equilíbrio (${opponent.wins}V ${opponent.losses}D). Histórico de ${total} confrontos sem clara vantagem pra nenhum lado.`;
+  return lines.join(' ');
 }
 
 function isCloseLoss(m) {
