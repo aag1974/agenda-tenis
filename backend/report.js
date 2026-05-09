@@ -269,7 +269,7 @@ function renderExecutiveSummary(ctx) {
       </div>
 
       <div class="exec-foot">
-        Excluídos da análise: ${c.excluded.wo} W.O. e ${c.excluded.doubles} partidas de duplas.
+        Fora da análise: ${c.excluded.doubles} partidas de duplas e ${c.excluded.wo} jogos marcados como W.O. no Tênis Integrado (na prática, parte desses W.O. costumam ser erros de cadastro, não desistências reais).
         Detalhes completos a partir da página seguinte →
       </div>
     </section>
@@ -507,7 +507,7 @@ function renderChapter2(ctx) {
       <h2 class="chapter-title">Como esta análise foi feita</h2>
 
       <h3>Fonte e critérios</h3>
-      <p>As partidas vêm do perfil oficial ${G.do_atleta} no <em>Tênis Integrado</em>, com consentimento do responsável legal. <strong>Incluídas:</strong> singles com ${G.adversario} ${G.gender === 'F' ? 'identificada' : 'identificado'} e resultado oficial. <strong>Excluídas:</strong> duplas, W.O. e partidas sem identificação ${G.gender === 'F' ? 'da adversária' : 'do adversário'}.</p>
+      <p>As partidas vêm do perfil oficial ${G.do_atleta} no <em>Tênis Integrado</em>, com consentimento do responsável legal. <strong>Incluídas:</strong> singles com ${G.adversario} ${G.gender === 'F' ? 'identificada' : 'identificado'} e resultado oficial. <strong>Excluídas:</strong> duplas, jogos marcados como W.O. (frequentemente erros de cadastro do TI, não desistências reais) e partidas sem identificação ${G.gender === 'F' ? 'da adversária' : 'do adversário'}.</p>
 
       <h3>Quatro lentes complementares</h3>
       <p>O relatório combina:</p>
@@ -631,7 +631,7 @@ function renderChapter3(ctx) {
       <ul>
         <li><strong>${analysis.counts.analyzed}</strong> partidas de simples — base desta análise estatística.</li>
         <li><strong>${analysis.counts.excluded.doubles}</strong> partidas de duplas — listadas no Anexo A, fora desta análise (modelo estatístico próprio, futura versão).</li>
-        <li><strong>${analysis.counts.excluded.wo}</strong> W.O. — sem disputa efetiva, fora desta análise.</li>
+        <li><strong>${analysis.counts.excluded.wo}</strong> jogos marcados como W.O. — fora da análise. Vale lembrar que parte significativa dos W.O. registrados no Tênis Integrado são erros de cadastro, não desistências reais.</li>
       </ul>
 
       ${renderRecurrentTable(analysis, ctx)}
@@ -1129,8 +1129,8 @@ function renderAnnexA(ctx) {
       ` : ''}
 
       ${wos.length ? `
-      <h3>Partidas em W.O. (${wos.length}) — fora desta análise</h3>
-      <p class="footnote">Partidas que aparecem no Tênis Integrado mas não foram efetivamente disputadas. Excluídas das análises por não conterem informação real sobre desempenho.</p>
+      <h3>Jogos marcados como W.O. (${wos.length}) — fora da análise</h3>
+      <p class="footnote">Aparecem como W.O. no Tênis Integrado mas, na prática, parte significativa desses registros são erros de cadastro (jogos que aconteceram normalmente foram marcados como walkover). Por não termos como separar W.O. real de erro de cadastro, o critério aqui é excluir todos.</p>
       <table class="data-table small">
         <thead><tr><th>Data</th><th>Torneio</th></tr></thead>
         <tbody>
@@ -1169,7 +1169,7 @@ function renderAnnexB(ctx) {
         <dd>Match-tiebreak usado como 3º "set" em jogos de 2 sets em empate. Disputado até 10 pontos com diferença de 2.</dd>
 
         <dt>W.O. (Walkover)</dt>
-        <dd>Partida onde ${G.gender === 'F' ? 'uma atleta vence porque a adversária não comparece' : 'um atleta vence porque o adversário não comparece'} ou desiste antes do início. Sem disputa efetiva — excluído das análises.</dd>
+        <dd>Tecnicamente: partida onde ${G.gender === 'F' ? 'uma atleta vence porque a adversária não comparece' : 'um atleta vence porque o adversário não comparece'} ou desiste antes do início. Sem disputa efetiva — excluído das análises. <strong>Importante</strong>: no Tênis Integrado, parte significativa dos jogos marcados como W.O. são erros de cadastro (a partida aconteceu, mas foi registrada errada). Como não temos como separar W.O. real de erro, o critério é excluir todos.</dd>
 
         <dt>Pneu</dt>
         <dd>Set vencido por 6-0. Pneu duplo é um jogo onde ${G.gender === 'F' ? 'a vencedora' : 'o vencedor'} não cedeu nenhum game (6-0 6-0).</dd>
@@ -1310,7 +1310,7 @@ export function generateReportHtmlFromData({ profile, synced, matches: rawMatche
       <section class="chapter">
         <h2 class="chapter-title">Histórico ainda em construção</h2>
         <p>Foram analisadas apenas <strong>${analysis.counts.analyzed}</strong> partidas — precisamos de pelo menos 5 para um relatório útil. Continue jogando e este relatório fica mais rico a cada torneio.</p>
-        <p class="footnote">Excluídos: ${analysis.counts.excluded.wo} W.O. e ${analysis.counts.excluded.doubles} duplas.</p>
+        <p class="footnote">Fora da análise: ${analysis.counts.excluded.doubles} duplas e ${analysis.counts.excluded.wo} registros marcados como W.O. (parte costuma ser erro de cadastro do TI, não desistência real).</p>
       </section>
     `);
   }

@@ -200,7 +200,7 @@ export function ratingNarrative(analysis) {
     return `Você está ${levelDesc}, e nos últimos 3 meses o seu nível tem subido. Quando enfrenta atletas parecidas com você, costuma ganhar; contra adversárias mais fortes, ainda perde mais que ganha — o que é normal. A faixa de incerteza (${r.ci95.lower}–${r.ci95.upper}) ainda é ampla porque temos ${analysis.counts.analyzed} partidas; vai estreitar com mais jogos.`;
   }
   if (direction === 'em queda') {
-    return `Você está ${levelDesc}. Nos últimos 3 meses o nível avaliado pelo sistema caiu um pouco. Os números mostram a queda; o **motivo** (volume diferente, adversários mais fortes, lesão, mudança técnica) precisa ser olhado fora do relatório — vale conversar com o coach. A faixa de ${r.ci95.lower} a ${r.ci95.upper} também reflete que ainda precisamos de mais jogos pra cravar.`;
+    return `Você está ${levelDesc}. Nos últimos 3 meses o nível avaliado pelo sistema caiu um pouco. A faixa de ${r.ci95.lower} a ${r.ci95.upper} reflete que ainda precisamos de mais jogos pra cravar onde está agora — leitura do motivo da queda vem na seção seguinte.`;
   }
   return `Você está ${levelDesc}. O número estimado de hoje (${r.r}) está ${certainty === 'alta' ? 'bem firme' : 'em estabilização'}, na faixa entre ${r.ci95.lower} e ${r.ci95.upper}. Isso quer dizer que com 95% de certeza seu nível verdadeiro está nesse intervalo.`;
 }

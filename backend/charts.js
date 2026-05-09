@@ -120,7 +120,10 @@ export function calendarHeatmap(matches, opts = {}) {
   const cw = Math.min(totalCellW, cellSize);
   const ch = cellSize;
   const gridW = labelWidth + 12 * cw;
-  const gridH = headerH + years.length * ch + 8;
+  // Espaço extra entre última linha de células e legenda (24px) — evita
+  // sobreposição com cells do último ano. Antes era só 8px.
+  const legendGap = 24;
+  const gridH = headerH + years.length * ch + legendGap;
 
   // Mapeia win-rate → cor: <30 vermelho, 30-50 amber, 50-70 amber claro, 70+ verde
   const cellColor = (b) => {
