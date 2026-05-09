@@ -12,6 +12,7 @@ import {
   setCardColumn, addCardComment, updateCardComment, deleteCardComment, getCardActivity,
   getAlertRules, addAlertRule, updateAlertRule, deleteAlertRule,
   getAlertEvents, addAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
+  getReportRequests, addReportRequest,
   findOrCreateShareToken, getShareLink,
   clearColumnOverrides, saveSyncedData, resetProfileData,
   getMatchesData, upsertYearMatches,
@@ -739,6 +740,46 @@ app.post('/api/profiles/:id/alerts/reevaluate', requireAuth, requireAdmin, (req,
   res.json({ evaluated: events.length, added: added.length });
 });
 
+// ===== Solicitação de relatório completo (LGPD) =====
+// Disparado pelo botão "Enviar solicitação" no modal de consentimento.
+// Registra no servidor a autorização — evidência redundante alongside o email.
+// O texto exato exibido ao usuário vai pro registro pra provar o que foi consentido.
+app.post('/api/profiles/:id/report-request', requireAuth, ensureOwnedProfile, (req, res) => {
+  const { consentText, athleteName: bodyAthleteName } = req.body || {};
+  if (!consentText || typeof consentText !== 'string') {
+    return res.status(400).json({ error: 'consentText obrigatório' });
+  }
+  const profile = getProfile(req.params.id);
+  const user = findUserById(req.userId);
+  const ip = (req.headers['x-forwarded-for'] || req.connection?.remoteAddress || '').toString().split(',')[0].trim();
+  const entry = addReportRequest(req.params.id, {
+    athleteName: bodyAthleteName || profile?.athleteName || null,
+    requesterUserId: req.userId,
+    requesterEmail: user?.email || null,
+    requesterFirstName: user?.firstName || null,
+    requesterLastName: user?.lastName || null,
+    consentText,
+    ip,
+    userAgent: req.headers['user-agent'] || null,
+    status: 'pending',
+  });
+  res.json(entry);
+});
+
+// Admin: lista todas as solicitações através de todos os perfis.
+// Visão pipeline: pending → in_progress → delivered.
+app.get('/api/admin/report-requests', requireAuth, requireAdmin, (req, res) => {
+  const all = [];
+  for (const p of listProfiles({})) {
+    const requests = getReportRequests(p.id);
+    for (const r of requests) {
+      all.push({ ...r, profileId: p.id });
+    }
+  }
+  all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  res.json(all);
+});
+
 // ===== Admin: cross-household pra suporte e geração de relatório =====
 // Após autorização do responsável via email (consentimento LGPD registrado),
 // admin precisa acessar dados de qualquer atleta pra elaborar o relatório
@@ -783,6 +824,7 @@ app.get('/api/admin/profiles/:id/export', requireAuth, requireAdmin, (req, res) 
   const synced = getSyncedData(profileId);
   const matches = getMatchesData(profileId);
   const alerts = getAlertEvents(profileId);
+  const consent = getReportRequests(profileId);
   const owner = profile.userId ? findUserById(profile.userId) : null;
 
   const safeName = (profile.athleteName || 'atleta').replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 40);
@@ -811,6 +853,7 @@ app.get('/api/admin/profiles/:id/export', requireAuth, requireAdmin, (req, res) 
     exportedBy: req.userEmail,
   };
   archive.append(JSON.stringify(meta, null, 2), { name: 'meta.json' });
+  archive.append(JSON.stringify(consent || [], null, 2), { name: 'consent.json' });
   if (synced) archive.append(JSON.stringify(synced, null, 2), { name: 'synced.json' });
   if (matches) archive.append(JSON.stringify(matches, null, 2), { name: 'matches.json' });
   archive.append(JSON.stringify(alerts || [], null, 2), { name: 'alerts.json' });

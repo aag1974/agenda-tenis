@@ -445,6 +445,26 @@ export function deleteAlertEvent(profileId, id) {
   saveAlertEvents(profileId, events);
 }
 
+// ===== Solicitações de relatório completo (LGPD) =====
+// Cada clique em "Enviar solicitação" no modal de consentimento grava
+// uma entrada aqui — evidência server-side da autorização. Triplica a
+// prova: email do solicitante, email do admin, registro local.
+function reportRequestsFile(profileId) {
+  return join(profileDir(profileId), 'report-requests.json');
+}
+
+export function getReportRequests(profileId) {
+  return readJson(reportRequestsFile(profileId), []);
+}
+
+export function addReportRequest(profileId, request) {
+  const all = getReportRequests(profileId);
+  const entry = { id: newId(), createdAt: new Date().toISOString(), ...request };
+  all.unshift(entry);
+  writeJson(reportRequestsFile(profileId), all);
+  return entry;
+}
+
 export function getManualTournaments(profileId) {
   return readJson(join(profileDir(profileId), 'manual.json'), []);
 }

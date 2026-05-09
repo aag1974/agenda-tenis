@@ -4188,13 +4188,27 @@ function openCompleteReportRequestModal(athleteName) {
   const sendBtn = el('button', {
     class: 'px-3 py-1.5 text-sm rounded bg-[#0e3a4d] text-white font-medium opacity-50 cursor-not-allowed',
     disabled: true,
-    onClick: () => {
+    onClick: async () => {
       if (!checkbox.checked) return;
+      const consentText =
+        `Autorizo o compartilhamento dos dados de identificação e desempenho esportivo de ${athleteName} ` +
+        `com Alexandre Garcia (alexandre@opiniao.inf.br), estatístico responsável, exclusivamente para a ` +
+        `elaboração do relatório técnico solicitado, em conformidade com a LGPD (Lei nº 13.709/2018). ` +
+        `O usuário pode revogar esta autorização a qualquer momento por email.`;
+      // Triplica a evidência: registra server-side antes de abrir o mailto.
+      // Falha de rede não bloqueia o fluxo — usuário ainda manda o email.
+      try {
+        await fetch(`/api/profiles/${state.activeProfileId}/report-request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ consentText, athleteName }),
+        });
+      } catch {}
       const subject = encodeURIComponent(`Solicito análise completa — ${athleteName}`);
       const lines = [
         `Gostaria de receber o relatório técnico de performance completo de ${athleteName}, assinado pelo estatístico responsável.`,
         '',
-        `Autorizo o compartilhamento dos dados de identificação e desempenho esportivo de ${athleteName} para a confecção do relatório, em conformidade com a LGPD (Lei nº 13.709/2018).`,
+        consentText,
         `Data da autorização: ${new Date().toLocaleString('pt-BR')}`,
       ];
       const body2 = encodeURIComponent(lines.join('\n'));
