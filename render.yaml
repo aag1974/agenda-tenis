@@ -3,7 +3,7 @@ services:
     name: agenda-tenis-integrado
     runtime: node
     plan: starter
-    buildCommand: npm install
+    buildCommand: npm install && npm test
     startCommand: node backend/server.js
     envVars:
       - key: NODE_VERSION

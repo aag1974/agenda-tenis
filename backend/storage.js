@@ -168,6 +168,41 @@ export function saveSyncedData(profileId, data) {
   writeJson(join(profileDir(profileId), 'synced.json'), data);
 }
 
+// ===== Matches (histórico de jogos disputados) =====
+// Armazenado separado do synced.json pra não inchar o JSON principal e
+// permitir scrape incremental por ano.
+//
+// Shape: { matches: [...], lastScraped: { '2026': isoTs, '2025': isoTs, ... } }
+export function getMatchesData(profileId) {
+  return readJson(join(profileDir(profileId), 'matches.json'), { matches: [], lastScraped: {} });
+}
+
+export function saveMatchesData(profileId, data) {
+  writeJson(join(profileDir(profileId), 'matches.json'), data);
+}
+
+// Merge: substitui matches do ano dado pelos novos (idempotente — re-scrape
+// não duplica), preserva matches de outros anos. Dedupe defensivo por id
+// (caso o scraper retorne o mesmo match em anos diferentes — bug histórico
+// quando o filtro de ano não funcionava).
+export function upsertYearMatches(profileId, year, newMatches) {
+  const cur = getMatchesData(profileId);
+  const filtered = (cur.matches || []).filter(m => m.year !== year);
+  const merged = [...filtered, ...newMatches];
+  // Dedupe por id — se aparecer o mesmo id em anos diferentes, mantém só o
+  // do ano mais recente (provavelmente é o "verdadeiro").
+  const byId = new Map();
+  for (const m of merged) {
+    const ex = byId.get(m.id);
+    if (!ex || (m.year || 0) > (ex.year || 0)) byId.set(m.id, m);
+  }
+  const deduped = [...byId.values()].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  cur.matches = deduped;
+  cur.lastScraped = { ...(cur.lastScraped || {}), [year]: new Date().toISOString() };
+  saveMatchesData(profileId, cur);
+  return cur;
+}
+
 export function getNotes(profileId) {
   return readJson(join(profileDir(profileId), 'notes.json'), {});
 }

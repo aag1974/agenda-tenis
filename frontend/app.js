@@ -1,4 +1,4 @@
-// Agenda Tênis Integrado — vanilla JS SPA, no build step
+// Tennis Flow — vanilla JS SPA, no build step
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, attrs, ...children) => {
@@ -76,10 +76,10 @@ function downloadIcs(reminder, filename = 'lembrete.ics') {
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//AgendaTenis//PT-BR',
+    'PRODID:-//TennisFlow//PT-BR',
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
-    `UID:agenda-tenis-${Date.now()}-${Math.random().toString(36).slice(2)}@local`,
+    `UID:tennis-flow-${Date.now()}-${Math.random().toString(36).slice(2)}@local`,
     `DTSTAMP:${fmtIcsDate(new Date())}`,
     `DTSTART:${fmtIcsDate(reminder.start)}`,
     `DTEND:${fmtIcsDate(reminder.end)}`,
@@ -2504,16 +2504,17 @@ function refreshSyncProgressModal() {
     body.appendChild(el('div', { class: 'flex items-center gap-3 mb-3' },
       el('div', { class: 'w-8 h-8 rounded-full border-4 border-slate-200 border-t-[#00a3e0] animate-spin' }),
       el('div', null,
-        el('div', { class: 'font-semibold' }, 'Atualizando agenda'),
+        el('div', { class: 'font-semibold' }, 'Atualizando dados'),
         el('div', { class: 'text-xs text-slate-500' }, subtitle),
       ),
     ));
     const stepClass = 'flex items-start gap-2 text-xs text-slate-600 py-0.5';
     body.appendChild(el('ul', { class: 'space-y-0.5 mb-3 mt-1' },
-      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Lendo lista de torneios da CBT'),
+      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Lendo torneios e inscrições'),
       el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Detectando boletos pendentes e prazos'),
-      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Verificando inscrição em cada torneio'),
-      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Atualizando ranking nacional e regional'),
+      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Atualizando rankings (nacional, regional, WTN)'),
+      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Coletando histórico de partidas'),
+      el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Recalculando estatísticas e indicadores'),
     ));
     body.appendChild(el('p', { class: 'text-xs text-slate-500 italic' },
       'Costuma levar ~30-50s. Pode esconder essa janela — quando terminar, mostro aqui o que mudou.'));
@@ -3245,7 +3246,7 @@ function toggleGearMenu() {
   // Separa as ações em "Atleta" e "Conta" pra deixar mais organizado
   const athleteFirstName = (profile?.athleteName || profile?.tiEmail || 'Atleta').split(/\s+/)[0];
   const athleteActions = profile ? [
-    { label: `Sobre ${athleteFirstName}`, onClick: () => openAthleteCard() },
+    { label: 'Performance do Atleta', onClick: () => openAthleteCard() },
     { label: 'Credenciais TI', onClick: () => openProfileForm(profile) },
   ] : [];
   // Mobile: "Convidar membro" no menu (não tem o "+" do member stack que
@@ -3327,6 +3328,152 @@ function rerenderBody() {
     return;
   }
   render();
+}
+
+// Modal de histórico de jogos — placeholder da Fase 1 do plano de Performance.
+// Lista crua agrupada por torneio. Vai virar dashboard analítico nas fases
+// seguintes (Glicko, win prob, Markov, predição).
+async function openMatchesModal() {
+  const profile = state.profiles.find(p => p.id === state.activeProfileId);
+  if (!profile) return;
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden',
+  });
+  const refreshBtn = el('button', {
+    class: 'text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white',
+    title: 'Re-scrape só matches (~3s)',
+  }, '↻ Atualizar');
+  const exportBtn = el('a', {
+    class: 'text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white no-underline',
+    href: `/api/profiles/${profile.id}/matches.csv`,
+    download: `matches-${profile.athleteName || 'atleta'}.csv`,
+    title: 'Baixar CSV pra Excel',
+  }, '⤓ CSV');
+
+  card.appendChild(el('div', { class: 'shrink-0 bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between gap-2' },
+    el('h3', { class: 'font-medium' }, 'Histórico de jogos'),
+    el('div', { class: 'flex items-center gap-2' }, refreshBtn, exportBtn,
+      el('button', { class: 'text-white/70 hover:text-white text-xl leading-none ml-2', onClick: close }, '×'),
+    ),
+  ));
+  const body = el('div', { class: 'flex-1 min-h-0 overflow-y-auto px-5 py-4' },
+    el('div', { class: 'text-sm text-slate-500' }, 'Carregando...'),
+  );
+  card.appendChild(body);
+
+  refreshBtn.onclick = async () => {
+    refreshBtn.textContent = '↻ Atualizando…';
+    refreshBtn.disabled = true;
+    try {
+      const r = await fetch(`/api/profiles/${profile.id}/matches/refresh`, { method: 'POST' });
+      if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+      const result = await r.json();
+      console.log('[matches refresh]', result);
+      // Re-render
+      openMatchesModal();
+    } catch (err) {
+      alert('Erro ao atualizar: ' + err.message);
+      refreshBtn.textContent = '↻ Atualizar';
+      refreshBtn.disabled = false;
+    }
+  };
+  root.appendChild(overlay);
+  root.appendChild(card);
+
+  let resp;
+  try {
+    const r = await fetch(`/api/profiles/${profile.id}/matches`);
+    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
+    resp = await r.json();
+  } catch (err) {
+    body.innerHTML = '';
+    body.appendChild(el('div', { class: 'text-sm text-red-600' }, `Erro: ${err.message}`));
+    return;
+  }
+
+  const matches = resp.matches || [];
+  body.innerHTML = '';
+
+  if (matches.length === 0) {
+    body.appendChild(el('div', { class: 'text-sm text-slate-500 text-center py-8' },
+      'Nenhum jogo carregado ainda. Faça uma sync.',
+    ));
+    return;
+  }
+
+  // Sumário no topo
+  const wins = matches.filter(m => m.result === 'W').length;
+  const losses = matches.filter(m => m.result === 'L').length;
+  const pct = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '0';
+  const yearRange = (() => {
+    const ys = matches.map(m => m.year).filter(Boolean);
+    if (!ys.length) return '';
+    const min = Math.min(...ys), max = Math.max(...ys);
+    return min === max ? `${min}` : `${min}–${max}`;
+  })();
+
+  body.appendChild(el('div', { class: 'mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200' },
+    el('div', { class: 'text-xs uppercase tracking-wide text-slate-500' }, `Anos ${yearRange}`),
+    el('div', { class: 'text-base font-semibold text-slate-900 mt-0.5' },
+      `${matches.length} jogos · ${wins}V ${losses}D · ${pct.replace('.', ',')}%`,
+    ),
+    el('div', { class: 'text-[11px] text-slate-500 mt-1' },
+      'Fonte: Tênis Integrado · Atualizado a cada sync',
+    ),
+  ));
+
+  // Agrupa por torneio (preserva ordem de matches — mais recentes primeiro)
+  const byTournament = new Map();
+  for (const m of matches) {
+    const key = m.tournamentId || m.tournamentName;
+    if (!byTournament.has(key)) byTournament.set(key, { meta: m, items: [] });
+    byTournament.get(key).items.push(m);
+  }
+
+  for (const { meta, items } of byTournament.values()) {
+    const groupCard = el('div', { class: 'mb-3 rounded-lg border border-slate-200 overflow-hidden' });
+    groupCard.appendChild(el('div', { class: 'bg-slate-50 px-3 py-2 border-b border-slate-200' },
+      el('div', { class: 'text-sm font-medium text-slate-900' }, meta.tournamentName || '—'),
+      el('div', { class: 'text-[11px] text-slate-500 mt-0.5' },
+        [
+          meta.tier && `${meta.tier}`,
+          meta.category && `${meta.category}`,
+          meta.city && meta.state && `${meta.city}/${meta.state}`,
+          meta.endDate,
+        ].filter(Boolean).join(' · '),
+      ),
+    ));
+
+    const list = el('ul', { class: 'divide-y divide-slate-100' });
+    for (const m of items) {
+      const isW = m.result === 'W';
+      const dot = el('span', {
+        class: `inline-block w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-white ${isW ? 'bg-emerald-500' : 'bg-rose-500'}`,
+      }, isW ? 'V' : 'D');
+      const oppText = m.opponentNames && m.opponentNames.length > 1
+        ? m.opponentNames.join(' · ')
+        : m.opponentName || '?';
+      list.appendChild(el('li', { class: 'px-3 py-2 flex items-center gap-3 text-sm' },
+        el('div', { class: 'shrink-0 w-12 text-[11px] text-slate-500 uppercase tracking-wide' }, m.round || '?'),
+        dot,
+        el('div', { class: 'min-w-0 flex-1' },
+          el('div', { class: 'text-slate-900 truncate' }, oppText),
+          el('div', { class: 'text-[11px] text-slate-500 mt-0.5' },
+            m.scoreRaw || (m.wo ? 'W.O.' : '—'),
+            m.isDoubles ? ' · duplas' : '',
+            m.hasSuperTiebreak ? ' · super-TB' : '',
+          ),
+        ),
+      ));
+    }
+    groupCard.appendChild(list);
+    body.appendChild(groupCard);
+  }
 }
 
 function openAthleteCard() {
@@ -3436,6 +3583,55 @@ function openAthleteCard() {
     ),
   );
 
+  const desempenho = athlete.desempenho;
+  const performanceBlock = desempenho && (desempenho.byYear?.length || desempenho.total?.wins || desempenho.total?.losses) && (() => {
+    const pct = (w, l) => {
+      const total = (w || 0) + (l || 0);
+      return total > 0 ? `${((w / total) * 100).toFixed(1).replace('.', ',')}%` : '—';
+    };
+    const yearTile = (label, w, l, sw, sl, gw, gl, accent = 'cyan') => {
+      const total = (w || 0) + (l || 0);
+      const accentClass = {
+        cyan:    'border-cyan-200    bg-cyan-50    text-cyan-900',
+        emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+        slate:   'border-slate-200   bg-slate-50   text-slate-900',
+      }[accent];
+      return el('div', { class: `rounded-lg border ${accentClass} p-3` },
+        el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide opacity-70' }, label),
+        el('div', { class: 'text-2xl font-bold leading-tight mt-0.5' }, pct(w, l)),
+        el('div', { class: 'text-[11px] opacity-80 mt-0.5' }, `${w}V · ${l}D · ${total}J`),
+        (sw || sl) && el('div', { class: 'text-[10px] opacity-70 mt-0.5' }, `Sets ${sw}/${sw + sl} · Games ${gw}/${gw + gl}`),
+      );
+    };
+    const yearNow = today.getFullYear();
+    const cur = desempenho.byYear?.find(y => y.year === yearNow);
+    const total = desempenho.total || {};
+    return el('div', null,
+      sectionHeader('Desempenho'),
+      el('div', { class: 'grid grid-cols-2 gap-2' },
+        cur
+          ? yearTile(`Em ${yearNow}`, cur.wins, cur.losses, cur.setWins, cur.setLosses, cur.gameWins, cur.gameLosses, 'cyan')
+          : tile(`Em ${yearNow}`, '—', 'sem jogos no ano', 'slate'),
+        yearTile('Geral', total.wins || 0, total.losses || 0, total.setWins || 0, total.setLosses || 0, total.gameWins || 0, total.gameLosses || 0, 'emerald'),
+      ),
+      el('div', { class: 'mt-2 flex flex-wrap items-center gap-x-3 gap-y-1' },
+        el('button', {
+          class: 'text-xs text-cyan-700 hover:text-cyan-900 underline decoration-dotted',
+          onClick: () => { close(); openMatchesModal(); },
+        }, 'Ver histórico de jogos →'),
+        el('a', {
+          class: 'text-xs text-violet-700 hover:text-violet-900 underline decoration-dotted',
+          href: `/api/profiles/${profile.id}/report`,
+          target: '_blank',
+          rel: 'noopener',
+        }, '📄 Relatório completo (PDF) →'),
+      ),
+    );
+  })();
+
+  // Placeholder pra análise estatística — preenchido async por loadAnalyticsInto
+  const analyticsBlock = el('div', null);
+
   const calendarBlock = (next || last) && el('div', null,
     sectionHeader('Calendário'),
     el('div', { class: 'space-y-2' },
@@ -3471,12 +3667,257 @@ function openAthleteCard() {
     el('div', { class: 'flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4' },
       statsGrid,
       rankingTiles,
+      performanceBlock,
+      analyticsBlock,
       calendarBlock,
       noTournaments,
     ),
   );
   root.appendChild(overlay);
   root.appendChild(card);
+
+  // Lazy-load analytics — não bloqueia abertura do modal
+  loadAnalyticsInto(analyticsBlock, profile.id);
+}
+
+// Renderiza a seção "Análise estatística" no card do atleta. Lazy-fetch
+// pra não bloquear a abertura. Usa Glicko-2 + Expected vs Realized + top
+// surprises calculados no backend (`/api/profiles/:id/analytics`).
+async function loadAnalyticsInto(container, profileId) {
+  container.innerHTML = '';
+  const sectionH = el('h3', { class: 'text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3' }, 'Performance');
+  container.appendChild(sectionH);
+  container.appendChild(el('div', { class: 'text-xs text-slate-400 italic' }, 'Calculando…'));
+
+  let data;
+  try {
+    const r = await fetch(`/api/profiles/${profileId}/analytics`);
+    if (!r.ok) throw new Error((await r.json()).error || 'Erro');
+    data = await r.json();
+  } catch (err) {
+    container.innerHTML = '';
+    container.appendChild(sectionH);
+    container.appendChild(el('div', { class: 'text-xs text-red-600' }, `Erro: ${err.message}`));
+    return;
+  }
+
+  if (data.counts.analyzed === 0) {
+    container.innerHTML = '';
+    container.appendChild(sectionH);
+    container.appendChild(el('div', { class: 'text-xs text-slate-400 italic' },
+      `Sem matches analisáveis (excluídos: ${data.counts.excluded.wo} WOs, ${data.counts.excluded.doubles} duplas).`,
+    ));
+    return;
+  }
+
+  container.innerHTML = '';
+  container.appendChild(sectionH);
+
+  const N = data.narratives || {};
+
+  // Helper pra renderizar parágrafo com **bold** (estilo simples markdown)
+  const para = (text, cls = 'text-[12px] leading-relaxed text-slate-700 mt-2') => {
+    if (!text) return null;
+    const div = el('div', { class: cls });
+    // Substitui **bold** por <strong>
+    const html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    div.innerHTML = html;
+    return div;
+  };
+
+  // ─── HEADLINE — frase de abertura "em uma frase" ──────────────────
+  if (N.headline) {
+    container.appendChild(el('div', { class: 'rounded-lg border border-cyan-200 bg-cyan-50 p-3 mb-3' },
+      el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide text-cyan-700 mb-1' }, 'Em uma frase'),
+      el('div', { class: 'text-[13px] leading-relaxed text-slate-800' }, N.headline),
+    ));
+  }
+
+  // ─── NÍVEL DE JOGO — Glicko + sparkline ──────────────────────────
+  const ratingTile = el('div', { class: 'rounded-lg border border-violet-200 bg-violet-50 text-violet-900 p-3 mb-3' });
+  ratingTile.appendChild(el('div', { class: 'flex items-baseline justify-between' },
+    el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide opacity-70' }, 'Nível de jogo'),
+    el('div', { class: 'text-[10px] opacity-60' }, `n=${data.counts.analyzed} partidas`),
+  ));
+  ratingTile.appendChild(el('div', { class: 'text-3xl font-bold leading-tight mt-0.5' },
+    `${data.athleteRating.r}`,
+    el('span', { class: 'text-base font-normal opacity-70 ml-1' }, ` ± ${data.athleteRating.rd}`),
+  ));
+  ratingTile.appendChild(el('div', { class: 'text-[11px] opacity-80 mt-0.5' },
+    `Faixa: ${data.athleteRating.ci95.lower}–${data.athleteRating.ci95.upper}`,
+  ));
+
+  // Sparkline
+  const hist = data.ratingHistory || [];
+  if (hist.length >= 2) {
+    const W = 380, H = 70, PAD = 6;
+    const rs = hist.map(h => h.r);
+    const lowerBound = hist.map(h => h.r - 1.96 * h.rd);
+    const upperBound = hist.map(h => h.r + 1.96 * h.rd);
+    const yMin = Math.min(...lowerBound) - 30;
+    const yMax = Math.max(...upperBound) + 30;
+    const yRange = yMax - yMin || 1;
+    const xStep = (W - 2 * PAD) / (hist.length - 1);
+    const yOf = (v) => H - PAD - ((v - yMin) / yRange) * (H - 2 * PAD);
+    const xOf = (i) => PAD + i * xStep;
+
+    let band = `M ${xOf(0)} ${yOf(upperBound[0])}`;
+    for (let i = 1; i < hist.length; i++) band += ` L ${xOf(i)} ${yOf(upperBound[i])}`;
+    for (let i = hist.length - 1; i >= 0; i--) band += ` L ${xOf(i)} ${yOf(lowerBound[i])}`;
+    band += ' Z';
+
+    let line = `M ${xOf(0)} ${yOf(rs[0])}`;
+    for (let i = 1; i < hist.length; i++) line += ` L ${xOf(i)} ${yOf(rs[i])}`;
+
+    const sparkSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    sparkSvg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    sparkSvg.setAttribute('class', 'w-full block mt-2');
+    sparkSvg.style.height = '70px';
+    sparkSvg.innerHTML = `
+      <path d="${band}" fill="rgba(167, 139, 250, 0.3)" stroke="none"/>
+      <path d="${line}" fill="none" stroke="rgb(124, 58, 237)" stroke-width="2"/>
+      <circle cx="${xOf(hist.length - 1)}" cy="${yOf(rs[rs.length - 1])}" r="4" fill="rgb(124, 58, 237)"/>
+    `;
+    ratingTile.appendChild(sparkSvg);
+    ratingTile.appendChild(el('div', { class: 'text-[10px] opacity-60 mt-1' },
+      'Evolução do nível ao longo das partidas, com banda de incerteza (95%)',
+    ));
+  }
+  if (N.rating) ratingTile.appendChild(para(N.rating, 'text-[12px] leading-relaxed text-violet-900 mt-2'));
+  container.appendChild(ratingTile);
+
+  // ─── FORMA RECENTE — 3 janelas temporais ─────────────────────────
+  if (data.forma) {
+    const f = data.forma;
+    const formaRow = (label, w, t) => {
+      const pct = t > 0 ? Math.round((w / t) * 100) : 0;
+      const barColor = pct >= 50 ? 'bg-emerald-500' : pct >= 30 ? 'bg-amber-500' : 'bg-rose-500';
+      return el('div', { class: 'flex items-center gap-2 text-[12px] py-1' },
+        el('div', { class: 'shrink-0 w-36 text-slate-600' }, label),
+        el('div', { class: 'flex-1 h-4 bg-slate-100 rounded overflow-hidden relative' },
+          el('div', { class: `${barColor} h-full`, style: `width: ${pct}%` }),
+          el('div', { class: 'absolute inset-0 flex items-center justify-end pr-1 text-[10px] text-slate-700 font-medium' },
+            t > 0 ? `${pct}% · ${w}V ${t - w}D` : 'sem dados',
+          ),
+        ),
+      );
+    };
+    const formaTile = el('div', { class: 'rounded-lg border border-slate-200 bg-white p-3 mb-3' },
+      el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2' }, 'Forma recente'),
+      formaRow('Últimos 3 meses', f.last90.wins, f.last90.total),
+      formaRow('Últimos 12 meses', f.last365.wins, f.last365.total),
+      formaRow('Histórico todo', f.allTime.wins, f.allTime.total),
+    );
+    if (N.forma) formaTile.appendChild(para(N.forma));
+    container.appendChild(formaTile);
+  }
+
+  // ─── COMO ELA GANHA E PERDE — buckets ────────────────────────────
+  const buckets = data.bucketPerformance;
+  const bucketLabel = {
+    strong: 'Adversária mais forte',
+    even:   'Mesmo nível',
+    weak:   'Adversária mais fraca',
+  };
+  const bucketRow = (key) => {
+    const b = buckets[key];
+    const tot = b.w + b.l;
+    const pct = tot > 0 ? Math.round((b.w / tot) * 100) : 0;
+    const barColor = pct >= 50 ? 'bg-emerald-500' : pct >= 30 ? 'bg-amber-500' : 'bg-rose-500';
+    return el('div', { class: 'flex items-center gap-2 text-[12px] py-1' },
+      el('div', { class: 'shrink-0 w-36 text-slate-600' }, bucketLabel[key]),
+      el('div', { class: 'flex-1 h-4 bg-slate-100 rounded overflow-hidden relative' },
+        el('div', { class: `${barColor} h-full`, style: `width: ${pct}%` }),
+        el('div', { class: 'absolute inset-0 flex items-center justify-end pr-1 text-[10px] text-slate-700 font-medium' },
+          tot > 0 ? `${pct}% · ${b.w}V ${b.l}D` : 'sem dados',
+        ),
+      ),
+    );
+  };
+  const bucketTile = el('div', { class: 'rounded-lg border border-slate-200 bg-white p-3 mb-3' },
+    el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2' }, 'Como ela ganha e perde'),
+    bucketRow('strong'),
+    bucketRow('even'),
+    bucketRow('weak'),
+  );
+  if (N.bucket) bucketTile.appendChild(para(N.bucket));
+  container.appendChild(bucketTile);
+
+  // ─── ESPERADO vs REALIZADO ───────────────────────────────────────
+  const ou = data.over_under;
+  const evrColor = Math.abs(ou.delta) < 0.5 ? 'slate' : ou.delta >= 0 ? 'emerald' : 'rose';
+  const evrAccent = {
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+    rose:    'border-rose-200    bg-rose-50    text-rose-900',
+    slate:   'border-slate-200   bg-slate-50   text-slate-900',
+  }[evrColor];
+  const evrSign = ou.delta > 0 ? '+' : '';
+  const evrTile = el('div', { class: `rounded-lg border ${evrAccent} p-3 mb-3` },
+    el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide opacity-70' }, 'Esperado vs Realizado'),
+    el('div', { class: 'text-2xl font-bold leading-tight mt-0.5' },
+      `${evrSign}${ou.delta} vitória${Math.abs(ou.delta) === 1 ? '' : 's'}`,
+    ),
+    el('div', { class: 'text-[11px] opacity-80 mt-0.5' },
+      `Esperado ${data.expected.wins} · Real ${data.realized.wins}`,
+    ),
+  );
+  if (N.expectedRealized) evrTile.appendChild(para(N.expectedRealized, `text-[12px] leading-relaxed mt-2 opacity-90`));
+  container.appendChild(evrTile);
+
+  // ─── MOMENTOS QUE SE DESTACARAM ──────────────────────────────────
+  if (N.topPositive || N.topNegative) {
+    container.appendChild(el('div', { class: 'text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2 mt-1' },
+      'Momentos que se destacaram',
+    ));
+
+    if (N.topPositive) {
+      const t = N.topPositive;
+      container.appendChild(el('div', { class: 'rounded-lg border border-emerald-200 bg-emerald-50 p-3 mb-2' },
+        el('div', { class: 'text-[11px] font-bold text-emerald-700' }, '★ ' + t.title),
+        el('div', { class: 'text-[12px] text-slate-800 mt-0.5' }, t.line1),
+        el('div', { class: 'text-[12px] text-slate-700 mt-0.5' }, `Placar: ${t.score || '—'}`),
+        el('div', { class: 'text-[12px] text-slate-700 leading-relaxed mt-1.5' }, t.paragraph),
+      ));
+    }
+
+    if (N.topNegative) {
+      const t = N.topNegative;
+      container.appendChild(el('div', { class: 'rounded-lg border border-rose-200 bg-rose-50 p-3 mb-2' },
+        el('div', { class: 'text-[11px] font-bold text-rose-700' }, '✗ ' + t.title),
+        el('div', { class: 'text-[12px] text-slate-800 mt-0.5' }, t.line1),
+        el('div', { class: 'text-[12px] text-slate-700 mt-0.5' }, `Placar: ${t.score || '—'}`),
+        el('div', { class: 'text-[12px] text-slate-700 leading-relaxed mt-1.5' }, t.paragraph),
+      ));
+    }
+  }
+
+  // ─── CTA pra relatório completo ──────────────────────────────────
+  container.appendChild(el('div', { class: 'rounded-lg border border-slate-200 bg-slate-50 p-3 mt-3' },
+    el('div', { class: 'flex items-center gap-2 text-[11px] font-semibold text-slate-700 mb-1' }, '📊 Análise estatística completa'),
+    el('div', { class: 'text-[12px] text-slate-600 leading-relaxed' },
+      'O relatório técnico completo (19 páginas) com análise descritiva, exploratória e narrativa é entrega especial assinada pelo estatístico responsável.',
+    ),
+    el('button', {
+      class: 'mt-2 text-xs px-3 py-1.5 rounded bg-[#0e3a4d] text-white hover:bg-[#16526a]',
+      onClick: () => {
+        const subject = encodeURIComponent('Solicito análise completa');
+        const body = encodeURIComponent('Gostaria de receber o relatório técnico de performance completo, assinado pelo estatístico responsável.');
+        window.location.href = `mailto:alexandre@opiniao.inf.br?subject=${subject}&body=${body}`;
+      },
+    }, 'Solicitar análise completa →'),
+  ));
+
+  // Disclaimer
+  if (data.counts.excluded.wo > 0 || data.counts.excluded.doubles > 0) {
+    const ex = data.counts.excluded;
+    const parts = [];
+    if (ex.wo > 0) parts.push(`${ex.wo} W.O.`);
+    if (ex.doubles > 0) parts.push(`${ex.doubles} duplas`);
+    container.appendChild(el('div', { class: 'mt-3 text-[10px] text-slate-400 italic' },
+      `Excluídos da análise: ${parts.join(' e ')}.`,
+    ));
+  }
 }
 
 function openCalendarSetup() {

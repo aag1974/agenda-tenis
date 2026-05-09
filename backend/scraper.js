@@ -3,6 +3,7 @@
 
 import * as cheerio from 'cheerio';
 import { TIClient } from './ti-client.js';
+import { extractTier, extractAllTiers, compareTiers } from './tier-utils.js';
 
 const BASE = 'https://www.tenisintegrado.com.br';
 const JUVENIL_CATEGORY = 2;
@@ -27,19 +28,6 @@ export const CATEGORY_HINTS = {
   '16F': '16 Anos Feminino', '16M': '16 Anos Masculino',
   '18F': '18 Anos Feminino', '18M': '18 Anos Masculino',
 };
-
-function extractTier(name) {
-  if (!name) return null;
-  if (/\bG1\+/.test(name)) return 'G1+';
-  if (/\bG1\b/.test(name)) return 'G1';
-  if (/\bG2\b/.test(name)) return 'G2';
-  if (/\bG3\b/.test(name)) return 'G3';
-  if (/\bGA\b/.test(name)) return 'GA';
-  if (/Federa[çc]/i.test(name)) return 'Federações';
-  if (/Brasileir[ãa]o/i.test(name)) return 'GA';
-  if (/Circuito Nacional|Nacional CBT/i.test(name)) return 'GA';
-  return null;
-}
 
 function normalizeName(s) {
   if (!s) return '';
@@ -95,12 +83,20 @@ async function getAthleteInfo(client) {
   const html = await client.getText(`/perfil2/inicio/${client.athleteId}`);
   const $ = cheerio.load(html);
 
-  // Athlete name: first anchor matching a name pattern
+  // Athlete name: prefer <h2> com pattern "Nome Completo (athleteId)" — TI
+  // mostra o nome completo lá. Fallback pra primeiro anchor que pareça nome.
   let name = null;
-  $('a').each((i, a) => {
-    const t = $(a).text().trim();
-    if (/^[A-ZÀ-Ý][a-zà-ý]+(\s+[A-ZÀ-Ý][a-zà-ý]+){1,3}$/.test(t)) { name = t; return false; }
+  $('h2').each((i, h) => {
+    const text = $(h).text().trim();
+    const m = text.match(/^([A-ZÀ-Ýa-zà-ý]+(?:\s+[A-ZÀ-Ýa-zà-ý]+)+)\s*\(\d+\)$/);
+    if (m) { name = m[1].trim(); return false; }
   });
+  if (!name) {
+    $('a').each((i, a) => {
+      const t = $(a).text().trim();
+      if (/^[A-ZÀ-Ý][a-zà-ý]+(\s+[A-ZÀ-Ý][a-zà-ý]+){1,3}$/.test(t)) { name = t; return false; }
+    });
+  }
 
   // Tournament IDs from any link to torneio_painel_info
   const tournamentIds = new Set();
@@ -250,6 +246,52 @@ async function getRegionalPosition(client, athleteTiId, categoryCode = '12F') {
   }
 }
 
+// Desempenho agregado do atleta — endpoint AJAX que o widget "Desempenho de
+// Anna" consome no /perfil2/inicio/. Retorna W/L + sets + games por ano (até 5
+// anos em `lastFive`) + total acumulado.
+//
+// Endpoint: POST /perfil2/getStats com `id={athleteId}` (form-urlencoded).
+// Resposta: { hasData, lastFive: [{ano, vitorias, derrotas, setvitorias,
+// setderrotas, gamevitorias, gamederrotas}], total: {vitorias, derrotas, ...} }
+async function getDesempenho(client) {
+  try {
+    const res = await client.request(`/perfil2/getStats`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: new URLSearchParams({ id: client.athleteId }).toString(),
+    });
+    const json = JSON.parse(await res.text());
+    if (!json?.hasData) return null;
+    const toInt = (v) => parseInt(v, 10) || 0;
+    const byYear = (json.lastFive || []).map(r => ({
+      year: parseInt(r.ano, 10),
+      wins: toInt(r.vitorias),
+      losses: toInt(r.derrotas),
+      setWins: toInt(r.setvitorias),
+      setLosses: toInt(r.setderrotas),
+      gameWins: toInt(r.gamevitorias),
+      gameLosses: toInt(r.gamederrotas),
+    })).filter(r => Number.isFinite(r.year));
+    const t = json.total || {};
+    return {
+      byYear,
+      total: {
+        wins: toInt(t.vitorias),
+        losses: toInt(t.derrotas),
+        setWins: toInt(t.setvitorias),
+        setLosses: toInt(t.setderrotas),
+        gameWins: toInt(t.gamevitorias),
+        gameLosses: toInt(t.gamederrotas),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function getProgramaIds(client) {
   const html = await client.getText(`/perfil2/programa/${client.athleteId}`);
   const $ = cheerio.load(html);
@@ -327,11 +369,22 @@ async function fetchCatalog(client, { category = JUVENIL_CATEGORY, year = new Da
 
   return raw.map(r => {
     const [startDate, endDate] = parseDateRange(r.datesText);
-    const tiersFromRanking = [...new Set(
-      [...r.rankingText.matchAll(/(GA\+|GA|G1\+|G1|G2|G3)(?!\w)/g)].map(m => m[1])
+    // Combina 3 fontes de detecção de tier (princípio defensivo do
+    // user 2026-05-08: digitação manual falha, busca cobre múltiplas):
+    //   1. tiers detectados na página de rankings (categórico-oficial)
+    //   2. todos os tiers explícitos no nome do torneio
+    //   3. todos os tiers explícitos no rankingText completo
+    const tiersFromRankingPage = [...new Set(
+      [...r.rankingText.matchAll(/(GA\+|GA|G1\+|G1|G2\+|G2|G3\+|G3)(?!\w)/g)].map(m => m[1])
     )];
-    const fallback = extractTier(r.name);
-    const tiers = tiersFromRanking.length ? tiersFromRanking : (fallback ? [fallback] : []);
+    const tiersFromName = extractAllTiers(r.name);
+    const tiersFromRankingText = extractAllTiers(r.rankingText);
+    // União ordenada (mais alto → mais baixo)
+    const tiers = [...new Set([
+      ...tiersFromRankingPage,
+      ...tiersFromName,
+      ...tiersFromRankingText,
+    ])].sort(compareTiers);
     return {
       id: r.id,
       name: r.name.slice(0, 200),
@@ -619,7 +672,7 @@ export async function debugAthleteInscriptions({ email, password }, opts = {}) {
   return out;
 }
 
-export async function syncAthlete({ email, password, starredIds = [] }) {
+export async function syncAthlete({ email, password, starredIds = [], yearsToScrape = null }) {
   const client = new TIClient();
   await client.login(email, password);
 
@@ -784,6 +837,28 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
   const currentYear = new Date().getFullYear();
   const nationalRanking12F = (athlete.rankings || []).find(r => r.year === currentYear && r.category === '12F') || null;
   const regionalRanking = await getRegionalPosition(client, client.athleteId, '12F').catch(() => null);
+  const desempenho = await getDesempenho(client).catch(() => null);
+
+  // Matches scrape — em paralelo por ano. yearsToScrape vem do sync-manager
+  // (decide backfill vs incremental). null = pula scrape.
+  let matchesByYear = null;
+  if (yearsToScrape && yearsToScrape.length) {
+    const { fetchAthleteMatches } = await import('./match-scraper.js');
+    const results = await Promise.all(
+      yearsToScrape.map(y =>
+        fetchAthleteMatches(client, client.athleteId, y)
+          .then(matches => ({ year: y, matches }))
+          .catch(err => {
+            console.error(`[sync] matches ${y} falhou:`, err.message);
+            return { year: y, matches: null };
+          })
+      )
+    );
+    matchesByYear = {};
+    for (const r of results) {
+      if (r.matches) matchesByYear[r.year] = r.matches;
+    }
+  }
 
   return {
     athlete: {
@@ -796,12 +871,14 @@ export async function syncAthlete({ email, password, starredIds = [] }) {
       rankingNational: nationalRanking12F,           // { year, category, points, position }
       rankingRegional: regionalRanking,              // { uf, regionalPosition, totalRegional, cutoffDate } | null
       rankingsAll: athlete.rankings || [],           // all rankings on profile
+      desempenho,                                     // { byYear: [...], total: {...} } | null
       categories: categoriesToFetch.map(id => ({
         id,
         name: TI_CATEGORIES.find(c => c.id === id)?.name || `Categoria ${id}`,
       })),
     },
     tournaments,
+    matchesByYear,                                    // { 2026: [...], 2025: [...] } ou null
     syncedAt: new Date().toISOString(),
   };
 }

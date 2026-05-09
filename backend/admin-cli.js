@@ -181,7 +181,9 @@ export function findTournament(email, namePartial) {
 }
 
 // ===== CLI runner =====
-const isMain = import.meta.url === `file://${process.argv[1]}`;
+// Compara o path resolvido (decoded) — o `file://` URL tem espaços/acentos
+// encodados em %XX, daí compara errado em pastas com nomes tipo "Anna Luiza".
+const isMain = fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
   const cmd = process.argv[2];
   const arg1 = process.argv[3];

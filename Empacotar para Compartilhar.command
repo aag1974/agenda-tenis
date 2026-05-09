@@ -5,8 +5,8 @@
 set -e
 cd "$(dirname "$0")"
 
-DEST="$HOME/Desktop/Agenda Tenis Integrado - compartilhar.zip"
-TMP="$(mktemp -d)/agenda-app"
+DEST="$HOME/Desktop/Tennis Flow - compartilhar.zip"
+TMP="$(mktemp -d)/tennis-flow"
 
 echo "📦 Empacotando..."
 
@@ -20,15 +20,15 @@ rsync -a \
   --exclude='*.zip' \
   --exclude='.DS_Store' \
   --exclude='Empacotar para Compartilhar.command' \
-  --exclude='Abrir Agenda Tênis.command' \
+  --exclude='Abrir Tennis Flow.command' \
   ./ "$TMP/"
 
 # Garante que o launcher esteja executável
-chmod +x "$TMP/Abrir Agenda Tênis Integrado.command"
+chmod +x "$TMP/Abrir Tennis Flow.command"
 
 # Remove zip anterior (se existir) e cria o novo
 rm -f "$DEST"
-( cd "$(dirname "$TMP")" && zip -rq "$DEST" "agenda-app" )
+( cd "$(dirname "$TMP")" && zip -rq "$DEST" "tennis-flow" )
 rm -rf "$(dirname "$TMP")"
 
 SIZE=$(du -h "$DEST" | cut -f1)

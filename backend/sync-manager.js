@@ -3,6 +3,7 @@ import {
   listProfiles, getProfile, getProfileCredentials, getSyncedData, saveSyncedData,
   updateProfile, getNotes, updateTournamentNotes, addAutoActivity,
   getAlertRules, addAlertEvents, getAlertEvents,
+  getMatchesData, upsertYearMatches,
 } from './storage.js';
 import { cleanupExpiredReceipts } from './receipts.js';
 import { diffTournamentForActivity } from './board.js';
@@ -31,7 +32,19 @@ export async function syncProfile(profileId) {
       const starredIds = Object.entries(notes)
         .filter(([, n]) => n?.selected || n?.manualInscribed)
         .map(([id]) => id);
-      const result = await syncAthlete({ ...creds, starredIds });
+
+      // Decide quais anos de matches scrappear:
+      // - Sempre o ano atual (jogos novos podem aparecer)
+      // - Os 2 anos anteriores se nunca foram scrapeados (backfill one-time)
+      const currentYear = new Date().getFullYear();
+      const matchesData = getMatchesData(profileId);
+      const lastScraped = matchesData.lastScraped || {};
+      const yearsToScrape = [currentYear];
+      for (let y = currentYear - 1; y >= currentYear - 2; y--) {
+        if (!lastScraped[y]) yearsToScrape.push(y);
+      }
+
+      const result = await syncAthlete({ ...creds, starredIds, yearsToScrape });
       // Preserve firstSeenAt per tournament across syncs (used by "🆕" badge for 7 days)
       const previous = getSyncedData(profileId);
       const firstSeenById = new Map(
@@ -159,6 +172,18 @@ export async function syncProfile(profileId) {
       }
 
       saveSyncedData(profileId, result);
+
+      // Persist matches por ano (idempotente — re-scrape do mesmo ano substitui)
+      if (result.matchesByYear) {
+        let totalNew = 0;
+        for (const [yearStr, matches] of Object.entries(result.matchesByYear)) {
+          const year = parseInt(yearStr, 10);
+          upsertYearMatches(profileId, year, matches);
+          totalNew += matches.length;
+        }
+        console.log(`[sync ${profileId}] ${totalNew} matches em ${Object.keys(result.matchesByYear).length} ano(s)`);
+      }
+
       const p = getProfile(profileId);
       if (p && (!p.athleteName || p.athleteName === 'Atleta') && result.athlete?.name) {
         updateProfile(profileId, { athleteName: result.athlete.name });

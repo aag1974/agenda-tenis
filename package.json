@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node backend/server.js",
-    "explore": "node backend/explore.js"
+    "explore": "node backend/explore.js",
+    "test": "node scripts/run-tests.js"
   },
   "dependencies": {
     "archiver": "^7.0.1",

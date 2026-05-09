@@ -50,7 +50,9 @@ const TIER_COLORS = {
   'GA':  'indigo',
   'G1+': 'blue',
   'G1':  'cyan',
+  'G2+': 'teal',
   'G2':  'emerald',
+  'G3+': 'lime',
   'G3':  'amber',
 };
 

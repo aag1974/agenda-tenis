@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Launcher clicável para o Agenda Tênis Integrado.
+# Launcher clicável para o Tennis Flow.
 # Abra o Finder, dê duplo clique neste arquivo (na primeira vez, talvez seja necessário
 # clicar com botão direito → Abrir, e confirmar a execução).
 
@@ -33,7 +33,7 @@ if [ ! -d node_modules ]; then
   npm install
 fi
 
-echo "🎾 Subindo Agenda Tênis Integrado em http://localhost:$PORT ..."
+echo "🎾 Subindo Tennis Flow em http://localhost:$PORT ..."
 # Abre o navegador depois de 2s
 ( sleep 2 && open "http://localhost:$PORT" ) &
 
@@ -41,4 +41,4 @@ node backend/server.js
 echo ""
 echo "✓ App encerrado. Pode fechar esta janela."
 # Tenta fechar a aba do Terminal automaticamente (precisa de permissão de Acessibilidade)
-osascript -e 'tell application "Terminal" to close (every window whose name contains "Abrir Agenda")' 2>/dev/null || true
+osascript -e 'tell application "Terminal" to close (every window whose name contains "Tennis Flow")' 2>/dev/null || true

@@ -1,5 +1,5 @@
 ════════════════════════════════════════════════════════
-  AGENDA TÊNIS INTEGRADO — instalação no seu computador
+  TENNIS FLOW — instalação no seu computador
 ════════════════════════════════════════════════════════
 
 App local pra organizar a agenda de torneios do seu filho/filha,
@@ -23,9 +23,9 @@ COMO ABRIR O APP
 
 1. Descompacte este zip em qualquer pasta (ex: Documentos)
 
-2. Entre na pasta "agenda-app"
+2. Entre na pasta "tennis-flow"
 
-3. Duplo-clique em "Abrir Agenda Tênis.command"
+3. Duplo-clique em "Abrir Tennis Flow.command"
 
    ⚠ ATENÇÃO: na PRIMEIRA VEZ o macOS bloqueia.
       Faça assim:

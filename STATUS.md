@@ -1,15 +1,14 @@
 # Status do projeto — última atualização
 
-Snapshot pra retomar o trabalho em qualquer máquina. Atualizado em 06/05/2026.
+Snapshot pra retomar o trabalho em qualquer máquina. Atualizado em 08/05/2026.
 
 ## Onde rodando
 
-- **Produção (24/7):** https://tennis-flow.com.br (custom domain, registro.br) — fallback: https://agenda-tenis-integrado.onrender.com
-- **GitHub:** https://github.com/aag1974/tennisflow (branch `main`) — repo movido (URL antiga `aag1974/agenda-tenis` redireciona)
-- **Último commit:** `07086a3` — Kanban Fase 1.3: frontend board com SortableJS + paleta TI
+- **Produção (24/7):** https://tennis-flow.com.br (custom domain via Locaweb) — fallback: https://tennis-flow.onrender.com
+- **GitHub:** https://github.com/aag1974/tennisflow (branch `main`)
 - **Plano Render:** Starter (US$ 7/mês) — necessário pelo disco persistente em `/opt/render/project/src/data`
 - **Auto-deploy:** push em `main` dispara deploy automático no Render
-- **Service Worker cache:** `agenda-tenis-v33` (frontend/sw.js)
+- **Service Worker cache:** `tennis-flow-v1` (frontend/sw.js)
 
 ## Arquitetura
 
@@ -76,7 +75,6 @@ App pivotou de "lista cronológica" pra **quadro Kanban estilo Trello** com pale
 
 ## Backlog
 
-- **Rebrand: "Agenda Tênis Integrado" → "Tennis Flow"** — trocar em todos os lugares (HTML title, manifest, header, .command, LEIA-ME, theme-color talvez, ícone). Considerar domínio `tennisflow.com.br` ou similar. (Front já usa "Tennis Flow"; pendente: title, manifest, log de boot, .command, LEIA-ME.)
 - **Login com Google (OAuth)** — adicionar como alternativa ao email/senha existente. Setup Google Cloud Console, rotas `/api/auth/google` + `/callback`. Aproveitar pra trazer foto/nome do Google pro avatar.
 - **Esqueci minha senha** — fluxo de reset por email (precisa SMTP) ou pergunta de segurança.
 - **Generalizar ids das colunas do Kanban** — hoje os ids carregam nome legado (`torneios`, `vou_jogar`). Migrar pra ids genéricos (`closed_reg`, `open_reg`, `interest`, `pay`, `paid`, `travel`, `archive`) pra que renames de label não exijam migração de notes/activity. Inclui migração de `notes.json` (campo `column` + activity msgs) e `localStorage` (`columnOrder`, `columnSort`, `columnLabels`) no primeiro load.
@@ -108,6 +106,6 @@ git log --oneline -5  # confirma últimos commits
 
 Não precisa de `node`/`npm install` localmente — o Render cuida disso. Edição direta nos arquivos JS, commit + push, Render redeploys em ~2 min.
 
-Pra testar mudanças no celular, sempre bumpar `frontend/sw.js` cache version (`agenda-tenis-vN`).
+Pra testar mudanças no celular, sempre bumpar `frontend/sw.js` cache version (`tennis-flow-vN`).
 
 **Pra retomar o Kanban:** próxima é Fase 1.4 — redesenhar o modal pra ficar Trello-like (capa, etiquetas, checklist fixo, painel de atividade+comentários).

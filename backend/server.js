@@ -13,6 +13,7 @@ import {
   getAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
   findOrCreateShareToken, getShareLink,
   clearColumnOverrides, saveSyncedData, resetProfileData,
+  getMatchesData, upsertYearMatches,
 } from './storage.js';
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed, getRegistrationWindowState } from './board.js';
 import {
@@ -744,6 +745,98 @@ app.patch('/api/profiles/:id/tournaments/:tid/notes', requireAuth, requireEditor
   res.json(updated);
 });
 
+// Relatório PDF-friendly — HTML standalone otimizado pra impressão A4.
+// Linguagem ELI5, traduz "Glicko/z-score/IC" em narrativa de coach.
+// User abre em nova aba e usa ⌘+P pra salvar como PDF.
+app.get('/api/profiles/:id/report', requireAuth, ensureOwnedProfile, async (req, res) => {
+  const { generateReportHtml } = await import('./report.js');
+  const html = generateReportHtml(req.params.id);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+// Analytics — Glicko-2 + Expected vs Realized + bucket performance + top surprises.
+// Roda sobre matches.json (já scrapeado). Exclui WOs e duplas das estatísticas.
+// Inclui narrativas ELI5 prontas pra serem renderizadas no frontend.
+app.get('/api/profiles/:id/analytics', requireAuth, ensureOwnedProfile, async (req, res) => {
+  const { analyzeMatches } = await import('./analytics.js');
+  const { generateAllNarratives } = await import('./narrative.js');
+  const data = getMatchesData(req.params.id);
+  const result = analyzeMatches(data.matches || [], req.params.id);
+  const profile = getProfile(req.params.id);
+  const synced = getSyncedData(req.params.id);
+  const fullName = synced?.athlete?.name || profile?.athleteName || 'Atleta';
+  const firstName = fullName.split(' ')[0];
+  result.narratives = generateAllNarratives(result, firstName);
+  res.json(result);
+});
+
+// Histórico de matches (jogos disputados pelo atleta).
+// Foundation pra Performance/Scouting — alimenta Glicko, win prob, Markov.
+app.get('/api/profiles/:id/matches', requireAuth, ensureOwnedProfile, (req, res) => {
+  const data = getMatchesData(req.params.id);
+  res.json({
+    matches: data.matches || [],
+    lastScraped: data.lastScraped || {},
+    count: (data.matches || []).length,
+  });
+});
+
+// Refresh só matches — sem rodar sync completa de 30-200s. Só ~3s.
+// Útil pra corrigir dados de matches quando o scraper tiver bug, ou pra
+// atualizar histórico depois de torneio sem precisar pular pra agenda.
+app.post('/api/profiles/:id/matches/refresh', requireAuth, requireEditor, ensureOwnedProfile, async (req, res) => {
+  const creds = getProfileCredentials(req.params.id);
+  if (!creds) return res.status(404).json({ error: 'Perfil não encontrado' });
+  try {
+    const { TIClient } = await import('./ti-client.js');
+    const { fetchAthleteMatches } = await import('./match-scraper.js');
+    const client = new TIClient();
+    await client.login(creds.email, creds.password);
+    const currentYear = new Date().getFullYear();
+    const years = [currentYear, currentYear - 1, currentYear - 2];
+    const totals = {};
+    for (const y of years) {
+      try {
+        const matches = await fetchAthleteMatches(client, client.athleteId, y);
+        upsertYearMatches(req.params.id, y, matches);
+        totals[y] = matches.length;
+      } catch (err) {
+        totals[y] = `erro: ${err.message}`;
+      }
+    }
+    const data = getMatchesData(req.params.id);
+    res.json({ totals, totalUnique: data.matches?.length || 0, lastScraped: data.lastScraped });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Export CSV de matches — Excel-friendly. UTF-8 BOM pra Excel BR ler acentos.
+app.get('/api/profiles/:id/matches.csv', requireAuth, ensureOwnedProfile, (req, res) => {
+  const data = getMatchesData(req.params.id);
+  const matches = data.matches || [];
+  const cols = [
+    'id', 'year', 'date', 'tournamentId', 'tournamentName', 'tier', 'category',
+    'isDoubles', 'round', 'roundRaw', 'city', 'state', 'startDate', 'endDate',
+    'opponentId', 'opponentName', 'result', 'scoreRaw',
+    'setsWonAthlete', 'setsWonOpponent', 'gamesWonAthlete', 'gamesWonOpponent',
+    'hasSuperTiebreak', 'wo', 'scrapedAt',
+  ];
+  const escape = (v) => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+  const lines = [cols.join(';')];
+  for (const m of matches) lines.push(cols.map(c => escape(m[c])).join(';'));
+  const csv = '﻿' + lines.join('\n');  // BOM pra Excel reconhecer UTF-8
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="matches-${req.params.id}.csv"`);
+  res.send(csv);
+});
+
 // Reset apenas das movimentações manuais (column + cardOrder).
 // Preserva comentários, etiquetas, anexos, agenda, alertas, pin etc.
 app.post('/api/profiles/:id/reset-board-overrides', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
@@ -983,7 +1076,7 @@ function buildIcsFeed(tournaments, profile) {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//AgendaTenisIntegrado//PT-BR',
+    'PRODID:-//TennisFlow//PT-BR',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${escape(`Tênis - ${profile.athleteName || 'Atleta'}`)}`,
@@ -1028,7 +1121,7 @@ function buildIcsFeed(tournaments, profile) {
 
     lines.push(
       'BEGIN:VEVENT',
-      `UID:tournament-${t.id}@agenda-tenis-integrado`,
+      `UID:tournament-${t.id}@tennis-flow`,
       `DTSTAMP:${fmt(now)}`,
       `DTSTART;VALUE=DATE:${start}`,
       `DTEND;VALUE=DATE:${endStr}`,
@@ -1068,7 +1161,7 @@ function buildIcsFeed(tournaments, profile) {
 
     lines.push(
       'BEGIN:VEVENT',
-      `UID:payment-${t.id}@agenda-tenis-integrado`,
+      `UID:payment-${t.id}@tennis-flow`,
       `DTSTAMP:${fmt(now)}`,
       `DTSTART:${fmt(reminder)}`,
       `DTEND:${fmt(end)}`,
@@ -1350,7 +1443,7 @@ function getLanIps() {
 const PORT = process.env.PORT || 4173;
 app.listen(PORT, '0.0.0.0', () => {
   const lanIps = getLanIps();
-  console.log('\n  📅 Agenda Tênis Integrado rodando em:');
+  console.log('\n  📅 Tennis Flow rodando em:');
   console.log(`     • http://localhost:${PORT}                 ← este Mac`);
   for (const ip of lanIps) {
     console.log(`     • http://${ip}:${PORT}        ← celular/iPad na mesma WiFi`);

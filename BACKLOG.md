@@ -66,7 +66,22 @@ já comporta — `notes.column` por torneio (override), `columnOrder`,
 
 Esforço: ~1h30, ~150 linhas.
 
-### 6. Indicação visual da coluna na busca
+### 6. Lazy enrichment "card pisca de coluna"
+Ao clicar num card, modal busca detalhes (registrationOpensAt, cancelDeadline,
+registrationDeadline) que podem mudar o auto-placement. Card move de coluna
+visualmente. Mas ⌘+R volta tudo porque o backend só persiste `tiers` no
+endpoint de detalhes (linha 4199-4203 do app.js). Resultado: experiência
+inconsistente — "card sumiu da Monitorar".
+
+**Fix proposto**: estender `fetchTournamentDetails` no backend pra também
+persistir `registrationOpensAt`, `cancelDeadline`, `registrationDeadline`
+quando vier no enrichment. Cuidado: precisa decidir se TI mudou o prazo
+deve sobrescrever override do usuário ou não.
+
+Detectado por user em 2026-05-08, com card "Copa das Federações 2026" indo
+de Monitorar (74d futuro) → Inscrições Abertas após click.
+
+### 7. Indicação visual da coluna na busca
 Quando o usuário busca, hoje os cards aparecem nas colunas mas é difícil
 saber rapidamente onde cada um está sem rolar a coluna inteira.
 
@@ -79,29 +94,251 @@ saber rapidamente onde cada um está sem rolar a coluna inteira.
 (3) "Dim das colunas sem match" foi descartado — estético mas não
 acrescenta info que (1)+(2) não cobrem.
 
-## Próxima fronteira: Performance + Scouting (visão estratégica)
+## Performance Analytics — roadmap (visão "Wow")
 
-Discutido em 2026-05-08. Plano detalhado em `~/.claude/plans/temporal-rolling-pony.md`.
+Discutido e iniciado em 2026-05-08. Pivot estratégico: o user (estatístico) quer
+relatório de nível profissional, não dashboard de loja. Mira: rivalizar com
+Golden Set Analytics (GSA) na camada **macro** (nível de jogo), já que GSA é
+inacessível a juvenil brasileiro.
 
-**Visão**: evoluir o Tennis Flow de "agenda de torneios" pra "ecossistema de gestão de carreira do atleta", adicionando:
+### Edge cases conhecidos do scraper de matches
+- **Torneios por equipes (Interclubes)**: TI lista todos os atletas escalados
+  pelo clube como "tendo jogo agendado" mesmo se não jogaram. Aparecem como
+  W.O. (sem score) na lista de jogos. User confirmou que Anna NUNCA tomou
+  W.O. real, então esses entries são "fantasmas" do TI.
+  **Fix Phase 2**: filtrar `wo: true` das análises principais (Glicko, win
+  prob). Surface separadamente com flag.
+- **Nomes de duplas truncados**: às vezes vem "Nome/" com partner vazio (ex:
+  "Amelie Abreu/") quando TI perde dado da partner. Não é bug nosso — é
+  lacuna de dados.
+- **Filtro de ano do TI**: a página `/perfil2/jogos/{id}` IGNORA `?ano=Y` no
+  GET — sempre devolve ano corrente. Filtro real é POST com form-data
+  `ano=Y`. Sem isso, scraper retornava 23 matches × 3 anos = 69 entries
+  duplicadas. Fixado em 2026-05-08.
 
-1. **Performance**: histórico de jogos do atleta (W/L, evolução temporal, win rate por categoria/superfície, streaks).
-2. **Scouting head-to-head**: análise de adversário com base em jogos já disputados contra ele.
+### Fase 1 — Foundation ✅ feito (2026-05-08)
+- Scraper `/perfil2/jogos/{id}?ano=Y` em `backend/match-scraper.js`
+- 1 GET por ano. Backfill 3 anos = 1-2s. Endpoint público no TI, sem auth.
+- Storage `matches.json` com `upsertYearMatches` (idempotente)
+- Sync-manager decide anos (ano atual sempre + 2 anteriores se nunca scrapeados)
+- Endpoint `GET /api/profiles/:id/matches`
+- UI placeholder: modal "Histórico de jogos" no card do atleta — agrupado
+  por torneio com V/D dot, round, oponente(s), score.
+- **Validação**: counts batem 100% (9V/14D em 2026 vs widget Desempenho).
+  Sets/games divergem ±5% por formatos exóticos (match-tiebreak only,
+  super-tiebreak no 3º set, WO sem score) — toleramos pois Glicko só usa W/L.
 
-**Insight chave**: as duas views se alimentam do MESMO dataset. Scrapeia só os jogos do próprio atleta — o nome do adversário vem "de graça" no resultado. Sem scraping de outros perfis = sem privacy concerns.
+### Fase 2 — Skill rating Bayesiano (próxima)
+- Glicko-2 puro JS (~200 linhas) com volatilidade σ
+- Update a cada match cronologicamente
+- Sparkline temporal do rating ±2σ
+- "Expected vs Realized" — quantos jogos a Anna deveria ter vencido dado os
+  ratings dos oponentes? Forest plot por torneio.
+- Destaque "Maior surpresa positiva/negativa"
 
-**Volume**: filtro `(isAnnaInscribed || isAnnaConfirmada) && endDate < hoje` reduz de ~83 torneios pra ~10-20 disputados de fato. Backfill de 5-10s, não 5min.
+### Fase 3 — Predição
+- Logistic regression `P(W | rating_diff, ganhou_1º_set, em_DF, dias_descanso, round)`
+- Calibration plot (reliability diagram) + Brier score
+- Monte Carlo de chave futura: 10k simulações, P(QF), P(SF), P(F), P(Campeã)
+- Cartões por adversário na chave: `vs X (R32) — P(W)=73%`
 
-**Modelo de rede (insight 2026-05-08)**: scouting fica REALMENTE útil quando vira colaborativo — treinador na conta dele busca atleta X, vê os jogos reportados pela rede inteira (não só os da sua casa). Identidade canônica = `athleteId` do TI; quando o mesmo ID aparece em `profile.athleteId` de uma conta e `match.opponentId` de outra, é a mesma pessoa. Endpoint `/api/scouting/athlete/{tiId}` quebra o isolamento por household pra expor só dados derivados do TI público. Tipo de conta "Coach" sem atleta próprio se aproveita da infra de roles (vincula como Editor aos perfis dos alunos). Growth driver: cobertura cresce com novos usuários → alvo prioritário = clubes/academias inteiros.
+### Fase 4 — Análise temporal + Markov
+- Decomposição STL (trend + seasonality + residuals) do win rate
+- EWMA de forma com half-life ajustado experimentalmente
+- Runs test (Wald-Wolfowitz) — testa se streaks são significativas vs ruído
+- Markov state diagram: `1set_W` → `Win_in_2`, transições visualizadas
+- Diagnóstico tático: "P(reverter | perdeu 1º set) = 12%"
 
-**Sequenciamento sugerido**:
-1. Investigar endpoint TI de chaves (`/torneio_painel_chave/index/{tid}/{catId}`?) — pré-requisito.
-2. Scraper de matches (~1 semana) — alimenta `matches.json` separado.
-3. View Scouting (~3-5 dias) — primeira interface visível.
-4. View Performance (~1 semana) — dashboard global.
-5. Extensões: predição de chave, comparativo entre atletas da família, export pra coach.
+### Fase 5 — Polish + distribuição
+- PDF coach-friendly 1 página A4 (Puppeteer ou print CSS)
+- Export CSV/JSON: `/api/analytics/{athleteId}/dataset.csv`
+- Workbench interativo com filtros (ano, tier, UF, oponente)
+- Survival curves Kaplan-Meier por tier
 
-**Arquivos que serão tocados**: `backend/scraper.js`, `backend/sync-manager.js`, `backend/storage.js`, `frontend/app.js`. Novo: `data/profile-{id}/matches.json`.
+### Bonus / Extensões futuras
+- **Scouting cross-user (rede)**: lookup `/api/scouting/athlete/{tiId}` que
+  consulta matches em todos os profiles do household. Modelo de rede
+  alimentado por todos os usuários cadastrados. Identidade canônica =
+  `athleteId` do TI. Risco LGPD: tratamento de dados de menores sem
+  consentimento dos adversários — exige opt-in mútuo.
+- **Multilevel/hierarchical model** (atletas nested em categoria/tier) quando
+  houver volume.
+- **Bradley-Terry model** pra ranking transitivo no universo da Anna.
+- **Tipo de conta "Coach"**: treinador sem atleta, vinculado como Editor aos
+  perfis dos alunos.
+
+**Volume**: backfill total ~3 GETs (3 anos), ~1-2s. Cache forever após
+torneio terminar.
+
+**Insight chave**: dataset alimenta TODAS as análises — scrape uma vez,
+calcula tudo localmente. GSA opera no shot-by-shot (vídeo + tracking). Nós
+no game-by-game (placar + contexto). Camada diferente, mas ainda inédita
+no mercado juvenil BR.
+
+**Validação pendente Fase 1** (a fazer no próximo teste local):
+- [ ] Quantidade total de matches faz sentido? (~37 esperados)
+- [ ] Scores batem com perfil TI?
+- [ ] Oponentes/IDs corretos?
+- [ ] Nada faltando ou duplicado?
+- [ ] UI sem quebra mobile/desktop?
+
+**Arquivos tocados na Fase 1**: `backend/match-scraper.js` (novo),
+`backend/scraper.js`, `backend/sync-manager.js`, `backend/storage.js`,
+`backend/server.js`, `frontend/app.js`. Novo: `data/profile-{id}/matches.json`.
+
+## Dupla checagem dos dados do Tênis Integrado
+
+Insight crítico do user (2026-05-08): **o TI pode errar a categorização das
+partidas**. Caso real: o G1 de Belo Horizonte (24/04/2026) — Anna jogou
+SIMPLES e DUPLAS no mesmo evento. A partida de simples (vs Luiza Reis)
+apareceu no bloco do torneio de duplas, com tier "12FD" (categoria de
+duplas). Resultado: nosso parser inicial classificou como duplas — mas o
+nome do oponente era "Luiza Reis" (1 nome só, sem `/`).
+
+**Correção aplicada**: parser agora identifica simples vs duplas pelo
+formato do nome (`/` = duplas), ignorando o tier do torneio.
+
+**Próximo nível de validação a construir**:
+1. **Reconciliação com widget Desempenho do TI** — o /perfil2/inicio/
+   mostra "X jogos no ano". Se nossa contagem divergir, flag e alerta.
+2. **Cross-check com /perfil2/programa/** — partidas marcadas mas não
+   disputadas devem casar com nossos W.O.s.
+3. **Auditoria visual no relatório** — seção "Anexos" com matches
+   "suspeitos" (categoria 12FD com nome simples, etc) pra revisão manual.
+4. **Source of truth ranking** — quando ranking CBT da atleta divergir
+   significativamente do que esperaríamos pelos pontos calculados, alerta.
+
+Princípio orientador: **TI é fonte primária mas falível**. Tennis Flow
+tem que detectar inconsistências e dar transparência ao usuário, não
+propagar erros silenciosamente.
+
+## Estratégia de tier — análise marginal de pontos no ranking
+
+Insight estratégico do user (2026-05-08): o ranking CBT 12F é composto pelos
+**4 melhores torneios** da atleta. Cada tier dá pontuação diferente:
+- G3: campeã ~50 pts, finalista ~30, SF ~20, R16 ~10
+- G2: campeã ~80 pts, finalista ~50, SF ~30, R16 ~15
+- G1: campeã ~120 pts, finalista ~80, SF ~50, R16 ~25
+- GA+: campeã ~200 pts, finalista ~120, SF ~80
+
+**A consequência tática**: depois que a atleta tem 4 torneios bons em G3, o
+**5º G3** só agrega valor se for melhor pontuado que o pior dos 4 atuais. Se o
+"piso" da Anna é 30 pts, vencer um G3 (=50 pts) troca por +20. Mas chegar a
+QF de G2 (=25 pts) NÃO troca (abaixo do piso).
+
+**Implicação**: quando atinge teto em G3, é hora de subir pra G2/G1. Continuar
+em G3 vira "desgaste sem ganho de ranking" — gasto de tempo e dinheiro com
+retorno marginal zero.
+
+**Como incrementar o relatório (e Travel ROI):**
+1. **Tabela oficial de pontuação CBT 12F** — pesquisar/scrapeai do site da CBT
+2. **Pontos retroativos por torneio da atleta** — derivar da última partida
+   disputada (a fase máxima atingida = pontos ganhos)
+3. **Top 4 contando pro ranking atual** — somar os 4 maiores
+4. **"Piso" = menor dos 4** — número-chave da análise marginal
+5. **Análise prospectiva** — pra cada torneio futuro no calendário, qual o
+   ponto **esperado** baseado em rating Glicko da chave + tier × fase, e se
+   isso troca o piso
+6. **Recomendação tier-up**: "Anna já maximizou ganhos em G3 — próximos
+   investimentos devem ser G2/G1. Mesmo perder R1 em GA+ entrega exposição
+   estatística mais valiosa que ganhar G3 do bairro."
+
+**Capítulo novo no relatório**: "Estratégia de tier — onde investir os
+próximos torneios". 5-7 páginas. Tabela de pontos, breakdown dos 4 atuais,
+recomendação prospectiva.
+
+**Estimativa**: 3-4h (depende de ter a tabela CBT disponível).
+
+**Conexão com Travel ROI**: este cálculo ALIMENTA o "vale a pena viajar"
+— viagem cara pra G2 fora do estado tem ROI alto se trocar piso por +30
+pts; G3 perto de casa tem ROI baixo se piso já estiver alto.
+
+## Travel ROI — apoio à decisão dos pais sobre quando viajar
+
+Insight do user (2026-05-08): pra família de juvenil, a maior dor é decidir
+quando vale a pena viajar pra torneio. Custo é alto (passagem, hotel, taxa
+inscrição, alimentação) e "viajar pra perder na 1ª rodada" vira turismo
+caríssimo. Pais oscilam entre subestimar (kid perde oportunidade de
+crescer) e superestimar (gasto sem retorno).
+
+**Tennis Flow pode ajudar SEM depreciar a atleta** — o framing é crucial.
+Não é "seu filho não vai ganhar, economize" — é "veja o que pode esperar
+realisticamente, e meça sucesso pelo critério certo".
+
+### Métricas a oferecer pra cada torneio futuro
+
+1. **Probabilidade de avançar por rodada** (Monte Carlo da chave usando
+   Glicko da Anna + ratings dos inscritos):
+   - P(passa R1), P(QF), P(SF), P(F), P(Campeã)
+   - Exemplo: "70% chance de jogar R2; 25% chance de QF; 5% de SF"
+
+2. **Pontos esperados no ranking CBT** (E[pontos] = ΣP(rodada) × pontos
+   da rodada). Output: "Expectativa de 12-18 pontos na trip"
+
+3. **Nível de competição** (rating médio dos inscritos). Output: "Esse 
+   torneio te coloca contra rating médio 1450 — 175 acima do seu — é
+   torneio 'esticador', ótimo pra desenvolvimento mas resultado curto."
+
+4. **Histórico em torneios similares** (mesmo tier + região + tamanho).
+   "Em G3 fora do DF, você tem 40% de aproveitamento. Vs 50% em casa."
+
+5. **Categorização do torneio**:
+   - **Confronto** — torneio onde você briga por título (rating dela ≈ rating médio)
+   - **Crescimento** — você é o "azarão" mas vai ganhar exposição (rating dela < média -100)
+   - **Confiança** — torneio onde você é favorita (rating dela > média +100), bom pra fechar pontos
+   
+6. **"Custo por jogo"** — orientativo: dado o custo da viagem informado
+   pelo user, custo dividido pelo n esperado de partidas. "$2000 por 3
+   jogos esperados = $670/jogo. É caro, mas o cabeça-de-chave 4 da chave
+   é a Letícia (rating 1480) — referência rara em DF."
+
+### Como NÃO depreciar
+- Sempre framar como "decisão informada", não "previsão de fracasso"
+- Mostrar valor além de pontos (exposure, learning, fitness)
+- Comparar com benchmarks da CATEGORIA, não com ideal absoluto
+- Incluir histórias positivas: "5 das suas últimas vitórias inesperadas
+  foram em torneios fora de casa — viajar abre a janela pro azar bom"
+- Linguagem: "decisão de família", "o que esperar", "como medir sucesso"
+
+### Implementação técnica
+- Pré-requisito: scraper da chave do torneio (`/torneio_painel_chave/...`)
+  pra obter lista de inscritos com IDs
+- Glicko-2 cross-user (já no roadmap de scouting) pra ter rating dos
+  oponentes; OU usar ranking CBT como proxy de rating quando atleta
+  não está no nosso sistema
+- UI: card "Análise da viagem" no modal do torneio, com seção destacada
+  "Recomendação"
+
+### Quando tem mais sentido entregar
+Depois das Fases 2-3 do report (Glicko + Predição + Monte Carlo) — porque
+todos os ingredientes estarão prontos. Estimativa: ~3-5 dias de UI + alguns
+ajustes no scraper.
+
+### Relação com modelo de monetização
+Pode ser feature **PRO** que sustenta o pitch: "R$297 te economiza 
+um deslocamento ruim" — facilmente mais que paga o ano.
+
+## Renomear serviço Render (cleanup do nome `agenda-tenis-integrado`)
+
+Render confirmou (2026-05-08) que **o slug `.onrender.com` não pode ser
+renomeado depois da criação**. Opções:
+
+**A) Recriar serviço como `tennis-flow.onrender.com`** — exige migrar disco
+persistente (`data/` com users, profiles, matches, comprovantes), re-config
+env vars (VAPID, DATA_SECRET, ADMIN_TOKEN), reapontar 4 custom domains,
+atualizar render.yaml, cutover com downtime curto. ~2-4h trabalho + risco
+de data loss.
+
+**B) Manter atual** — cleanup já cobriu o que é user-facing (SW cache, iCal
+UIDs, PRODID, comentários, banner boot). Único leak restante é o CNAME
+público que resolve pra `agenda-tenis-integrado.onrender.com`, visível só
+via `dig www.tennis-flow.com.br`. Mitigação: desligar toggle "Render
+Subdomain" na tela de Custom Domains pra `.onrender.com` retornar 404.
+
+**Decisão atual (2026-05-08)**: Opção B. Migrar quando:
+- For fazer marketing público de larga escala
+- Receber email do TI pedindo explicação
+- Hit 50+ usuários e quiser higiene operacional
 
 ## Performance / produção
 
