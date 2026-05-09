@@ -6,7 +6,11 @@
 //   - new_tournament_tier      params: { tiers: string[] }   (G1, GA, GA+, etc)
 //   - ranking_change           params: { scope: 'national' | 'df' }
 
-const norm = (s) => (s || '').toString().trim().toLowerCase();
+// Normaliza pra comparação tolerante: minúsculas + remove diacríticos.
+// "Uberlândia" e "Uberlandia" precisam bater — TI às vezes exporta sem acento,
+// usuário cadastra com acento (ou vice-versa).
+const norm = (s) => (s || '').toString().trim().toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 function tournamentLocationLabel(t) {
   const parts = [t.city, t.state].filter(Boolean);
