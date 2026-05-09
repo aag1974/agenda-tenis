@@ -4529,6 +4529,14 @@ async function resetAllData() {
 }
 
 async function syncNow() {
+  // Sem perfil cadastrado, sync não faz sentido — aviso explícito e
+  // direciona pra cadastro. Antes ficava silencioso ("nada pra sincronizar").
+  if (!state.profiles?.length) {
+    if (confirm('Você ainda não cadastrou nenhum atleta. Pra sincronizar, é preciso primeiro adicionar um atleta com as credenciais do Tênis Integrado.\n\nQuer adicionar um atleta agora?')) {
+      openProfileForm();
+    }
+    return;
+  }
   // Dispara sync pra TODOS os atletas da household. O modal segue
   // mostrando o status do atleta ativo (que é o que o user está vendo).
   state.syncStatus = { state: 'running', startedAt: new Date().toISOString() };

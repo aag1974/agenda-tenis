@@ -796,27 +796,8 @@ app.post('/api/admin/report-requests/:profileId/:requestId/deliver', requireAuth
   const requestEntry = requests.find(r => r.id === requestId);
   if (!requestEntry) return res.status(404).json({ error: 'Pedido não encontrado' });
 
-  // Salva HTML em disco usando reportId determinístico (= requestId)
-  const reportId = requestId;
-  saveDeliveredReport(profileId, reportId, html);
-
-  // Atualiza status do pedido
-  const updated = updateReportRequest(profileId, requestId, {
-    status: 'delivered',
-    deliveredAt: new Date().toISOString(),
-    deliveredBy: req.userEmail,
-    reportId,
-  });
-
-  // Cria alerta no painel do dono — aparece no sino com botão "Ver relatório"
   const profile = getProfile(profileId);
   const athleteName = profile?.athleteName || 'atleta';
-  addAlertEvents(profileId, [{
-    type: 'report_delivered',
-    message: `📊 Seu Relatório de Performance ${G_GENDER_PARTICLE(profile)} ${athleteName} está pronto!`,
-    reportId,
-    dedupeKey: `report-delivered-${reportId}`,
-  }]);
 
   // Override de destinatário via query ?as=email — útil pra testes
   // ("entregar pra outro email meu") e pra casos em que o requesterUserId
@@ -827,18 +808,38 @@ app.post('/api/admin/report-requests/:profileId/:requestId/deliver', requireAuth
     if (!u) return res.status(400).json({ error: `Email não encontrado: ${req.query.as}` });
     overrideUserId = u.id;
   }
-
-  // Push pro solicitante (quem clicou em "Enviar solicitação"). Pode não ser
-  // o dono original do perfil — em households com múltiplos membros, o
-  // pedido vem de quem fez. Fallback pro dono se requesterUserId ausente
-  // (ex.: pedidos antigos antes do registro server-side).
   const targetUserId = overrideUserId || requestEntry.requesterUserId || profile?.userId;
+
+  // Salva HTML em disco usando reportId determinístico (= requestId)
+  const reportId = requestId;
+  saveDeliveredReport(profileId, reportId, html);
+
+  // Atualiza status do pedido. deliveredToUserId = quem deve receber +
+  // ter acesso ao relatório (mesmo sem ser dono do perfil).
+  const updated = updateReportRequest(profileId, requestId, {
+    status: 'delivered',
+    deliveredAt: new Date().toISOString(),
+    deliveredBy: req.userEmail,
+    reportId,
+    deliveredToUserId: targetUserId,
+  });
+
+  // Cria alerta no painel do dono — aparece no sino com botão "Ver relatório"
+  addAlertEvents(profileId, [{
+    type: 'report_delivered',
+    message: `📊 Seu Relatório de Performance ${G_GENDER_PARTICLE(profile)} ${athleteName} está pronto!`,
+    reportId,
+    dedupeKey: `report-delivered-${reportId}`,
+  }]);
+
+  // Push pro destinatário (override > solicitante > dono).
+  // URL aponta direto pro relatório — ao clicar na notificação, abre HTML.
   if (targetUserId) {
     sendPushToUsers([targetUserId], {
       title: '✨ Seu Relatório de Performance está pronto',
-      body: `Análise completa de ${athleteName} disponível no app.`,
+      body: `Análise completa de ${athleteName} disponível.`,
       tag: `report-delivered-${reportId}`,
-      url: '/?reportReady=1',
+      url: `/api/profiles/${profileId}/reports/${reportId}`,
     }).catch(err => console.error('[deliver push]', err.message || err));
   }
 
@@ -854,8 +855,20 @@ app.get('/api/profiles/:id/reports', requireAuth, ensureOwnedProfile, (req, res)
   res.json(listDeliveredReports(req.params.id));
 });
 
-// Cliente baixa/visualiza um relatório específico (HTML inline)
-app.get('/api/profiles/:id/reports/:reportId', requireAuth, ensureOwnedProfile, (req, res) => {
+// Cliente baixa/visualiza um relatório específico (HTML inline).
+// Acesso: dono do perfil (household) OU destinatário registrado da entrega
+// (deliveredToUserId, gravado no request entry quando admin entregou).
+app.get('/api/profiles/:id/reports/:reportId', requireAuth, (req, res) => {
+  const profile = getProfile(req.params.id);
+  if (!profile) return res.status(404).send('Perfil não encontrado');
+  const isOwner = profileBelongsToHousehold(profile, req.householdId);
+  const requests = getReportRequests(req.params.id);
+  const reqEntry = requests.find(r => r.reportId === req.params.reportId);
+  const isRecipient = reqEntry?.deliveredToUserId === req.userId;
+  const isAdmin = isAdminEmail(req.userEmail);
+  if (!isOwner && !isRecipient && !isAdmin) {
+    return res.status(403).send('Acesso negado');
+  }
   const html = getDeliveredReport(req.params.id, req.params.reportId);
   if (!html) return res.status(404).send('Relatório não encontrado');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
