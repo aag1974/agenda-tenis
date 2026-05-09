@@ -2925,7 +2925,7 @@ function openAlertsListModal({ onlyUnseen = false } = {}) {
   const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
   const card = el('div', {
     class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
-    style: 'max-height: 85vh;',
+    style: 'max-height: 70vh;',
   });
   const header = el('div', { class: 'bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
     el('span', { class: 'font-medium' }, onlyUnseen ? '🔔 Novos alertas' : '🔔 Alertas'),
