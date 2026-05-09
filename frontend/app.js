@@ -4025,7 +4025,7 @@ async function loadAnalyticsInto(container, profileId) {
   container.appendChild(el('div', { class: 'rounded-lg border border-slate-200 bg-slate-50 p-3 mt-3' },
     el('div', { class: 'flex items-center gap-2 text-[11px] font-semibold text-slate-700 mb-1' }, '📊 Análise estatística completa'),
     el('div', { class: 'text-[12px] text-slate-600 leading-relaxed' },
-      'O relatório técnico completo (19 páginas) com análise descritiva, exploratória e narrativa é entrega especial assinada pelo estatístico responsável.',
+      'O relatório técnico completo, com análise descritiva, exploratória e narrativa, é entrega especial assinada pelo estatístico responsável. A extensão depende do volume de dados disponíveis sobre a atleta.',
     ),
     el('button', {
       class: 'mt-2 text-xs px-3 py-1.5 rounded bg-[#0e3a4d] text-white hover:bg-[#16526a]',
@@ -4067,7 +4067,7 @@ function openCompleteReportRequestModal(athleteName) {
   const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1 space-y-3' });
 
   body.appendChild(el('div', { class: 'text-[13px] text-slate-700 leading-relaxed' },
-    'O relatório técnico completo (19 páginas) inclui análise descritiva, exploratória e narrativa do desempenho, com gráficos e interpretação assinada pelo estatístico responsável.',
+    'O relatório técnico completo inclui análise descritiva, exploratória e narrativa do desempenho, com gráficos e interpretação assinada pelo estatístico responsável. A extensão depende do volume de dados disponíveis sobre a atleta.',
   ));
 
   body.appendChild(el('a', {
