@@ -457,6 +457,20 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao listar');
     return r.json();
   },
+  async listReportRequests() {
+    const r = await fetch('/api/admin/report-requests');
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao listar pedidos');
+    return r.json();
+  },
+  async updateReportRequestStatus(profileId, requestId, status) {
+    const r = await fetch(`/api/admin/report-requests/${profileId}/${requestId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao atualizar status');
+    return r.json();
+  },
 };
 
 // ===== Init =====
@@ -3403,14 +3417,105 @@ function openAdminModal() {
     } catch (e) { alert('Erro: ' + e.message); }
   };
 
-  // Bloco pra acesso cross-household — após o consentimento LGPD, admin
-  // precisa conseguir baixar dados de qualquer atleta. Picker carrega lazy
-  // a lista de profiles ao expandir, pra não pesar o open do modal.
+  // Inbox de pedidos. Quando o cliente clica "Enviar solicitação" no modal
+  // de consentimento LGPD, fica registrado em /report-requests com profileId
+  // já amarrado. Aqui é a entrada natural — admin não precisa adivinhar
+  // qual atleta é o do pedido.
+  function pendingRequestsSection() {
+    const wrap = el('div', { class: 'border border-emerald-200 rounded-lg p-3 bg-emerald-50/40' });
+    wrap.appendChild(el('div', { class: 'text-sm font-semibold text-slate-700' }, '📬 Pedidos de relatório'));
+    wrap.appendChild(el('div', { class: 'text-xs text-slate-500 mt-0.5' },
+      'Solicitações vindas pelo botão "Enviar solicitação" no modal de consentimento LGPD.'));
+
+    const list = el('div', { class: 'mt-2 space-y-2' });
+    list.appendChild(el('div', { class: 'text-xs text-slate-400 italic' }, 'Carregando…'));
+    wrap.appendChild(list);
+
+    const STATUS_BADGE = {
+      pending:     { label: '⏳ Pendente',    cls: 'bg-amber-100 text-amber-800 border-amber-200' },
+      in_progress: { label: '✏️ Em andamento', cls: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+      delivered:   { label: '✅ Entregue',    cls: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+    };
+    const NEXT_STATUS = { pending: 'in_progress', in_progress: 'delivered' };
+    const NEXT_LABEL = { pending: '▶ Iniciar', in_progress: '✅ Marcar entregue' };
+
+    const renderRequests = async () => {
+      list.innerHTML = '';
+      list.appendChild(el('div', { class: 'text-xs text-slate-400 italic' }, 'Carregando…'));
+      try {
+        const requests = await api.listReportRequests();
+        list.innerHTML = '';
+        if (!requests.length) {
+          list.appendChild(el('div', { class: 'text-xs text-slate-500 italic py-1' },
+            'Nenhum pedido registrado ainda. (Pedidos antigos podem estar só no email.)'));
+          return;
+        }
+        for (const r of requests) {
+          const date = new Date(r.createdAt).toLocaleString('pt-BR');
+          const requester = [r.requesterFirstName, r.requesterLastName].filter(Boolean).join(' ') || '(sem nome)';
+          const status = r.status || 'pending';
+          const badgeCfg = STATUS_BADGE[status] || STATUS_BADGE.pending;
+          const card = el('div', { class: `border rounded p-2 ${status === 'delivered' ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-white border-slate-200'}` });
+          card.appendChild(el('div', { class: 'flex items-baseline justify-between gap-2' },
+            el('div', { class: 'flex items-center gap-2 min-w-0' },
+              el('div', { class: 'text-sm font-semibold text-slate-800 truncate' }, r.athleteName || '(sem nome)'),
+              el('span', { class: `text-[10px] px-1.5 py-0.5 rounded border font-semibold whitespace-nowrap ${badgeCfg.cls}` }, badgeCfg.label),
+            ),
+            el('div', { class: 'text-[10px] text-slate-500 shrink-0' }, date),
+          ));
+          card.appendChild(el('div', { class: 'text-[11px] text-slate-600 mt-0.5 truncate' },
+            `${requester} · ${r.requesterEmail || '(sem email)'}`,
+          ));
+          const actions = el('div', { class: 'mt-2 flex gap-2 flex-wrap' });
+          actions.appendChild(el('a', {
+            class: 'flex-1 text-center text-[11px] px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold no-underline',
+            href: `/api/admin/profiles/${r.profileId}/report`,
+            target: '_blank',
+            rel: 'noopener',
+          }, '👁️ Ver'));
+          actions.appendChild(el('a', {
+            class: 'flex-1 text-center text-[11px] px-2 py-1 rounded bg-violet-600 hover:bg-violet-700 text-white font-semibold no-underline',
+            href: `/api/admin/profiles/${r.profileId}/export`,
+          }, '📦 Zip'));
+          if (NEXT_STATUS[status]) {
+            const nextBtn = el('button', {
+              class: 'flex-1 text-[11px] px-2 py-1 rounded border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold',
+            }, NEXT_LABEL[status]);
+            nextBtn.onclick = async () => {
+              nextBtn.disabled = true;
+              nextBtn.textContent = '…';
+              try {
+                await api.updateReportRequestStatus(r.profileId, r.id, NEXT_STATUS[status]);
+                await renderRequests();
+              } catch (err) {
+                alert('Erro: ' + err.message);
+                nextBtn.disabled = false;
+                nextBtn.textContent = NEXT_LABEL[status];
+              }
+            };
+            actions.appendChild(nextBtn);
+          }
+          card.appendChild(actions);
+          list.appendChild(card);
+        }
+      } catch (err) {
+        list.innerHTML = '';
+        list.appendChild(el('div', { class: 'text-xs text-red-600' }, `Erro: ${err.message}`));
+      }
+    };
+    renderRequests();
+
+    return wrap;
+  }
+
+  // Bloco pra acesso cross-household — fallback pro caso de não ter pedido
+  // registrado (cliente clicou antes do registro server-side estar deployado,
+  // ou o admin precisa olhar dados de alguém da família/teste).
   function crossHouseholdAccess() {
     const wrap = el('div', { class: 'border border-violet-200 rounded-lg p-3 bg-violet-50/40' });
-    wrap.appendChild(el('div', { class: 'text-sm font-semibold text-slate-700' }, '🔓 Acessar dados de atleta (qualquer household)'));
+    wrap.appendChild(el('div', { class: 'text-sm font-semibold text-slate-700' }, '🔓 Acessar atleta diretamente (fallback)'));
     wrap.appendChild(el('div', { class: 'text-xs text-slate-500 mt-0.5' },
-      'Ver relatório técnico ou baixar dump (zip) pra elaborar o relatório completo. Use só após autorização registrada.'));
+      'Use quando o pedido foi feito antes do registro server-side, ou pra olhar dados da própria família/teste.'));
 
     const select = el('select', {
       class: 'mt-2 w-full text-sm border border-slate-300 rounded px-2 py-1.5 bg-white',
@@ -3490,6 +3595,7 @@ function openAdminModal() {
         resetAll,
         true,
       ),
+      pendingRequestsSection(),
       crossHouseholdAccess(),
     ),
     state.version && el('div', {

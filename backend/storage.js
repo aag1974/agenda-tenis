@@ -465,6 +465,17 @@ export function addReportRequest(profileId, request) {
   return entry;
 }
 
+// Atualiza status (pending → in_progress → delivered) ou outros campos
+// de um pedido. Mantém createdAt; adiciona updatedAt.
+export function updateReportRequest(profileId, requestId, patch) {
+  const all = getReportRequests(profileId);
+  const idx = all.findIndex(r => r.id === requestId);
+  if (idx < 0) return null;
+  all[idx] = { ...all[idx], ...patch, updatedAt: new Date().toISOString() };
+  writeJson(reportRequestsFile(profileId), all);
+  return all[idx];
+}
+
 export function getManualTournaments(profileId) {
   return readJson(join(profileDir(profileId), 'manual.json'), []);
 }

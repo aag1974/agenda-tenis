@@ -247,6 +247,12 @@ export function isAdminEmail(email) {
   return !!email && ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
+// IDs dos users que são admin — usado pra mandar push notifications
+// de pedidos de relatório em tempo real.
+export function listAdminUserIds() {
+  return readUsers().filter(u => isAdminEmail(u.email)).map(u => u.id);
+}
+
 export function requireAdmin(req, res, next) {
   if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
   if (!isAdminEmail(req.userEmail)) return res.status(403).json({ error: 'Acesso negado' });

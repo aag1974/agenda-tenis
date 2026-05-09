@@ -12,7 +12,7 @@ import {
   setCardColumn, addCardComment, updateCardComment, deleteCardComment, getCardActivity,
   getAlertRules, addAlertRule, updateAlertRule, deleteAlertRule,
   getAlertEvents, addAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
-  getReportRequests, addReportRequest,
+  getReportRequests, addReportRequest, updateReportRequest,
   findOrCreateShareToken, getShareLink,
   clearColumnOverrides, saveSyncedData, resetProfileData,
   getMatchesData, upsertYearMatches,
@@ -34,7 +34,7 @@ import { getProfileCredentials } from './storage.js';
 import {
   createUser, authenticate, signCookie, authMiddleware, requireAuth, requireEditor, requireAdmin,
   userCount, listUsers, findUserById, getPlanInfo, migrateUsersAddPlan, updateUserName,
-  isAdminEmail,
+  isAdminEmail, listAdminUserIds,
 } from './auth.js';
 import {
   migrateHouseholdsOnBoot, listHouseholdMembers, profileBelongsToHousehold,
@@ -763,7 +763,35 @@ app.post('/api/profiles/:id/report-request', requireAuth, ensureOwnedProfile, (r
     userAgent: req.headers['user-agent'] || null,
     status: 'pending',
   });
+
+  // Notifica admins via push (não bloqueia response — falha não rolla back).
+  // Tag única evita stack de notificações se cliente clicar várias vezes.
+  const adminIds = listAdminUserIds();
+  if (adminIds.length) {
+    const requesterLabel = entry.requesterEmail || 'sem email';
+    sendPushToUsers(adminIds, {
+      title: '📬 Novo pedido de relatório',
+      body: `${entry.athleteName || 'Atleta'} · ${requesterLabel}`,
+      tag: `report-request-${entry.id}`,
+      url: '/?admin=requests',
+    }).catch(err => console.error('[report-request push]', err.message || err));
+  }
+
   res.json(entry);
+});
+
+// Admin atualiza status de um pedido (pipeline pending → in_progress → delivered)
+app.patch('/api/admin/report-requests/:profileId/:requestId', requireAuth, requireAdmin, (req, res) => {
+  const { status } = req.body || {};
+  if (!['pending', 'in_progress', 'delivered'].includes(status)) {
+    return res.status(400).json({ error: 'status deve ser pending, in_progress ou delivered' });
+  }
+  const updated = updateReportRequest(req.params.profileId, req.params.requestId, {
+    status,
+    statusUpdatedBy: req.userEmail,
+  });
+  if (!updated) return res.status(404).json({ error: 'Pedido não encontrado' });
+  res.json(updated);
 });
 
 // Admin: lista todas as solicitações através de todos os perfis.
