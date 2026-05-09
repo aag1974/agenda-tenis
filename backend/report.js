@@ -621,9 +621,11 @@ function renderChapter3(ctx) {
         }))
       )}
 
-      <h3>Calendário de atividade — aproveitamento por mês</h3>
-      <div class="calendar-heatmap-wrap">
-        ${calendarHeatmap(matches.filter(m => !m.isDoubles && !m.wo && (m.result === 'W' || m.result === 'L')))}
+      <div class="keep-together">
+        <h3>Calendário de atividade — aproveitamento por mês</h3>
+        <div class="calendar-heatmap-wrap">
+          ${calendarHeatmap(matches.filter(m => !m.isDoubles && !m.wo && (m.result === 'W' || m.result === 'L')))}
+        </div>
       </div>
 
       <h3>Cobertura</h3>
@@ -1414,6 +1416,20 @@ function baseHtmlShell(athleteName, dateStr, body) {
 
     /* Parágrafos: evita 1 linha solta no fim/início da página. */
     p { page-break-inside: avoid; break-inside: avoid; }
+
+    /* Blocos "keep-together": agrupa h3 + chart/tabela pra que título
+       e visualização não fiquem em páginas diferentes. break-inside:
+       avoid mantém o conjunto unido — se não couber, vai inteiro pra
+       próxima página. */
+    .keep-together,
+    .calendar-heatmap-wrap,
+    .player-card-body,
+    .dna-radar-wrap {
+      page-break-inside: avoid; break-inside: avoid;
+    }
+
+    /* Heatmap não deve scrollar em print — força largura natural */
+    .calendar-heatmap-wrap { overflow: visible; }
   }
 
   .no-print {
