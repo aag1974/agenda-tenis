@@ -3296,7 +3296,10 @@ function toggleGearMenu() {
       title: 'Versão do Tennis Flow · clique pra forçar atualização',
       onClick: () => { menu.remove(); window.location.reload(); },
       style: 'cursor:pointer',
-    }, `v${state.version.version} · ${state.version.commit}`),
+    }, state.user?.isAdmin
+      ? `v${state.version.version} · ${state.version.commit}`
+      : `v${state.version.version}`
+    ),
   );
 
   // Anexa ao body (fora do #header-bar pra escapar dos overrides do tema kanban)
