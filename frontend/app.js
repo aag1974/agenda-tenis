@@ -447,6 +447,11 @@ const api = {
     if (!r.ok) throw new Error('Erro ao resetar tudo');
     return r.json();
   },
+  async reevaluateAlerts(profileId) {
+    const r = await fetch(`/api/profiles/${profileId}/alerts/reevaluate`, { method: 'POST' });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao re-avaliar');
+    return r.json();
+  },
 };
 
 // ===== Init =====
@@ -467,6 +472,7 @@ async function init() {
     plan: me.plan || null,
     role: me.role || 'editor',
     isFounder: !!me.isFounder,
+    isAdmin: !!me.isAdmin,
     needsProfile: !!me.needsProfile,
   } : null;
   state.hasUsers = !!me.hasUsers;
@@ -3261,6 +3267,7 @@ function toggleGearMenu() {
     profile && { label: 'Criar alertas', onClick: () => openAlertRulesModal() },
     profile && { label: 'Conectar agenda', onClick: () => openCalendarSetup() },
     { label: 'Manual', onClick: () => window.open('/manual', '_blank') },
+    state.user.isAdmin && { label: '🛠️ Admin', onClick: () => openAdminModal() },
     { label: 'Sair', onClick: () => logout() },
   ].filter(Boolean) : [];
 
@@ -3312,6 +3319,106 @@ function toggleGearMenu() {
       if (!menu.contains(e.target) && e.target.id !== 'avatar-button') { menu.remove(); document.removeEventListener('click', close); }
     });
   }, 0);
+}
+
+// Painel admin — só pra emails em ADMIN_EMAILS (gate via /api/auth/me).
+// Concentra ações destrutivas (reset) e ferramentas de suporte.
+function openAdminModal() {
+  if (!state.user?.isAdmin) return;
+  const profile = state.profiles.find(p => p.id === state.activeProfileId);
+  const profileLabel = profile
+    ? `${toTitleCase(profile.athleteName || profile.tiEmail)} (${profile.id.slice(0, 8)})`
+    : '— sem perfil ativo —';
+
+  const action = (label, desc, onClick, danger = false) => el('div', {
+    class: 'border border-slate-200 rounded-lg p-3 flex items-start justify-between gap-3',
+  },
+    el('div', { class: 'flex-1 min-w-0' },
+      el('div', { class: 'text-sm font-semibold text-slate-700' }, label),
+      el('div', { class: 'text-xs text-slate-500 mt-0.5' }, desc),
+    ),
+    el('button', {
+      class: `text-xs font-semibold px-3 py-1.5 rounded shrink-0 ${danger ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'bg-cyan-600 hover:bg-cyan-700 text-white'}`,
+      onClick,
+    }, danger ? 'Executar' : 'Rodar'),
+  );
+
+  const reevaluateAlerts = async () => {
+    if (!profile) return alert('Sem perfil ativo');
+    try {
+      const r = await api.reevaluateAlerts(profile.id);
+      alert(`Re-avaliação concluída:\n• ${r.evaluated} eventos avaliados\n• ${r.added} eventos novos (resto eram duplicados)`);
+      // Atualiza badge de alertas
+      try {
+        const events = await api.listAlerts(profile.id);
+        const unseen = (events || []).filter(e => !e.seen);
+        updateAppBadge(unseen.length);
+      } catch {}
+    } catch (e) {
+      alert('Erro: ' + e.message);
+    }
+  };
+
+  const resetBoard = async () => {
+    if (!profile) return alert('Sem perfil ativo');
+    if (!confirm(`Limpar overrides manuais de coluna/ordem em "${profileLabel}"?\n\nPreserva: comentários, etiquetas, anexos, alertas, pin.\nReverte: cards movidos manualmente voltam à regra automática.`)) return;
+    try {
+      const r = await api.resetBoardOverrides(profile.id);
+      alert(`OK. ${r.cleared || 0} overrides limpos.`);
+      window.location.reload();
+    } catch (e) { alert('Erro: ' + e.message); }
+  };
+
+  const resetAll = async () => {
+    if (!profile) return alert('Sem perfil ativo');
+    const txt = prompt(`⚠️ DESTRUTIVO: vai apagar synced + notes + alertas de "${profileLabel}".\nPerfil + credenciais TI são preservados. Próxima sync vira baseline novo.\n\nDigite RESET pra confirmar:`);
+    if (txt !== 'RESET') return;
+    try {
+      await api.resetAll(profile.id);
+      alert('Reset completo. Recarregando...');
+      window.location.reload();
+    } catch (e) { alert('Erro: ' + e.message); }
+  };
+
+  const card = el('div', {
+    class: 'bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col',
+    onClick: e => e.stopPropagation(),
+  },
+    el('div', { class: 'px-5 py-3 border-b border-slate-200 flex items-center justify-between' },
+      el('div', {},
+        el('h3', { class: 'text-base font-semibold text-slate-700' }, '🛠️ Painel Admin'),
+        el('div', { class: 'text-xs text-slate-500 mt-0.5' }, `Perfil ativo: ${profileLabel}`),
+      ),
+      el('button', { class: 'text-slate-400 hover:text-slate-700 text-xl leading-none', onClick: () => modal.remove() }, '×'),
+    ),
+    el('div', { class: 'px-5 py-4 space-y-3 overflow-y-auto' },
+      action(
+        '🔄 Re-avaliar regras de alerta',
+        'Roda regras contra todos os torneios atuais como se fossem novos. Útil quando regra/lógica mudou. Dedupe automático.',
+        reevaluateAlerts,
+      ),
+      action(
+        '↩️ Resetar overrides do quadro',
+        'Limpa coluna/ordem manuais. Cards voltam à regra automática. Preserva comentários, etiquetas, anexos.',
+        resetBoard,
+      ),
+      action(
+        '💣 Reset completo do perfil',
+        'Apaga synced + notes + alertas. Preserva credenciais TI. Próxima sync vira baseline novo.',
+        resetAll,
+        true,
+      ),
+    ),
+    state.version && el('div', {
+      class: 'px-5 py-2 border-t border-slate-200 text-[11px] text-slate-400 font-mono bg-slate-50',
+    }, `v${state.version.version} · ${state.version.commit}`),
+  );
+
+  const modal = el('div', {
+    class: 'fixed inset-0 z-[70] bg-black/50 flex items-center justify-center',
+    onClick: () => modal.remove(),
+  }, card);
+  document.body.appendChild(modal);
 }
 
 function rerenderBody() {

@@ -11,7 +11,7 @@ import {
   ensureCalendarToken, findProfileByCalendarToken, claimOrphanProfiles,
   setCardColumn, addCardComment, updateCardComment, deleteCardComment, getCardActivity,
   getAlertRules, addAlertRule, updateAlertRule, deleteAlertRule,
-  getAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
+  getAlertEvents, addAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
   findOrCreateShareToken, getShareLink,
   clearColumnOverrides, saveSyncedData, resetProfileData,
   getMatchesData, upsertYearMatches,
@@ -28,10 +28,12 @@ import {
 } from './labels.js';
 import { syncProfile, getSyncStatus, startAutoSync } from './sync-manager.js';
 import { deriveStatus, fetchTournamentDetails, debugAthleteInscriptions, getAthleteStatusInTournament } from './scraper.js';
+import { evaluateRules } from './alerts.js';
 import { getProfileCredentials } from './storage.js';
 import {
-  createUser, authenticate, signCookie, authMiddleware, requireAuth, requireEditor,
+  createUser, authenticate, signCookie, authMiddleware, requireAuth, requireEditor, requireAdmin,
   userCount, listUsers, findUserById, getPlanInfo, migrateUsersAddPlan, updateUserName,
+  isAdminEmail,
 } from './auth.js';
 import {
   migrateHouseholdsOnBoot, listHouseholdMembers, profileBelongsToHousehold,
@@ -96,6 +98,7 @@ app.get('/api/auth/me', (req, res) => {
     plan: user ? getPlanInfo(user) : null,
     role: req.userRole || null,
     isFounder: req.userId && req.userId === householdId,
+    isAdmin: isAdminEmail(req.userEmail),
     needsProfile: user ? !(user.firstName && user.lastName) : false,
   });
 });
@@ -714,6 +717,26 @@ app.post('/api/profiles/:id/alerts/seen-all', requireAuth, requireEditor, ensure
 app.delete('/api/profiles/:id/alerts/:eventId', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   deleteAlertEvent(req.params.id, req.params.eventId);
   res.status(204).end();
+});
+
+// Admin: re-avalia regras retroativamente contra TODOS os torneios atuais
+// (passa prevTournaments=[]). Útil quando regra/lógica mudou e queremos
+// disparar alertas que deveriam ter disparado no passado. Dedupe natural
+// via dedupeKey — eventos já existentes não são recriados.
+app.post('/api/profiles/:id/alerts/reevaluate', requireAuth, requireAdmin, (req, res) => {
+  const profileId = req.params.id;
+  const synced = getSyncedData(profileId);
+  if (!synced) return res.status(404).json({ error: 'Sem dados sincronizados' });
+  const rules = getAlertRules(profileId);
+  const events = evaluateRules({
+    rules,
+    prevTournaments: [],                  // tudo vira "novo"
+    currTournaments: synced.tournaments || [],
+    prevAthlete: null,                    // ranking_change não avalia retroativo
+    currAthlete: synced.athlete,
+  });
+  const added = addAlertEvents(profileId, events);
+  res.json({ evaluated: events.length, added: added.length });
 });
 
 // Tournaments — single source of truth, server applies derivedStatus and merges notes

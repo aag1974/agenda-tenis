@@ -236,3 +236,19 @@ export function requireEditor(req, res, next) {
   }
   next();
 }
+
+// Admin gate por email — fallback hardcoded + override via env var.
+// Permite painel admin (reset, re-avaliar alertas, suporte) visível só
+// pra alguns usuários. Documentado em BACKLOG.md "Painel administrativo".
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'alexandre@opiniao.inf.br')
+  .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+
+export function isAdminEmail(email) {
+  return !!email && ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
+export function requireAdmin(req, res, next) {
+  if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+  if (!isAdminEmail(req.userEmail)) return res.status(403).json({ error: 'Acesso negado' });
+  next();
+}
