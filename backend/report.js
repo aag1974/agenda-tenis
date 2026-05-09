@@ -13,6 +13,7 @@ import {
 import { detectGender, detectMainCategory, categoryFullLabel, genderTerms } from './gender.js';
 import { computeArchetypes } from './competitive-metrics.js';
 import { radarChart, calendarHeatmap } from './charts.js';
+import { radarInterpretation } from './narrative.js';
 const G_DEFAULT = genderTerms('M');
 
 // ─── Configurações ──────────────────────────────────────────────────────
@@ -343,6 +344,16 @@ function renderDnaAndMetrics(ctx) {
     { label: 'vs Fortes', value: strongPct },
   ];
 
+  const radarPara = radarInterpretation({
+    cdi: cdi?.score ?? null,
+    clutch: clutch?.score ?? null,
+    res: res?.score ?? null,
+    evenPct: totalEven >= 3 ? evenPct : null,
+    strongPct: totalStrong >= 3 ? strongPct : null,
+    evenTotal: totalEven,
+    strongTotal: totalStrong,
+  }, ctx.athleteFirstName);
+
   // Layout player-card: header hero com nome + arquétipos como badges,
   // radar à esquerda + métricas à direita em formato compacto.
   return `
@@ -368,6 +379,13 @@ function renderDnaAndMetrics(ctx) {
         <div class="player-card-radar">
           ${radarChart(radarData, { width: 360, height: 320 })}
           <div class="radar-caption">Quanto mais o polígono se estende, mais ${G.ele} performa naquele eixo</div>
+          <div class="radar-glossary">
+            <strong>Dominância</strong>: quanto controla quando vence ·
+            <strong>Clutch</strong>: como joga quando o jogo aperta ·
+            <strong>Resiliência</strong>: como reage perdendo ·
+            <strong>vs Parelhos</strong>: contra rivais do mesmo nível ·
+            <strong>vs Fortes</strong>: contra rivais acima do nível.
+          </div>
         </div>
         <div class="player-card-metrics">
           ${metricCard('Quanto controla o jogo quando vence', cdi,
@@ -381,6 +399,14 @@ function renderDnaAndMetrics(ctx) {
             resBreak)}
         </div>
       </div>
+
+      ${radarPara ? `
+      <div class="radar-interpretation">
+        <div class="radar-interp-label">Lendo os 5 indicadores juntos</div>
+        <p>${md(radarPara)}</p>
+      </div>
+      ` : ''}
+
       <p class="footnote">Notas de 0 a 100 (forte ≥ 65 · médio 45–64 · em desenvolvimento &lt; 45).</p>
     </section>
   `;
@@ -488,7 +514,7 @@ function renderChapter2(ctx) {
       <ul>
         <li><strong>Glicko-2</strong> — sistema de Mark Glickman (Harvard, 2012) que estima nível como rating + incerteza ("±X"). Vencer alguém mais forte vale mais; perder pra alguém muito acima quase não tira pontos. 1500 é a média neutra.</li>
         <li><strong>Forma temporal</strong> — janelas 90d / 12m / all-time pra detectar tendência recente.</li>
-        <li><strong>Performance estratificada</strong> — buckets de força (mais ${G.gender === 'F' ? 'forte / parelha / mais fraca' : 'forte / parelho / mais fraco'}, cutoff ±100 Glicko).</li>
+        <li><strong>Performance estratificada</strong> — leitura por força do adversário (mais ${G.gender === 'F' ? 'forte / parelha / mais fraca' : 'forte / parelho / mais fraco'}, com diferença mínima de ±100 pontos Glicko).</li>
         <li><strong>Métricas proprietárias Tennis Flow</strong> — Dominância (CDI), Clutch e Resiliência, derivadas de placares (não só V/D).</li>
       </ul>
 
@@ -1172,7 +1198,7 @@ function renderAnnexC(ctx) {
         <li>Updates em ordem cronológica</li>
       </ul>
 
-      <h3>Buckets de força do oponente</h3>
+      <h3>Faixas de força do oponente</h3>
       <ul>
         <li>Mais ${G.gender === 'F' ? 'forte' : 'forte'}: rating do oponente ≥ rating ${G.do_atleta} + 100 pts</li>
         <li>${G.gender === 'F' ? 'Parelha' : 'Parelho'}: diferença entre -100 e +100 pts</li>
@@ -1562,6 +1588,29 @@ function baseHtmlShell(athleteName, dateStr, body) {
     font-size: 11px; color: ${COLORS.textMuted};
     text-align: center; margin-top: 8px; padding: 0 8px;
     line-height: 1.4;
+  }
+  .radar-glossary {
+    font-size: 10.5px; color: ${COLORS.textMuted};
+    text-align: left; margin-top: 12px; padding: 10px 12px;
+    background: white; border-radius: 8px;
+    border: 1px solid ${COLORS.borderLight};
+    line-height: 1.55;
+  }
+  .radar-glossary strong { color: ${COLORS.navy}; font-weight: 700; }
+  .radar-interpretation {
+    margin: 18px 0 8px; padding: 16px 20px;
+    background: ${COLORS.bgLight};
+    border-left: 4px solid ${COLORS.cyan};
+    border-radius: 8px;
+  }
+  .radar-interp-label {
+    font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+    color: ${COLORS.cyan}; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .radar-interpretation p {
+    font-size: 12.5px; line-height: 1.6; color: ${COLORS.textDark};
+    margin: 0;
   }
   .player-card-metrics {
     display: flex; flex-direction: column; gap: 12px;

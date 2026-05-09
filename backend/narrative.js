@@ -75,6 +75,72 @@ export function athleteSignaturePhrase(analysis, athleteFirstName) {
   return `${athleteFirstName} ainda está achando o jogo dele. Os próximos torneios vão dizer pra qual caminho cresce mais rápido.`;
 }
 
+// ─── Interpretação do radar (5 eixos) ──────────────────────────────────
+// Lê os 5 indicadores juntos e devolve um parágrafo curto em voz de coach
+// que conecta os sinais. Aparece abaixo do radar, traduz "Clutch 42" pra
+// linguagem de quadra e amarra a leitura num conjunto único.
+export function radarInterpretation(metrics, athleteFirstName) {
+  const { cdi, clutch, res, evenPct, strongPct, evenTotal, strongTotal } = metrics;
+  const tone = (n) => n >= 65 ? 'forte' : n >= 45 ? 'médio' : 'em desenvolvimento';
+
+  const parts = [];
+
+  // 1) Como ele se comporta quando vence (CDI)
+  if (cdi !== null) {
+    if (cdi >= 65) {
+      parts.push(`Quando ${athleteFirstName} vence, controla o jogo — costuma fechar com folga, sem deixar o adversário entrar.`);
+    } else if (cdi >= 45) {
+      parts.push(`Quando vence, costuma controlar bem — placar moderado, sem dramas grandes.`);
+    } else {
+      parts.push(`As vitórias têm sido apertadas — ${athleteFirstName} ganha mais do que domina, joga "no limite".`);
+    }
+  }
+
+  // 2) Comportamento em pontos decisivos (Clutch)
+  if (clutch !== null) {
+    if (clutch >= 65) {
+      parts.push(`Quando o jogo aperta — tie-break, super-tiebreak, set decisivo — ele aparece. Tem cabeça pra fechar.`);
+    } else if (clutch >= 45) {
+      parts.push(`Em pontos decisivos, divide o resultado — às vezes fecha, às vezes deixa escapar.`);
+    } else {
+      parts.push(`Em pontos decisivos (tie-breaks, sets finais), ainda perde mais do que ganha — espaço claro pra trabalhar.`);
+    }
+  }
+
+  // 3) Reação a adversidade (Resiliência)
+  if (res !== null) {
+    if (res >= 60) {
+      parts.push(`Quando começa atrás, costuma achar o caminho de volta — vira jogos e reescreve histórico.`);
+    } else if (res >= 40) {
+      parts.push(`Reação à adversidade é mediana — vira algumas, deixa outras escaparem.`);
+    } else {
+      parts.push(`Quando perde o primeiro set, raramente vira — uma vez no buraco, é difícil sair.`);
+    }
+  }
+
+  // 4) Buckets — onde está o salto
+  const bucketLines = [];
+  if (evenPct !== null && evenTotal >= 5) {
+    if (evenPct >= 60) {
+      bucketLines.push(`Contra rivais do mesmo nível, sai na frente na maior parte das vezes — termômetro positivo.`);
+    } else if (evenPct >= 45) {
+      bucketLines.push(`Contra rivais parelhos, divide as vitórias — equilíbrio típico.`);
+    } else {
+      bucketLines.push(`Contra rivais do mesmo nível, ainda não fecha maioria. **É a fronteira do próximo degrau.**`);
+    }
+  }
+  if (strongPct !== null && strongTotal >= 5) {
+    if (strongPct >= 35) {
+      bucketLines.push(`Contra rivais acima do nível, aparece com força — sinal de que está pedindo torneio mais alto.`);
+    } else if (strongPct >= 20) {
+      bucketLines.push(`Contra mais fortes, ganha pontos esporadicamente — esperado pra fase atual.`);
+    }
+  }
+  if (bucketLines.length) parts.push(bucketLines.join(' '));
+
+  return parts.join(' ');
+}
+
 // ─── Headline "em uma frase" ────────────────────────────────────────────
 export function headline(analysis, athleteFirstName) {
   const c = analysis.counts;
