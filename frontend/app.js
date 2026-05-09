@@ -3447,7 +3447,7 @@ function openAdminModal() {
         list.innerHTML = '';
         if (!requests.length) {
           list.appendChild(el('div', { class: 'text-xs text-slate-500 italic py-1' },
-            'Nenhum pedido registrado ainda. (Pedidos antigos podem estar só no email.)'));
+            'Nenhum pedido pendente.'));
           return;
         }
         for (const r of requests) {
@@ -3513,12 +3513,12 @@ function openAdminModal() {
   // ou o admin precisa olhar dados de alguém da família/teste).
   function crossHouseholdAccess() {
     const wrap = el('div', { class: 'border border-violet-200 rounded-lg p-3 bg-violet-50/40' });
-    wrap.appendChild(el('div', { class: 'text-sm font-semibold text-slate-700' }, '🔓 Acessar atleta diretamente (fallback)'));
+    wrap.appendChild(el('div', { class: 'text-sm font-semibold text-slate-700' }, '🔓 Acessar atleta diretamente'));
     wrap.appendChild(el('div', { class: 'text-xs text-slate-500 mt-0.5' },
-      'Use quando o pedido foi feito antes do registro server-side, ou pra olhar dados da própria família/teste.'));
+      'Pra olhar dados da família/teste sem passar pelo fluxo de pedido.'));
 
     const select = el('select', {
-      class: 'mt-2 w-full text-sm border border-slate-300 rounded px-2 py-1.5 bg-white',
+      class: 'mt-2 w-full text-sm border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-900',
     }, el('option', { value: '' }, 'Carregando perfis…'));
     const buttons = el('div', { class: 'mt-2 flex gap-2' });
     const reportBtn = el('a', {
