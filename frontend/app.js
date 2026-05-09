@@ -471,8 +471,11 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao atualizar status');
     return r.json();
   },
-  async deliverReport(profileId, requestId, html) {
-    const r = await fetch(`/api/admin/report-requests/${profileId}/${requestId}/deliver`, {
+  async deliverReport(profileId, requestId, html, asEmail) {
+    const url = asEmail
+      ? `/api/admin/report-requests/${profileId}/${requestId}/deliver?as=${encodeURIComponent(asEmail)}`
+      : `/api/admin/report-requests/${profileId}/${requestId}/deliver`;
+    const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
       body: html,
@@ -3527,12 +3530,21 @@ function openAdminModal() {
             fileInput.onchange = async () => {
               const file = fileInput.files?.[0];
               if (!file) return;
-              if (!confirm(`Entregar "${file.name}" pra ${r.athleteName || 'atleta'}?\n\nIsso vai:\n1. Salvar o HTML no perfil\n2. Marcar pedido como entregue\n3. Disparar push notification pro cliente\n4. Criar alerta no painel dele`)) return;
+              const requesterEmail = r.requesterEmail || '(sem email)';
+              const asEmail = prompt(
+                `Entregar "${file.name}" pra ${r.athleteName || 'atleta'}.\n\n` +
+                `Push e alerta vão pra: ${requesterEmail}\n\n` +
+                `Pra mandar pra outro email (teste), digite aqui. Senão, deixe em branco e dê OK:`,
+                ''
+              );
+              if (asEmail === null) return; // cancelou
+              const target = asEmail.trim();
+              if (!confirm(`Confirmar entrega de "${file.name}"?\n\nDestinatário: ${target || requesterEmail}\n\nIsso vai:\n1. Salvar o HTML no perfil\n2. Marcar pedido como entregue\n3. Disparar push pra ${target || requesterEmail}\n4. Criar alerta no painel dele`)) return;
               deliverBtn.disabled = true;
               deliverBtn.textContent = '⏳ Enviando…';
               try {
                 const html = await file.text();
-                await api.deliverReport(r.profileId, r.id, html);
+                await api.deliverReport(r.profileId, r.id, html, target || null);
                 await renderRequests();
               } catch (err) {
                 alert('Erro: ' + err.message);

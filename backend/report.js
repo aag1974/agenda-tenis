@@ -1457,10 +1457,14 @@ function baseHtmlShell(athleteName, dateStr, body) {
   }
   @media print {
     .cover {
-      min-height: 95vh;
+      /* Em print, vh pode mapear pra viewport da tela em vez da página A4
+         (depende do browser e zoom). Usar mm absoluto evita estouro pra
+         página seguinte. A4 útil = 297 - 36 = 261mm; deixamos 240 pra
+         garantir centralização do conteúdo sem overflow. */
+      min-height: 240mm;
       border-radius: 0;
       margin-bottom: 0;
-      padding: 60px 50px;
+      padding: 50px 40px;
     }
   }
   .cover-inner { text-align: center; max-width: 600px; }

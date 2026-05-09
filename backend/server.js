@@ -818,9 +818,23 @@ app.post('/api/admin/report-requests/:profileId/:requestId/deliver', requireAuth
     dedupeKey: `report-delivered-${reportId}`,
   }]);
 
-  // Push pro dono do perfil (não pros admins)
-  if (profile?.userId) {
-    sendPushToUsers([profile.userId], {
+  // Override de destinatário via query ?as=email — útil pra testes
+  // ("entregar pra outro email meu") e pra casos em que o requesterUserId
+  // não bate com quem deve receber. Se email não existir, retorna erro 400.
+  let overrideUserId = null;
+  if (req.query.as) {
+    const u = listUsers().find(u => u.email.toLowerCase() === String(req.query.as).toLowerCase());
+    if (!u) return res.status(400).json({ error: `Email não encontrado: ${req.query.as}` });
+    overrideUserId = u.id;
+  }
+
+  // Push pro solicitante (quem clicou em "Enviar solicitação"). Pode não ser
+  // o dono original do perfil — em households com múltiplos membros, o
+  // pedido vem de quem fez. Fallback pro dono se requesterUserId ausente
+  // (ex.: pedidos antigos antes do registro server-side).
+  const targetUserId = overrideUserId || requestEntry.requesterUserId || profile?.userId;
+  if (targetUserId) {
+    sendPushToUsers([targetUserId], {
       title: '✨ Seu Relatório de Performance está pronto',
       body: `Análise completa de ${athleteName} disponível no app.`,
       tag: `report-delivered-${reportId}`,
