@@ -2956,27 +2956,45 @@ function openAlertsListModal({ onlyUnseen = false } = {}) {
       const list = el('ul', { class: 'space-y-2' });
       for (const e of events) {
         const tournament = state.data?.tournaments?.find(t => t.id === e.tournamentId);
+        const actions = el('div', { class: 'flex items-center gap-2 mt-2 pt-2 border-t border-slate-100' });
+        if (tournament) {
+          actions.appendChild(el('button', {
+            class: 'flex-1 text-xs px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-medium',
+            onClick: () => { close(); openTournament(tournament.id); },
+          }, '👀 Ver torneio'));
+        }
+        if (!e.seen) {
+          actions.appendChild(el('button', {
+            class: 'flex-1 text-xs px-3 py-1.5 rounded border border-slate-300 text-slate-700 hover:bg-slate-100',
+            onClick: async () => {
+              await api.markAlertsSeen(state.activeProfileId, [e.id]);
+              state.unseenAlertsCount = Math.max(0, (state.unseenAlertsCount || 0) - 1);
+              updateAppBadge(state.unseenAlertsCount);
+              renderHeader();
+              reload();
+            },
+          }, '✓ Já vi'));
+        }
+        // Descartar — apaga do histórico. Ícone discreto, sem ocupar espaço
+        // dos botões primários. Confirma pra evitar tap acidental no mobile.
+        actions.appendChild(el('button', {
+          class: 'text-xs px-2 py-1.5 rounded text-slate-400 hover:bg-red-50 hover:text-red-600 shrink-0',
+          title: 'Descartar este alerta',
+          onClick: async () => {
+            if (!confirm('Descartar este alerta? Não dá pra desfazer.')) return;
+            await api.deleteAlertEvent(state.activeProfileId, e.id);
+            if (!e.seen) {
+              state.unseenAlertsCount = Math.max(0, (state.unseenAlertsCount || 0) - 1);
+              updateAppBadge(state.unseenAlertsCount);
+              renderHeader();
+            }
+            reload();
+          },
+        }, '🗑'));
         list.appendChild(el('li', { class: `border rounded-lg p-3 ${e.seen ? 'bg-slate-50 border-slate-200' : 'bg-white border-amber-300'}` },
-          el('div', { class: 'flex items-start justify-between gap-2' },
-            el('div', { class: 'flex-1 min-w-0' },
-              el('div', { class: `text-sm ${e.seen ? 'text-slate-600' : 'font-medium'}` }, e.message),
-              el('div', { class: 'text-xs text-slate-500 mt-0.5' }, new Date(e.createdAt).toLocaleString('pt-BR')),
-            ),
-            !e.seen && el('button', {
-              class: 'text-xs px-2 py-1 rounded text-slate-500 hover:bg-slate-100 shrink-0',
-              onClick: async () => {
-                await api.markAlertsSeen(state.activeProfileId, [e.id]);
-                state.unseenAlertsCount = Math.max(0, (state.unseenAlertsCount || 0) - 1);
-                updateAppBadge(state.unseenAlertsCount);
-                renderHeader();
-                reload();
-              },
-            }, 'Vi'),
-            tournament && el('button', {
-              class: 'text-xs px-2 py-1 rounded text-cyan-700 hover:bg-cyan-50 shrink-0',
-              onClick: () => { close(); openTournament(tournament.id); },
-            }, 'Ver'),
-          ),
+          el('div', { class: `text-sm ${e.seen ? 'text-slate-600' : 'font-medium'}` }, e.message),
+          el('div', { class: 'text-xs text-slate-500 mt-0.5' }, new Date(e.createdAt).toLocaleString('pt-BR')),
+          actions,
         ));
       }
       body.appendChild(list);
