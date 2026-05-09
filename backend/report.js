@@ -14,6 +14,7 @@ import { detectGender, detectMainCategory, categoryFullLabel, genderTerms } from
 import { computeArchetypes } from './competitive-metrics.js';
 import { radarChart, calendarHeatmap } from './charts.js';
 import { radarInterpretation } from './narrative.js';
+import { computeForecast } from './forecast.js';
 const G_DEFAULT = genderTerms('M');
 
 // ─── Configurações ──────────────────────────────────────────────────────
@@ -1062,6 +1063,87 @@ function renderChapter6(ctx) {
   `;
 }
 
+// Capítulo 7 — "Onde queremos chegar". Metas SMART pros próximos 6 e 12
+// meses + lista do que já está forte e deve ser mantido.
+function renderChapter7Forecast(ctx) {
+  const { forecast, athleteFirstName, G } = ctx;
+  if (!forecast || (!forecast.targets.length && !forecast.strengths.length)) return '';
+
+  const strengthsBlock = forecast.strengths.length ? `
+    <h3>Mantém o que já está forte</h3>
+    <p class="forecast-intro">Esses pontos já estão no padrão de elite. Nas próximas edições, o objetivo é <strong>não perder o que foi conquistado</strong>.</p>
+    <div class="strengths-grid">
+      ${forecast.strengths.map(s => `
+        <div class="strength-card">
+          <div class="strength-icon">${s.icon}</div>
+          <div class="strength-body">
+            <div class="strength-label">${escapeHtml(s.label)}</div>
+            <div class="strength-value">${escapeHtml(s.value)}</div>
+            <div class="strength-msg">${escapeHtml(s.message)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
+  const targetsBlock = forecast.targets.length ? `
+    <h3>Trabalha os pontos de salto</h3>
+    <p class="forecast-intro">Cada uma dessas metas é <strong>direção</strong>, não previsão. São alvos razoáveis se o trabalho for consistente nos próximos meses.</p>
+    <table class="forecast-table">
+      <thead>
+        <tr>
+          <th>Onde mexer</th>
+          <th class="num">Hoje</th>
+          <th class="num target">Meta 6 meses</th>
+          <th class="num target">Meta 12 meses</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${forecast.targets.map(t => `
+          <tr>
+            <td>
+              <div class="target-row-icon">${t.icon}</div>
+              <div class="target-row-label"><strong>${escapeHtml(t.label)}</strong></div>
+            </td>
+            <td class="num">${escapeHtml(t.current)}</td>
+            <td class="num target">${escapeHtml(t.target6m)}</td>
+            <td class="num target">${escapeHtml(t.target12m)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+
+    <h3>Como vamos medir</h3>
+    ${forecast.targets.map(t => `
+      <div class="target-detail keep-together">
+        <div class="target-detail-header">
+          <span class="target-detail-icon">${t.icon}</span>
+          <span class="target-detail-title">${escapeHtml(t.shortLabel)}: <strong>${escapeHtml(t.current)}</strong> → <strong>${escapeHtml(t.target6m)}</strong> em 6 meses</span>
+        </div>
+        <p>${escapeHtml(t.rationale)}</p>
+        <p class="target-detail-meta"><strong>Como medimos:</strong> ${escapeHtml(t.measurement)}</p>
+        ${t.trainingHint ? `<p class="target-detail-meta"><strong>Pista pro treino:</strong> ${escapeHtml(t.trainingHint)}</p>` : ''}
+      </div>
+    `).join('')}
+  ` : '';
+
+  return `
+    <section class="chapter forecast-section">
+      <div class="chapter-num">CAPÍTULO 7</div>
+      <h2 class="chapter-title">Onde queremos chegar</h2>
+      <p class="forecast-lead">Os números abaixo não são previsão — são <strong>alvos razoáveis</strong> pros próximos 6 e 12 meses, focados nos pontos que dão mais retorno. Cada um vai ser medido na próxima edição do relatório, então a régua fica clara desde já.</p>
+
+      ${strengthsBlock}
+      ${targetsBlock}
+
+      <div class="forecast-contract">
+        <div class="forecast-contract-label">O contrato</div>
+        <p>A próxima edição deste relatório (idealmente em <strong>6 meses</strong>) vai trazer uma tabela igual a esta com a coluna "Hoje" atualizada. Cada meta batida é validação do trabalho. Cada meta não batida é matéria pra conversa com o coach — pode ser fase, pode ser que o caminho seja outro.</p>
+      </div>
+    </section>
+  `;
+}
+
 function renderSignature(ctx) {
   return `
     <section class="signature">
@@ -1318,13 +1400,14 @@ export function generateReportHtmlFromData({ profile, synced, matches: rawMatche
   }
 
   const archetypes = computeArchetypes(analysis, gender);
+  const forecast = computeForecast(analysis);
 
   const ctx = {
     profile, synced, matches, analysis, narratives,
     athleteName, athleteFirstName, athleteId, ranking,
     periodFrom, periodTo, dateStr,
     gender, G, mainCategory, categoryLabel,
-    archetypes,
+    archetypes, forecast,
   };
 
   const body = `
@@ -1337,6 +1420,7 @@ export function generateReportHtmlFromData({ profile, synced, matches: rawMatche
     ${renderChapter4(ctx)}
     ${renderChapter5(ctx)}
     ${renderChapter6(ctx)}
+    ${renderChapter7Forecast(ctx)}
     ${renderSignature(ctx)}
     ${renderAnnexA(ctx)}
     ${renderAnnexB(ctx)}
@@ -1588,6 +1672,105 @@ function baseHtmlShell(athleteName, dateStr, body) {
     margin-top: 16px; padding-top: 12px;
     border-top: 1px solid ${COLORS.borderLight};
     font-size: 11px; color: ${COLORS.textMuted};
+  }
+
+  /* CAPÍTULO 7 — Onde queremos chegar (forecast) ───────────────── */
+  .forecast-section .forecast-lead {
+    font-size: 13px; color: ${COLORS.textDark};
+    line-height: 1.6; margin-bottom: 16px;
+  }
+  .forecast-intro {
+    font-size: 12px; color: ${COLORS.textMuted};
+    margin: 6px 0 14px;
+  }
+  .strengths-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+    margin-bottom: 22px;
+  }
+  .strength-card {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1px solid #a7f3d0; border-radius: 10px;
+    padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .strength-icon { font-size: 28px; line-height: 1; }
+  .strength-body { flex: 1; }
+  .strength-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+    color: #047857; text-transform: uppercase; margin-bottom: 2px;
+  }
+  .strength-value {
+    font-size: 18px; font-weight: 800; color: ${COLORS.emerald};
+    line-height: 1.1;
+  }
+  .strength-msg {
+    font-size: 11px; color: #065f46; margin-top: 4px;
+  }
+  .forecast-table {
+    width: 100%; border-collapse: collapse;
+    margin: 8px 0 22px; font-size: 12px;
+  }
+  .forecast-table thead th {
+    background: ${COLORS.navy}; color: white;
+    padding: 10px 12px; text-align: left;
+    font-size: 11px; letter-spacing: 0.5px;
+    font-weight: 700;
+  }
+  .forecast-table thead th.num { text-align: right; }
+  .forecast-table thead th.target { color: ${COLORS.cyanLight}; }
+  .forecast-table tbody td {
+    padding: 12px; border-bottom: 1px solid ${COLORS.borderLight};
+    vertical-align: middle;
+  }
+  .forecast-table tbody td.num {
+    text-align: right; font-weight: 700; color: ${COLORS.navy};
+    font-size: 14px; white-space: nowrap;
+  }
+  .forecast-table tbody td.num.target {
+    color: ${COLORS.violet}; font-size: 16px;
+  }
+  .target-row-icon {
+    display: inline-block; font-size: 18px; margin-right: 8px;
+    vertical-align: middle;
+  }
+  .target-row-label {
+    display: inline-block; vertical-align: middle;
+  }
+  .target-detail {
+    background: ${COLORS.bgLight};
+    border-left: 4px solid ${COLORS.cyan};
+    border-radius: 8px; padding: 14px 18px; margin-bottom: 12px;
+  }
+  .target-detail-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 6px;
+  }
+  .target-detail-icon { font-size: 22px; line-height: 1; }
+  .target-detail-title {
+    font-size: 13px; color: ${COLORS.navy}; font-weight: 600;
+  }
+  .target-detail p {
+    font-size: 12px; line-height: 1.55; margin: 6px 0;
+    color: ${COLORS.textDark};
+  }
+  .target-detail-meta {
+    font-size: 11.5px; color: ${COLORS.textMuted};
+  }
+  .target-detail-meta strong { color: ${COLORS.navy}; }
+  .forecast-contract {
+    background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyLight} 100%);
+    color: white; padding: 22px 26px; border-radius: 12px;
+    margin-top: 24px;
+    box-shadow: 0 4px 12px rgba(14,58,77,0.18);
+  }
+  .forecast-contract-label {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.6px;
+    color: ${COLORS.cyanLight}; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .forecast-contract p {
+    font-size: 13px; line-height: 1.6; margin: 0;
+    color: rgba(255,255,255,0.92);
   }
 
   /* FRASE DO ATLETA — assinatura editorial ───────────────────── */
