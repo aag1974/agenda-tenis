@@ -471,6 +471,15 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao atualizar status');
     return r.json();
   },
+  async deliverReport(profileId, requestId, html) {
+    const r = await fetch(`/api/admin/report-requests/${profileId}/${requestId}/deliver`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      body: html,
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao entregar relatório');
+    return r.json();
+  },
 };
 
 // ===== Init =====
@@ -2976,6 +2985,17 @@ function openAlertsListModal({ onlyUnseen = false } = {}) {
       for (const e of events) {
         const tournament = state.data?.tournaments?.find(t => t.id === e.tournamentId);
         const actions = el('div', { class: 'flex items-center gap-2 mt-2 pt-2 border-t border-slate-100' });
+        // Alerta de relatório entregue: botão hero gradient pra abrir o
+        // HTML em nova aba. É a entrega WOW — vale destaque visual.
+        if (e.type === 'report_delivered' && e.reportId) {
+          actions.appendChild(el('a', {
+            class: 'flex-1 text-center text-xs px-3 py-2 rounded text-white font-bold no-underline',
+            style: 'background: linear-gradient(135deg, #0e3a4d 0%, #1f5b75 100%); box-shadow: 0 2px 8px rgba(14,58,77,0.25);',
+            href: `/api/profiles/${state.activeProfileId}/reports/${e.reportId}`,
+            target: '_blank',
+            rel: 'noopener',
+          }, '✨ Ver relatório'));
+        }
         if (tournament) {
           actions.appendChild(el('button', {
             class: 'flex-1 text-xs px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-medium',
@@ -3494,6 +3514,34 @@ function openAdminModal() {
               }
             };
             actions.appendChild(nextBtn);
+          }
+          // Upload do HTML final entrega o relatório + dispara push/alerta.
+          // Aparece em qualquer status que não seja delivered.
+          if (status !== 'delivered') {
+            const fileInput = el('input', { type: 'file', accept: 'text/html,.html', class: 'hidden' });
+            const deliverBtn = el('button', {
+              class: 'flex-1 text-[11px] px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold',
+              title: 'Enviar HTML final, marca como entregue + notifica o cliente',
+            }, '📤 Entregar HTML');
+            deliverBtn.onclick = () => fileInput.click();
+            fileInput.onchange = async () => {
+              const file = fileInput.files?.[0];
+              if (!file) return;
+              if (!confirm(`Entregar "${file.name}" pra ${r.athleteName || 'atleta'}?\n\nIsso vai:\n1. Salvar o HTML no perfil\n2. Marcar pedido como entregue\n3. Disparar push notification pro cliente\n4. Criar alerta no painel dele`)) return;
+              deliverBtn.disabled = true;
+              deliverBtn.textContent = '⏳ Enviando…';
+              try {
+                const html = await file.text();
+                await api.deliverReport(r.profileId, r.id, html);
+                await renderRequests();
+              } catch (err) {
+                alert('Erro: ' + err.message);
+                deliverBtn.disabled = false;
+                deliverBtn.textContent = '📤 Entregar HTML';
+              }
+            };
+            actions.appendChild(deliverBtn);
+            actions.appendChild(fileInput);
           }
           card.appendChild(actions);
           list.appendChild(card);

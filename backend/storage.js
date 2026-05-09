@@ -465,6 +465,41 @@ export function addReportRequest(profileId, request) {
   return entry;
 }
 
+// ===== Relatórios entregues (HTML/PDF) =====
+// Quando admin envia o relatório final, o arquivo é salvo aqui e referenciado
+// no report-request com status 'delivered' + reportId.
+function reportsDir(profileId) {
+  return join(profileDir(profileId), 'reports');
+}
+
+export function saveDeliveredReport(profileId, reportId, htmlContent) {
+  const dir = reportsDir(profileId);
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, `${reportId}.html`);
+  writeFileSync(path, htmlContent, 'utf8');
+  return path;
+}
+
+export function getDeliveredReport(profileId, reportId) {
+  const path = join(reportsDir(profileId), `${reportId}.html`);
+  if (!existsSync(path)) return null;
+  return readFileSync(path, 'utf8');
+}
+
+export function listDeliveredReports(profileId) {
+  // Pega todos os requests com status 'delivered' que tenham reportId — esses
+  // são os relatórios já entregues. A ordem é newest first (já garantida em
+  // getReportRequests, que faz unshift).
+  return getReportRequests(profileId)
+    .filter(r => r.status === 'delivered' && r.reportId)
+    .map(r => ({
+      reportId: r.reportId,
+      requestId: r.id,
+      deliveredAt: r.deliveredAt || r.updatedAt,
+      athleteName: r.athleteName,
+    }));
+}
+
 // Atualiza status (pending → in_progress → delivered) ou outros campos
 // de um pedido. Mantém createdAt; adiciona updatedAt.
 export function updateReportRequest(profileId, requestId, patch) {

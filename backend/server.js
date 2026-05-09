@@ -13,6 +13,7 @@ import {
   getAlertRules, addAlertRule, updateAlertRule, deleteAlertRule,
   getAlertEvents, addAlertEvents, markAlertsSeen, markAllAlertsSeen, deleteAlertEvent,
   getReportRequests, addReportRequest, updateReportRequest,
+  saveDeliveredReport, getDeliveredReport, listDeliveredReports,
   findOrCreateShareToken, getShareLink,
   clearColumnOverrides, saveSyncedData, resetProfileData,
   getMatchesData, upsertYearMatches,
@@ -56,6 +57,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 // JSON limit raised so receipt uploads (image as base64 data URL) fit
 app.use(express.json({ limit: '5mb' }));
+// Body parser pra upload de relatório HTML (text/html ou application/octet-stream).
+// 8MB acomoda relatórios mais ricos (média Rafael ~170KB; Anna ~100KB).
+app.use(express.text({ type: ['text/html', 'text/plain'], limit: '8mb' }));
 app.use(authMiddleware);
 
 const COOKIE_OPTIONS = (req) => {
@@ -778,6 +782,70 @@ app.post('/api/profiles/:id/report-request', requireAuth, ensureOwnedProfile, (r
   }
 
   res.json(entry);
+});
+
+// Admin entrega o relatório final: recebe HTML, salva no perfil, marca o
+// request como 'delivered', notifica o dono do perfil (alerta + push).
+app.post('/api/admin/report-requests/:profileId/:requestId/deliver', requireAuth, requireAdmin, (req, res) => {
+  const { profileId, requestId } = req.params;
+  const html = typeof req.body === 'string' ? req.body : null;
+  if (!html || html.length < 500) {
+    return res.status(400).json({ error: 'HTML do relatório obrigatório (text/html no body)' });
+  }
+  const requests = getReportRequests(profileId);
+  const requestEntry = requests.find(r => r.id === requestId);
+  if (!requestEntry) return res.status(404).json({ error: 'Pedido não encontrado' });
+
+  // Salva HTML em disco usando reportId determinístico (= requestId)
+  const reportId = requestId;
+  saveDeliveredReport(profileId, reportId, html);
+
+  // Atualiza status do pedido
+  const updated = updateReportRequest(profileId, requestId, {
+    status: 'delivered',
+    deliveredAt: new Date().toISOString(),
+    deliveredBy: req.userEmail,
+    reportId,
+  });
+
+  // Cria alerta no painel do dono — aparece no sino com botão "Ver relatório"
+  const profile = getProfile(profileId);
+  const athleteName = profile?.athleteName || 'atleta';
+  addAlertEvents(profileId, [{
+    type: 'report_delivered',
+    message: `📊 Seu Relatório de Performance ${G_GENDER_PARTICLE(profile)} ${athleteName} está pronto!`,
+    reportId,
+    dedupeKey: `report-delivered-${reportId}`,
+  }]);
+
+  // Push pro dono do perfil (não pros admins)
+  if (profile?.userId) {
+    sendPushToUsers([profile.userId], {
+      title: '✨ Seu Relatório de Performance está pronto',
+      body: `Análise completa de ${athleteName} disponível no app.`,
+      tag: `report-delivered-${reportId}`,
+      url: '/?reportReady=1',
+    }).catch(err => console.error('[deliver push]', err.message || err));
+  }
+
+  res.json(updated);
+});
+
+// Helper: artigo+nome do atleta ("de Anna" / "do Rafael"). Sem gênero
+// detectado, fica "de" — soa neutro o suficiente.
+function G_GENDER_PARTICLE() { return 'de'; }
+
+// Cliente lista relatórios entregues do próprio perfil (acesso autenticado)
+app.get('/api/profiles/:id/reports', requireAuth, ensureOwnedProfile, (req, res) => {
+  res.json(listDeliveredReports(req.params.id));
+});
+
+// Cliente baixa/visualiza um relatório específico (HTML inline)
+app.get('/api/profiles/:id/reports/:reportId', requireAuth, ensureOwnedProfile, (req, res) => {
+  const html = getDeliveredReport(req.params.id, req.params.reportId);
+  if (!html) return res.status(404).send('Relatório não encontrado');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
 });
 
 // Admin atualiza status de um pedido (pipeline pending → in_progress → delivered)
