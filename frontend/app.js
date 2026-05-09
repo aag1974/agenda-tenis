@@ -452,6 +452,11 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao re-avaliar');
     return r.json();
   },
+  async listAdminProfiles() {
+    const r = await fetch('/api/admin/profiles');
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao listar');
+    return r.json();
+  },
 };
 
 // ===== Init =====
@@ -3398,6 +3403,65 @@ function openAdminModal() {
     } catch (e) { alert('Erro: ' + e.message); }
   };
 
+  // Bloco pra acesso cross-household — após o consentimento LGPD, admin
+  // precisa conseguir baixar dados de qualquer atleta. Picker carrega lazy
+  // a lista de profiles ao expandir, pra não pesar o open do modal.
+  function crossHouseholdAccess() {
+    const wrap = el('div', { class: 'border border-violet-200 rounded-lg p-3 bg-violet-50/40' });
+    wrap.appendChild(el('div', { class: 'text-sm font-semibold text-slate-700' }, '🔓 Acessar dados de atleta (qualquer household)'));
+    wrap.appendChild(el('div', { class: 'text-xs text-slate-500 mt-0.5' },
+      'Ver relatório técnico ou baixar dump (zip) pra elaborar o relatório completo. Use só após autorização registrada.'));
+
+    const select = el('select', {
+      class: 'mt-2 w-full text-sm border border-slate-300 rounded px-2 py-1.5 bg-white',
+    }, el('option', { value: '' }, 'Carregando perfis…'));
+    const buttons = el('div', { class: 'mt-2 flex gap-2' });
+    const reportBtn = el('a', {
+      class: 'flex-1 text-center text-xs px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold pointer-events-none opacity-50',
+      target: '_blank',
+      rel: 'noopener',
+      href: '#',
+    }, '👁️ Ver relatório');
+    const exportBtn = el('a', {
+      class: 'flex-1 text-center text-xs px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-700 text-white font-semibold pointer-events-none opacity-50',
+      href: '#',
+    }, '📦 Baixar zip');
+
+    const updateLinks = () => {
+      const id = select.value;
+      if (!id) {
+        reportBtn.classList.add('pointer-events-none', 'opacity-50');
+        exportBtn.classList.add('pointer-events-none', 'opacity-50');
+        reportBtn.href = '#'; exportBtn.href = '#';
+        return;
+      }
+      reportBtn.href = `/api/admin/profiles/${id}/report`;
+      exportBtn.href = `/api/admin/profiles/${id}/export`;
+      reportBtn.classList.remove('pointer-events-none', 'opacity-50');
+      exportBtn.classList.remove('pointer-events-none', 'opacity-50');
+    };
+    select.addEventListener('change', updateLinks);
+
+    api.listAdminProfiles().then(profiles => {
+      select.innerHTML = '';
+      select.appendChild(el('option', { value: '' }, '— escolha o atleta —'));
+      for (const p of profiles) {
+        const owner = p.ownerEmail || '(sem dono)';
+        const counts = `${p.tournamentCount} torn · ${p.matchCount} jogos`;
+        select.appendChild(el('option', { value: p.id },
+          `${p.athleteName || '(sem nome)'} — ${owner} · ${counts}`,
+        ));
+      }
+    }).catch(err => {
+      select.innerHTML = '';
+      select.appendChild(el('option', { value: '' }, `Erro: ${err.message}`));
+    });
+
+    buttons.append(reportBtn, exportBtn);
+    wrap.append(select, buttons);
+    return wrap;
+  }
+
   const card = el('div', {
     class: 'bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col',
     onClick: e => e.stopPropagation(),
@@ -3426,6 +3490,7 @@ function openAdminModal() {
         resetAll,
         true,
       ),
+      crossHouseholdAccess(),
     ),
     state.version && el('div', {
       class: 'px-5 py-2 border-t border-slate-200 text-[11px] text-slate-400 font-mono bg-slate-50',

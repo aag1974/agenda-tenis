@@ -739,6 +739,85 @@ app.post('/api/profiles/:id/alerts/reevaluate', requireAuth, requireAdmin, (req,
   res.json({ evaluated: events.length, added: added.length });
 });
 
+// ===== Admin: cross-household pra suporte e geração de relatório =====
+// Após autorização do responsável via email (consentimento LGPD registrado),
+// admin precisa acessar dados de qualquer atleta pra elaborar o relatório
+// técnico assinado. Endpoints separados de `/api/profiles/:id/*` pra deixar
+// claro o gate de privilégio (não é dono → precisa ser admin).
+
+app.get('/api/admin/profiles', requireAuth, requireAdmin, (req, res) => {
+  const profiles = listProfiles({});
+  const enriched = profiles.map(p => {
+    const owner = p.userId ? findUserById(p.userId) : null;
+    const synced = getSyncedData(p.id);
+    const matches = getMatchesData(p.id);
+    return {
+      id: p.id,
+      athleteName: p.athleteName,
+      tiEmail: p.tiEmail,
+      ownerEmail: owner?.email || null,
+      ownerName: owner ? `${owner.firstName || ''} ${owner.lastName || ''}`.trim() : null,
+      tournamentCount: (synced?.tournaments || []).length,
+      matchCount: (matches?.matches || []).length,
+      lastSync: synced?.syncedAt || null,
+    };
+  });
+  enriched.sort((a, b) => (a.athleteName || '').localeCompare(b.athleteName || '', 'pt-BR'));
+  res.json(enriched);
+});
+
+app.get('/api/admin/profiles/:id/report', requireAuth, requireAdmin, async (req, res) => {
+  const p = getProfile(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Perfil não encontrado' });
+  const { generateReportHtml } = await import('./report.js');
+  const html = generateReportHtml(req.params.id);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+app.get('/api/admin/profiles/:id/export', requireAuth, requireAdmin, (req, res) => {
+  const profileId = req.params.id;
+  const profile = getProfile(profileId);
+  if (!profile) return res.status(404).json({ error: 'Perfil não encontrado' });
+
+  const synced = getSyncedData(profileId);
+  const matches = getMatchesData(profileId);
+  const alerts = getAlertEvents(profileId);
+  const owner = profile.userId ? findUserById(profile.userId) : null;
+
+  const safeName = (profile.athleteName || 'atleta').replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 40);
+  const stamp = new Date().toISOString().slice(0, 10);
+  const filename = `tennis-flow-export_${safeName}_${stamp}.zip`;
+
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+  const archive = archiver('zip', { zlib: { level: 9 } });
+  archive.on('error', (err) => { try { res.status(500).end(err.message); } catch {} });
+  archive.pipe(res);
+
+  // meta.json — quem é, quem é o dono, quem exportou (audit trail)
+  const meta = {
+    profile: {
+      id: profile.id,
+      athleteName: profile.athleteName,
+      tiEmail: profile.tiEmail,
+      originAirport: profile.originAirport,
+      originCity: profile.originCity,
+      createdAt: profile.createdAt,
+    },
+    owner: owner ? { email: owner.email, firstName: owner.firstName, lastName: owner.lastName } : null,
+    exportedAt: new Date().toISOString(),
+    exportedBy: req.userEmail,
+  };
+  archive.append(JSON.stringify(meta, null, 2), { name: 'meta.json' });
+  if (synced) archive.append(JSON.stringify(synced, null, 2), { name: 'synced.json' });
+  if (matches) archive.append(JSON.stringify(matches, null, 2), { name: 'matches.json' });
+  archive.append(JSON.stringify(alerts || [], null, 2), { name: 'alerts.json' });
+
+  archive.finalize();
+});
+
 // Tournaments — single source of truth, server applies derivedStatus and merges notes
 app.get('/api/profiles/:id/tournaments', requireAuth, ensureOwnedProfile, (req, res) => {
   const p = getProfile(req.params.id);
