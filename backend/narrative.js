@@ -745,6 +745,12 @@ function toThirdPerson(text, firstName, gender = 'M') {
     s = wordBoundaryReplace(s, 'outra atleta agora', 'outro atleta agora');
     s = wordBoundaryReplace(s, 'jogadora', 'jogador');
     s = wordBoundaryReplace(s, 'vencedora', 'vencedor');
+    s = wordBoundaryReplace(s, 'favorita', 'favorito');
+    // "ela/Ela" usados como pronome do atleta em narrativas que já estão
+    // em 3ª pessoa (ex: tightestLossNarrative). Word boundary protege
+    // contra falsos positivos como "estela", "estrela", "novela", etc.
+    s = wordBoundaryReplace(s, 'ela', 'ele');
+    s = wordBoundaryReplace(s, 'Ela', 'Ele');
   }
 
   return s;

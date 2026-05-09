@@ -609,7 +609,7 @@ function renderChapter3(ctx) {
       </ul>
 
       ${renderRecurrentTable(analysis, ctx)}
-      ${renderScoreHistogram(analysis)}
+      ${renderScoreHistogram(analysis, ctx)}
     </section>
   `;
 }
@@ -644,7 +644,8 @@ function renderRecurrentTable(analysis, ctx) {
 }
 
 // ─── Cap 3.7: Distribuição de placares (histograma) ───────────────────
-function renderScoreHistogram(analysis) {
+function renderScoreHistogram(analysis, ctx) {
+  const G = ctx?.G || G_DEFAULT;
   const hist = analysis.scoreHistogram || {};
   if (!Object.keys(hist).length) return '';
 
@@ -669,7 +670,7 @@ function renderScoreHistogram(analysis) {
         </div>`;
       }).join('')}
     </div>
-    <p class="footnote">Quando uma jogadora vence sem ceder games (placar 6-0), chamamos popularmente de "pneu". O contrário — quando é vencida sem fazer games — também é um pneu sofrido.</p>
+    <p class="footnote">Quando ${G && G.gender === 'F' ? 'uma jogadora vence' : 'um jogador vence'} sem ceder games (placar 6-0), chamamos popularmente de "pneu". O contrário — ${G && G.gender === 'F' ? 'quando é vencida' : 'quando é vencido'} sem fazer games — também é um pneu sofrido.</p>
   `;
 }
 
