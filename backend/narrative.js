@@ -93,25 +93,33 @@ export function formaNarrative(analysis) {
 }
 
 // ─── Performance por força do oponente ──────────────────────────────────
+// Narrativa adapta o tom ao perfil agregado: atleta com aproveitamento alto
+// (≥65%) que perde nos parelhos é "fronteira pra subir", não "ponto crítico".
+// Atleta que está construindo (perde geral) e perde nos parelhos é "foco
+// principal de trabalho". Mesmo dado, leitura diferente conforme o contexto.
 export function bucketNarrative(analysis) {
   const b = analysis.bucketPerformance;
   if (!b) return null;
   const total = (bucket) => bucket.w + bucket.l;
   const pct = (bucket) => total(bucket) > 0 ? Math.round((bucket.w / total(bucket)) * 100) : null;
+  const overall = analysis.counts;
+  const overallPct = overall && overall.analyzed > 0 ? Math.round((overall.wins / overall.analyzed) * 100) : null;
+  const isHighPerformer = overallPct !== null && overallPct >= 65;
 
-  // Frase principal: foco no bucket "even" (parelhas), que é o termômetro mais limpo
   if (total(b.even) >= 3) {
     const p = pct(b.even);
     if (p >= 60) {
       return `Quando o jogo é entre você e alguém parecida em nível, você sai ganhando na maior parte das vezes (${b.even.w} de cada ${total(b.even)}). É o termômetro mais limpo do desempenho real, porque tira o ruído de jogos fáceis ou difíceis demais. Sinaliza maturidade emocional acima da média.`;
     }
     if (p <= 35) {
+      if (isHighPerformer) {
+        return `Em jogos parelhos, ${b.even.w} de ${total(b.even)} (${p}%). É a fronteira que separa o nível atual do próximo: você ganha consistente contra quem está abaixo, mas em jogos contra alguém parecida em nível ainda não fechou maioria. É aí que se ganha rating de verdade.`;
+      }
       return `Em jogos contra adversárias parelhas, perdeu mais do que ganhou (${b.even.w} de ${total(b.even)} = ${p}%). Esse é o ponto mais importante a trabalhar: jogos onde você está em condição de vencer mas não tem fechado.`;
     }
     return `Em jogos parelhos, ${b.even.w} de ${total(b.even)} (${p}%). Equilíbrio razoável — vai melhorar conforme acumular experiência em momentos decisivos.`;
   }
 
-  // Sem dados parelhos suficientes — fala de força/fraqueza
   if (total(b.strong) >= 5) {
     const p = pct(b.strong);
     if (p >= 30) {
@@ -340,13 +348,14 @@ export function generateAllNarratives(analysis, athleteFirstName) {
   };
 }
 
-// Converte uma narrativa em 2ª pessoa pra 3ª pessoa.
-// Implementação cuidadosa: \b do JS NÃO funciona bem com palavras acentuadas
-// (ç, ã, ê tratam como não-word). Usamos lookaround manual com classe de
-// caracteres explícita.
-function toThirdPerson(text, firstName) {
+// Converte uma narrativa em 2ª pessoa pra 3ª pessoa, flexionando pelo
+// gênero do atleta (M default). Templates internos foram escritos em
+// feminino histórico (adversária, parecidas, etc.) — quando atleta é M,
+// também trocamos as flexões dependentes pra masculino.
+function toThirdPerson(text, firstName, gender = 'M') {
   if (!text) return text;
   let s = text;
+  const F = gender === 'F';
   // Letra portuguesa (incluindo acentos)
   const L = String.raw`A-Za-zÀ-ÖØ-öø-ÿ`;
   const wordBoundaryReplace = (str, find, replWith) => {
@@ -354,49 +363,93 @@ function toThirdPerson(text, firstName) {
     return str.replace(re, (_, pre) => `${pre}${replWith}`);
   };
 
-  // 1ª ocorrência de "Você" → nome da atleta; subsequentes → "Ela"
+  // 1ª ocorrência de "Você" → nome do atleta; subsequentes → "Ele"/"Ela"
   let firstUse = true;
   s = s.replace(new RegExp(`(^|[^${L}])Você(?=[^${L}]|$)`, 'g'), (_, pre) => {
-    const repl = firstUse ? firstName : 'Ela';
+    const repl = firstUse ? firstName : (F ? 'Ela' : 'Ele');
     firstUse = false;
     return `${pre}${repl}`;
   });
 
-  // "você" minúsculo → "ela"
-  s = wordBoundaryReplace(s, 'você', 'ela');
+  // Contrações da preposição "de" + "você": "de você" → "dele/dela",
+  // "acima de você" → "acima dela/dele", etc. Tratado ANTES da troca
+  // simples de "você" pra evitar gerar "acima de ele".
+  const dele = F ? 'dela' : 'dele';
+  s = wordBoundaryReplace(s, 'de você', dele);
 
-  // Possessivos e contrações idiomáticas
-  s = wordBoundaryReplace(s, 'seu nível', 'o nível dela');
-  s = wordBoundaryReplace(s, 'seu jogo', 'o jogo dela');
-  s = wordBoundaryReplace(s, 'sua evolução', 'a evolução dela');
+  // "você" minúsculo → "ela"/"ele"
+  s = wordBoundaryReplace(s, 'você', F ? 'ela' : 'ele');
+
+  // Possessivos: ordem importa — frases compostas com artigo definido
+  // antes ("o seu X") são tratadas primeiro pra evitar duplicação ("o o X dele").
+  s = wordBoundaryReplace(s, 'o seu nível', `o nível ${dele}`);
+  s = wordBoundaryReplace(s, 'o seu jogo', `o jogo ${dele}`);
+  s = wordBoundaryReplace(s, 'a sua evolução', `a evolução ${dele}`);
+  s = wordBoundaryReplace(s, 'o seu resultado', `o resultado ${dele}`);
+  s = wordBoundaryReplace(s, 'a sua chance', `a chance ${dele}`);
+  s = wordBoundaryReplace(s, 'a sua taxa', `a taxa ${dele}`);
+  s = wordBoundaryReplace(s, 'a sua faixa', `a faixa ${dele}`);
+  s = wordBoundaryReplace(s, 'a sua adaptação', `a adaptação ${dele}`);
+  // Versões sem artigo prévio
+  s = wordBoundaryReplace(s, 'seu nível', `o nível ${dele}`);
+  s = wordBoundaryReplace(s, 'seu jogo', `o jogo ${dele}`);
+  s = wordBoundaryReplace(s, 'sua evolução', `a evolução ${dele}`);
   s = wordBoundaryReplace(s, 'sua maior', 'a maior');
-  s = wordBoundaryReplace(s, 'seu resultado', 'o resultado dela');
-  s = wordBoundaryReplace(s, 'sua chance', 'a chance dela');
-  s = wordBoundaryReplace(s, 'sua taxa', 'a taxa dela');
-  s = wordBoundaryReplace(s, 'sua faixa', 'a faixa dela');
-  s = wordBoundaryReplace(s, 'sua adaptação', 'a adaptação dela');
-
-  // Verbos: "tem" pode ser singular sujeito ou 2ª pessoa — leitura ambígua.
-  // Padrões específicos:
-  s = s.replace(new RegExp(`(^|[^${L}])temos(?=[^${L}])`, 'g'), '$1têm');  // só se contexto permitir, frágil — pode reverter
+  s = wordBoundaryReplace(s, 'seu resultado', `o resultado ${dele}`);
+  s = wordBoundaryReplace(s, 'sua chance', `a chance ${dele}`);
+  s = wordBoundaryReplace(s, 'sua taxa', `a taxa ${dele}`);
+  s = wordBoundaryReplace(s, 'sua faixa', `a faixa ${dele}`);
+  s = wordBoundaryReplace(s, 'sua adaptação', `a adaptação ${dele}`);
 
   // Frases idiomáticas com "você" embutido
-  s = s.replace(/contra ela e alguém/g, 'entre ela e alguém');
+  s = s.replace(/contra ela e alguém/g, F ? 'entre ela e alguém' : 'entre ele e alguém');
+
+  // Flexão pra masculino: substantivos e adjetivos que viviam em feminino
+  // nos templates históricos. Cuidado: só mexemos quando o gênero é M.
+  // Ordem: frases compostas primeiro, depois palavras isoladas.
+  if (!F) {
+    // Compostas (artigo+substantivo) que precisam vir antes pra evitar
+    // descasamento de concordância tipo "das adversários".
+    s = s.replace(/das adversárias/g, 'dos adversários');
+    s = s.replace(/Das adversárias/g, 'Dos adversários');
+    s = s.replace(/das mesmas adversárias/g, 'dos mesmos adversários');
+    s = s.replace(/uma adversária/g, 'um adversário');
+    s = s.replace(/Uma adversária/g, 'Um adversário');
+    s = s.replace(/da adversária/g, 'do adversário');
+    s = s.replace(/Da adversária/g, 'Do adversário');
+    // Plurais e singulares de "adversária(s)"
+    s = wordBoundaryReplace(s, 'adversárias', 'adversários');
+    s = wordBoundaryReplace(s, 'adversária', 'adversário');
+    // Adjetivos que descrevem oponentes ou atleta
+    s = wordBoundaryReplace(s, 'parecidas', 'parecidos');
+    s = wordBoundaryReplace(s, 'parecida', 'parecido');
+    s = wordBoundaryReplace(s, 'parelhas', 'parelhos');
+    s = wordBoundaryReplace(s, 'parelha', 'parelho');
+    s = wordBoundaryReplace(s, 'mais fortes', 'mais fortes');
+    s = wordBoundaryReplace(s, 'mais fracas', 'mais fracos');
+    s = wordBoundaryReplace(s, 'mais fraca', 'mais fraco');
+    s = wordBoundaryReplace(s, 'enfrentadas', 'enfrentados');
+    s = wordBoundaryReplace(s, 'enfrentada', 'enfrentado');
+    s = wordBoundaryReplace(s, 'pressionada', 'pressionado');
+    s = wordBoundaryReplace(s, 'outra atleta agora', 'outro atleta agora');
+    s = wordBoundaryReplace(s, 'jogadora', 'jogador');
+    s = wordBoundaryReplace(s, 'vencedora', 'vencedor');
+  }
 
   return s;
 }
 
-function toThirdPersonObj(obj, firstName) {
+function toThirdPersonObj(obj, firstName, gender = 'M') {
   if (!obj) return obj;
-  if (typeof obj === 'string') return toThirdPerson(obj, firstName);
-  if (Array.isArray(obj)) return obj.map(o => toThirdPersonObj(o, firstName));
+  if (typeof obj === 'string') return toThirdPerson(obj, firstName, gender);
+  if (Array.isArray(obj)) return obj.map(o => toThirdPersonObj(o, firstName, gender));
   if (typeof obj === 'object') {
     const out = {};
     for (const [k, v] of Object.entries(obj)) {
       out[k] = (k === 'paragraph' || k === 'title' || k === 'line1' ||
                 k === 'headline' || k === 'rating' || k === 'forma' ||
                 k === 'bucket' || k === 'expectedRealized' || k === 'temporal')
-        ? toThirdPersonObj(v, firstName)
+        ? toThirdPersonObj(v, firstName, gender)
         : v;
     }
     return out;
@@ -405,31 +458,32 @@ function toThirdPersonObj(obj, firstName) {
 }
 
 // Gera as mesmas narrativas mas em 3ª pessoa — pro relatório técnico assinado.
-export function generateAllNarrativesThirdPerson(analysis, athleteFirstName, athleteFullName) {
+// G = genderTerms object (opcional, default masculino genérico).
+export function generateAllNarrativesThirdPerson(analysis, athleteFirstName, athleteFullName, G) {
+  const gender = G?.gender || 'M';
   const second = generateAllNarratives(analysis, athleteFullName || athleteFirstName);
-  // Converte cada narrativa pra terceira pessoa
   return {
-    headline: toThirdPerson(second.headline, athleteFirstName),
-    rating: toThirdPerson(second.rating, athleteFirstName),
-    forma: toThirdPerson(second.forma, athleteFirstName),
-    bucket: toThirdPerson(second.bucket, athleteFirstName),
-    expectedRealized: toThirdPerson(second.expectedRealized, athleteFirstName),
+    headline: toThirdPerson(second.headline, athleteFirstName, gender),
+    rating: toThirdPerson(second.rating, athleteFirstName, gender),
+    forma: toThirdPerson(second.forma, athleteFirstName, gender),
+    bucket: toThirdPerson(second.bucket, athleteFirstName, gender),
+    expectedRealized: toThirdPerson(second.expectedRealized, athleteFirstName, gender),
     topPositive: second.topPositive ? {
       ...second.topPositive,
-      paragraph: toThirdPerson(second.topPositive.paragraph, athleteFirstName),
+      paragraph: toThirdPerson(second.topPositive.paragraph, athleteFirstName, gender),
     } : null,
     topNegative: second.topNegative ? {
       ...second.topNegative,
-      paragraph: toThirdPerson(second.topNegative.paragraph, athleteFirstName),
+      paragraph: toThirdPerson(second.topNegative.paragraph, athleteFirstName, gender),
     } : null,
     tightestLoss: second.tightestLoss ? {
       ...second.tightestLoss,
-      paragraph: toThirdPerson(second.tightestLoss.paragraph, athleteFirstName),
+      paragraph: toThirdPerson(second.tightestLoss.paragraph, athleteFirstName, gender),
     } : null,
     h2h: second.h2h.map(item => ({
       opponent: item.opponent,
-      paragraph: toThirdPerson(item.paragraph, athleteFirstName),
+      paragraph: toThirdPerson(item.paragraph, athleteFirstName, gender),
     })),
-    temporal: toThirdPerson(second.temporal, athleteFirstName),
+    temporal: toThirdPerson(second.temporal, athleteFirstName, gender),
   };
 }

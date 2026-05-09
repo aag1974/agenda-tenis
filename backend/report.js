@@ -10,6 +10,8 @@ import { generateAllNarrativesThirdPerson } from './narrative.js';
 import {
   getMatchesData, getProfile, getSyncedData,
 } from './storage.js';
+import { detectGender, detectMainCategory, categoryFullLabel, genderTerms } from './gender.js';
+const G_DEFAULT = genderTerms('M');
 
 // ─── Configurações ──────────────────────────────────────────────────────
 const SIGNATURE = {
@@ -154,7 +156,13 @@ function horizontalBars(rows, opts = {}) {
 // ─── Renderizadores de capítulo ─────────────────────────────────────────
 
 function renderCover(ctx) {
-  const { athleteName, ranking, periodFrom, periodTo, dateStr } = ctx;
+  const { athleteName, ranking, periodFrom, periodTo, dateStr, mainCategory } = ctx;
+  // Linha de meta: categoria + ranking (se ambos existirem). Sem categoria,
+  // mostra só ranking. Sem nada, omite a linha — capa fica mais limpa.
+  let metaLine = '';
+  if (mainCategory && ranking) metaLine = `Categoria ${escapeHtml(mainCategory)} · Ranking CBT ${ranking}`;
+  else if (mainCategory) metaLine = `Categoria ${escapeHtml(mainCategory)}`;
+  else if (ranking) metaLine = `Ranking CBT ${ranking}`;
   return `
     <section class="cover">
       <div class="cover-inner">
@@ -163,7 +171,7 @@ function renderCover(ctx) {
         <div class="brand-rule"></div>
         <h1 class="cover-title">Relatório de Performance</h1>
         <div class="cover-athlete">${escapeHtml(athleteName)}</div>
-        ${ranking ? `<div class="cover-meta">Categoria 12F · Ranking CBT ${ranking}</div>` : ''}
+        ${metaLine ? `<div class="cover-meta">${metaLine}</div>` : ''}
         <div class="cover-period">Período analisado: ${escapeHtml(periodFrom)} → ${escapeHtml(periodTo)}</div>
         <div class="cover-edition">1ª edição · Gerado em ${escapeHtml(dateStr)}</div>
         <div class="cover-statement">
@@ -191,7 +199,7 @@ function renderCover(ctx) {
 }
 
 function renderExecutiveSummary(ctx) {
-  const { analysis, narratives, athleteName, athleteFirstName, ranking } = ctx;
+  const { analysis, narratives, athleteName, athleteFirstName, ranking, mainCategory } = ctx;
   const c = analysis.counts;
   const f = analysis.forma;
   const r = analysis.athleteRating;
@@ -207,7 +215,13 @@ function renderExecutiveSummary(ctx) {
       <div class="exec-header">
         <div class="exec-eyebrow">Resumo Executivo</div>
         <div class="exec-athlete">${escapeHtml(athleteName)}</div>
-        ${ranking ? `<div class="exec-meta">Categoria 12F · Ranking CBT ${ranking}</div>` : ''}
+        ${(() => {
+          let m = '';
+          if (mainCategory && ranking) m = `Categoria ${escapeHtml(mainCategory)} · Ranking CBT ${ranking}`;
+          else if (mainCategory) m = `Categoria ${escapeHtml(mainCategory)}`;
+          else if (ranking) m = `Ranking CBT ${ranking}`;
+          return m ? `<div class="exec-meta">${m}</div>` : '';
+        })()}
       </div>
 
       <div class="exec-headline">
@@ -253,23 +267,24 @@ function renderExecutiveSummary(ctx) {
 }
 
 function renderChapter1(ctx) {
-  const { athleteName, athleteId, profile, synced } = ctx;
+  const { athleteName, athleteId, profile, synced, G, mainCategory, categoryLabel } = ctx;
   const wtn = synced?.athlete?.wtn;
   const rankingNational = synced?.athlete?.rankingNational;
   const rankingsAll = synced?.athlete?.rankingsAll || [];
   const about = synced?.athlete?.about;
+  const catLine = categoryLabel || mainCategory || null;
 
   return `
     <section class="chapter">
       <div class="chapter-num">CAPÍTULO 1</div>
-      <h2 class="chapter-title">Quem é a atleta e o que está sendo analisado</h2>
+      <h2 class="chapter-title">Quem é ${G.atleta} e o que está sendo analisado</h2>
 
       <div class="profile-card">
         <div class="profile-row"><span>Nome</span><strong>${escapeHtml(athleteName)}</strong></div>
         <div class="profile-row"><span>ID Tênis Integrado</span><strong>${escapeHtml(athleteId || '—')}</strong></div>
         ${about ? `<div class="profile-row"><span>Origem</span><strong>${escapeHtml(about)}</strong></div>` : ''}
         ${synced?.athlete?.hand ? `<div class="profile-row"><span>Lateralidade</span><strong>${escapeHtml(synced.athlete.hand)}</strong></div>` : ''}
-        <div class="profile-row"><span>Categoria</span><strong>Juvenil — 12F (12 anos feminino simples)</strong></div>
+        ${catLine ? `<div class="profile-row"><span>Categoria</span><strong>${escapeHtml(catLine)}</strong></div>` : ''}
       </div>
 
       ${wtn ? `
@@ -282,7 +297,7 @@ function renderChapter1(ctx) {
       ` : ''}
 
       ${rankingNational ? `
-      <h3>Ranking nacional CBT — Juvenil 12F</h3>
+      <h3>Ranking nacional CBT${mainCategory ? ` — ${escapeHtml(mainCategory)}` : ''}</h3>
       <div class="ranking-box">
         <div class="ranking-row current">
           <span class="ranking-pos">${rankingNational.position}º</span>
@@ -290,7 +305,7 @@ function renderChapter1(ctx) {
           <span class="ranking-pts">${String(rankingNational.points).replace('.', ',')} pts</span>
         </div>
       </div>
-      <p class="footnote">Posição no ranking nacional CBT na categoria 12F (corte de ${escapeHtml(synced?.athlete?.rankingRegional?.cutoffDate || 'corte mais recente')}).</p>
+      <p class="footnote">Posição no ranking nacional CBT${mainCategory ? ` na categoria ${escapeHtml(mainCategory)}` : ''} (corte de ${escapeHtml(synced?.athlete?.rankingRegional?.cutoffDate || 'corte mais recente')}).</p>
       ` : ''}
 
       ${synced?.athlete?.rankingRegional?.regionalPosition ? `
@@ -299,10 +314,10 @@ function renderChapter1(ctx) {
         <div class="ranking-row current">
           <span class="ranking-pos">${synced.athlete.rankingRegional.regionalPosition}º</span>
           <span class="ranking-name">${escapeHtml(athleteName)}</span>
-          <span class="ranking-pts">${synced.athlete.rankingRegional.totalRegional ? `de ${synced.athlete.rankingRegional.totalRegional} atletas no recorte` : ''}</span>
+          <span class="ranking-pts">${synced.athlete.rankingRegional.totalRegional ? `de ${synced.athlete.rankingRegional.totalRegional} ${G.atletas_plural} no recorte` : ''}</span>
         </div>
       </div>
-      <p class="footnote">Posição entre as atletas filiadas à federação do ${escapeHtml(synced.athlete.rankingRegional.uf || 'estado')} no recorte regional do ranking nacional 12F.</p>
+      <p class="footnote">Posição entre ${G.gender === 'F' ? 'as atletas' : 'os atletas'} ${G.filiadas} à federação do ${escapeHtml(synced.athlete.rankingRegional.uf || 'estado')} no recorte regional do ranking nacional${mainCategory ? ` ${escapeHtml(mainCategory)}` : ''}.</p>
       ` : ''}
 
       ${rankingsAll.length > 1 ? `
@@ -325,12 +340,12 @@ function renderChapter1(ctx) {
       ` : ''}
 
       <h3>O que este relatório analisa</h3>
-      <p>Este documento traz uma análise estatística completa do desempenho competitivo da atleta, baseada nas partidas oficiais registradas pelo Tênis Integrado. A análise inclui:</p>
+      <p>Este documento traz uma análise estatística completa do desempenho competitivo ${G.do_atleta}, baseada nas partidas oficiais registradas pelo Tênis Integrado. A análise inclui:</p>
       <ul>
-        <li><strong>Caracterização dos dados</strong> — quais torneios, qual o universo de adversárias, distribuições por nível e fase.</li>
+        <li><strong>Caracterização dos dados</strong> — quais torneios, qual o universo de ${G.adversarios}, distribuições por nível e fase.</li>
         <li><strong>Trajetória do nível de jogo</strong> — usando o sistema estatístico Glicko-2.</li>
         <li><strong>Performance estratificada</strong> — por força do oponente, tier, fase, UF.</li>
-        <li><strong>Histórico de confrontos recorrentes</strong> — head-to-head com adversárias enfrentadas mais de uma vez.</li>
+        <li><strong>Histórico de confrontos recorrentes</strong> — head-to-head com ${G.adversarios} ${G.enfrentadas} mais de uma vez.</li>
         <li><strong>Padrões temporais</strong> — sazonalidade e análise de sequências.</li>
         <li><strong>Considerações finais</strong> — síntese e perguntas pra conversar com o coach.</li>
       </ul>
@@ -338,41 +353,42 @@ function renderChapter1(ctx) {
   `;
 }
 
-function renderChapter2() {
+function renderChapter2(ctx) {
+  const G = ctx?.G || G_DEFAULT;
   return `
     <section class="chapter">
       <div class="chapter-num">CAPÍTULO 2</div>
       <h2 class="chapter-title">Como esta análise foi feita</h2>
 
       <h3>Fonte dos dados</h3>
-      <p>As partidas analisadas foram obtidas a partir do perfil oficial da atleta no <em>Tênis Integrado</em> (tenisintegrado.com.br), plataforma utilizada pela CBT e pelas federações estaduais para registro de torneios oficiais. O acesso foi feito via login autenticado da própria atleta, com consentimento do responsável legal.</p>
+      <p>As partidas analisadas foram obtidas a partir do perfil oficial ${G.do_atleta} no <em>Tênis Integrado</em> (tenisintegrado.com.br), plataforma utilizada pela CBT e pelas federações estaduais para registro de torneios oficiais. O acesso foi feito via login autenticado ${G.do_atleta}, com consentimento do responsável legal.</p>
 
       <h3>Critérios de inclusão e exclusão</h3>
       <p>Para garantir comparabilidade e qualidade estatística, foram aplicados os seguintes critérios:</p>
       <ul>
-        <li><strong>Incluídas:</strong> partidas de simples com adversária identificada e resultado oficial registrado.</li>
-        <li><strong>Excluídas:</strong> partidas de duplas (modelo estatístico próprio, futura versão), W.O. (não houve disputa efetiva), partidas sem identificação clara da adversária.</li>
+        <li><strong>Incluídas:</strong> partidas de simples com ${G.adversario} ${G.gender === 'F' ? 'identificada' : 'identificado'} e resultado oficial registrado.</li>
+        <li><strong>Excluídas:</strong> partidas de duplas (modelo estatístico próprio, futura versão), W.O. (não houve disputa efetiva), partidas sem identificação ${G.gender === 'F' ? 'clara da adversária' : 'clara do adversário'}.</li>
       </ul>
 
       <h3>O sistema Glicko-2 — como o nível de jogo é estimado</h3>
       <p>O <strong>Glicko-2</strong> é um sistema de pontuação estatística criado pelo Prof. Mark Glickman, da Universidade de Harvard, em 2012. É a evolução do sistema Glicko (1998), que por sua vez veio do Elo — sistema usado para ranquear jogadores de xadrez desde os anos 1960. Hoje, o Glicko-2 é usado em xadrez (USCF), tênis (algumas plataformas analíticas), jogos eletrônicos competitivos e em pesquisas estatísticas sobre esportes.</p>
 
       <h3>Por que esse sistema e não outro?</h3>
-      <p>Sistemas mais simples (como o Elo) atribuem apenas um número ao atleta. O Glicko-2 atribui dois: o <strong>rating</strong> (estimativa do nível) e a <strong>incerteza</strong> dessa estimativa. Isso faz toda a diferença: duas atletas com rating 1400 mas uma com 50 partidas e outra com 5 não devem ter o mesmo grau de confiança no número. A primeira tem incerteza baixa; a segunda, alta. Esse é o "± X" que aparece neste relatório.</p>
+      <p>Sistemas mais simples (como o Elo) atribuem apenas um número ${G.do_atleta}. O Glicko-2 atribui dois: o <strong>rating</strong> (estimativa do nível) e a <strong>incerteza</strong> dessa estimativa. Isso faz toda a diferença: ${G.gender === 'F' ? 'duas atletas' : 'dois atletas'} com rating 1400 mas ${G.gender === 'F' ? 'uma' : 'um'} com 50 partidas e ${G.gender === 'F' ? 'outra' : 'outro'} com 5 não devem ter o mesmo grau de confiança no número. ${G.gender === 'F' ? 'A primeira' : 'O primeiro'} tem incerteza baixa; ${G.gender === 'F' ? 'a segunda' : 'o segundo'}, alta. Esse é o "± X" que aparece neste relatório.</p>
 
       <h3>Como o número se atualiza</h3>
       <ol>
-        <li>O sistema observa o rating da atleta antes do jogo.</li>
-        <li>Observa o rating da adversária antes do jogo.</li>
+        <li>O sistema observa o rating ${G.do_atleta} antes do jogo.</li>
+        <li>Observa o rating ${G.gender === 'F' ? 'da adversária' : 'do adversário'} antes do jogo.</li>
         <li>Calcula a probabilidade de vitória dada a diferença.</li>
         <li>Compara o que era esperado com o que aconteceu de fato.</li>
-        <li>Atualiza ambos os ratings — o da atleta e o da adversária.</li>
+        <li>Atualiza ambos os ratings — o ${G.do_atleta} e o ${G.gender === 'F' ? 'da adversária' : 'do adversário'}.</li>
       </ol>
-      <p>O efeito prático: vencer alguém mais forte vale mais (em pontos de rating) do que vencer alguém mais fraco. Da mesma forma, perder pra uma atleta muito acima do seu nível quase não tira pontos.</p>
+      <p>O efeito prático: vencer alguém mais ${G.gender === 'F' ? 'forte' : 'forte'} vale mais (em pontos de rating) do que vencer alguém mais ${G.gender === 'F' ? 'fraca' : 'fraco'}. Da mesma forma, perder ${G.gender === 'F' ? 'pra uma atleta muito acima' : 'pra um atleta muito acima'} do seu nível quase não tira pontos.</p>
 
       <h3>Como ler o número</h3>
       <ul>
-        <li>1500 é a média referencial (jogadora "neutra", inicial).</li>
+        <li>1500 é a média referencial (${G.gender === 'F' ? 'jogadora "neutra"' : 'jogador "neutro"'}, inicial).</li>
         <li>Quanto maior, melhor a estimativa.</li>
         <li>A faixa entre os limites inferior e superior representa onde, com 95% de confiança, está o "nível verdadeiro".</li>
         <li>Conforme mais torneios, a faixa estreita.</li>
@@ -384,12 +400,12 @@ function renderChapter2() {
         <li>Não substitui o ranking CBT (pontos de torneio oficial).</li>
         <li>Não substitui o WTN (referência mundial pública da ITF).</li>
       </ul>
-      <p>Os três números são <strong>complementares</strong>: WTN diz onde a atleta está no mundo, ranking CBT diz onde está no Brasil, Glicko-2 mostra como ela está evoluindo dentro do universo de adversárias enfrentadas.</p>
+      <p>Os três números são <strong>complementares</strong>: WTN diz onde ${G.atleta} está no mundo, ranking CBT diz onde está no Brasil, Glicko-2 mostra como ${G.ele} está evoluindo dentro do universo de ${G.adversarios} ${G.enfrentadas}.</p>
 
       <h3>Outras técnicas estatísticas utilizadas</h3>
       <ul>
         <li><strong>Janelas temporais</strong> (90d, 12m, all-time) para análise de forma recente.</li>
-        <li><strong>Buckets de força do oponente</strong> (mais forte / parelha / mais fraca, com cutoff de ±100 pontos).</li>
+        <li><strong>Buckets de força do oponente</strong> (mais ${G.gender === 'F' ? 'forte / parelha / mais fraca' : 'forte / parelho / mais fraco'}, com cutoff de ±100 pontos).</li>
         <li><strong>Teste Wald-Wolfowitz</strong> para análise de sequências de vitórias e derrotas.</li>
         <li><strong>Standard error em métricas agregadas</strong> para indicar significância de over/underperformance.</li>
       </ul>
@@ -500,22 +516,24 @@ function renderChapter3(ctx) {
         <li><strong>${analysis.counts.excluded.wo}</strong> W.O. — sem disputa efetiva, fora desta análise.</li>
       </ul>
 
-      ${renderRecurrentTable(analysis)}
+      ${renderRecurrentTable(analysis, ctx)}
       ${renderScoreHistogram(analysis)}
     </section>
   `;
 }
 
-// ─── Cap 3.6: Tabela de adversárias recorrentes ───────────────────────
-function renderRecurrentTable(analysis) {
+// ─── Cap 3.6: Tabela de adversárias/adversários recorrentes ───────────
+function renderRecurrentTable(analysis, ctx) {
   const recurrent = analysis.recurrentOpponents || [];
   if (!recurrent.length) return '';
+  const G = ctx?.G || G_DEFAULT;
+  const firstName = ctx?.athleteFirstName ? escapeHtml(ctx.athleteFirstName) : G.Atleta;
   return `
-    <h3>Adversárias recorrentes (enfrentadas 2 ou mais vezes)</h3>
-    <p>Em circuito juvenil regional, é comum reencontrar as mesmas adversárias várias vezes. ${escapeHtml(analysis.athleteId ? '' : '')}Anna tem <strong>${recurrent.length}</strong> adversárias com quem já jogou pelo menos 2 vezes — concentração de confrontos que reflete a realidade do circuito brasileiro.</p>
+    <h3>${G.Adversarios} recorrentes (${G.enfrentadas} 2 ou mais vezes)</h3>
+    <p>Em circuito juvenil regional, é comum reencontrar ${G.gender === 'F' ? 'as mesmas adversárias' : 'os mesmos adversários'} várias vezes. ${firstName} tem <strong>${recurrent.length}</strong> ${G.adversarios} com quem já jogou pelo menos 2 vezes — concentração de confrontos que reflete a realidade do circuito brasileiro.</p>
     <table class="data-table">
       <thead>
-        <tr><th>Adversária</th><th>V-D</th><th>Datas dos confrontos</th></tr>
+        <tr><th>${G.Adversario}</th><th>V-D</th><th>Datas dos confrontos</th></tr>
       </thead>
       <tbody>
         ${recurrent.map(opp => {
@@ -595,9 +613,9 @@ function renderChapter4(ctx) {
 
       <h3>4.3 Performance por força do oponente</h3>
       ${horizontalBars([
-        { label: 'Adversária mais forte', value: b.strong.w, total: b.strong.w + b.strong.l },
+        { label: ctx.G.adversaria_mais_forte[0].toUpperCase() + ctx.G.adversaria_mais_forte.slice(1), value: b.strong.w, total: b.strong.w + b.strong.l },
         { label: 'Mesmo nível', value: b.even.w, total: b.even.w + b.even.l },
-        { label: 'Adversária mais fraca', value: b.weak.w, total: b.weak.w + b.weak.l },
+        { label: ctx.G.adversaria_mais_fraca[0].toUpperCase() + ctx.G.adversaria_mais_fraca.slice(1), value: b.weak.w, total: b.weak.w + b.weak.l },
       ])}
       ${narratives.bucket ? `<p style="margin-top:14px;">${md(narratives.bucket)}</p>` : ''}
 
@@ -619,14 +637,14 @@ function renderChapter4(ctx) {
 
 // ─── 4.5 Análise de confrontos recorrentes (deep dive) ───────────────
 function renderHeadToHeadDeep(ctx) {
-  const { analysis, narratives } = ctx;
+  const { analysis, narratives, G } = ctx;
   const opps = analysis.recurrentOpponents || [];
   const h2hNarr = narratives.h2h || [];
   if (!opps.length) return '';
 
   return `
     <h3>4.5 Confrontos recorrentes (head-to-head)</h3>
-    <p>Análise individual das ${opps.length} adversárias enfrentadas 2 ou mais vezes. Cada confronto repetido conta uma história — entender essa história é essencial pra preparação dos próximos encontros.</p>
+    <p>Análise individual ${G.gender === 'F' ? 'das' : 'dos'} ${opps.length} ${G.adversarios} ${G.enfrentadas} 2 ou mais vezes. Cada confronto repetido conta uma história — entender essa história é essencial pra preparação dos próximos encontros.</p>
     ${opps.map((opp, i) => {
       const narr = h2hNarr.find(n => n.opponent.name === opp.name);
       const balance = opp.wins - opp.losses;
@@ -671,11 +689,11 @@ function renderHeadToHeadDeep(ctx) {
       const balanced  = opps.filter(o => o.wins === o.losses);
       return `
         <div class="h2h-summary">
-          ${positives.length ? `<div><strong>Adversárias com saldo positivo:</strong> ${positives.map(o => `${escapeHtml(o.name)} (${o.wins}-${o.losses})`).join(', ')}.</div>` : ''}
+          ${positives.length ? `<div><strong>${G.Adversarios} com saldo positivo:</strong> ${positives.map(o => `${escapeHtml(o.name)} (${o.wins}-${o.losses})`).join(', ')}.</div>` : ''}
           ${balanced.length ? `<div><strong>Equilíbrio:</strong> ${balanced.map(o => `${escapeHtml(o.name)} (${o.wins}-${o.losses})`).join(', ')}.</div>` : ''}
-          ${negatives.length ? `<div><strong>Adversárias-barreira:</strong> ${negatives.map(o => `${escapeHtml(o.name)} (${o.wins}-${o.losses})`).join(', ')}.</div>` : ''}
+          ${negatives.length ? `<div><strong>${G.Adversarios}-barreira:</strong> ${negatives.map(o => `${escapeHtml(o.name)} (${o.wins}-${o.losses})`).join(', ')}.</div>` : ''}
         </div>
-        <p class="footnote">Adversárias recorrentes respondem por <strong>${opps.reduce((s, o) => s + o.total, 0)}</strong> dos ${analysis.counts.analyzed} jogos analisados (${Math.round(opps.reduce((s, o) => s + o.total, 0) / analysis.counts.analyzed * 100)}%) — concentração que reflete a realidade do circuito juvenil regional.</p>
+        <p class="footnote">${G.Adversarios} recorrentes respondem por <strong>${opps.reduce((s, o) => s + o.total, 0)}</strong> dos ${analysis.counts.analyzed} jogos analisados (${Math.round(opps.reduce((s, o) => s + o.total, 0) / analysis.counts.analyzed * 100)}%) — concentração que reflete a realidade do circuito juvenil regional.</p>
       `;
     })()}
   `;
@@ -779,7 +797,7 @@ function renderChapter5(ctx) {
 }
 
 function renderChapter6(ctx) {
-  const { narratives, analysis, athleteFirstName } = ctx;
+  const { narratives, analysis, athleteFirstName, G } = ctx;
   const opps = analysis.recurrentOpponents || [];
   const positives = opps.filter(o => o.wins > o.losses);
   const negatives = opps.filter(o => o.losses > o.wins);
@@ -822,8 +840,8 @@ function renderChapter6(ctx) {
         <div class="insight-symbol">↻</div>
         <div class="insight-content">
           <strong>Capacidade de virar histórico desfavorável.</strong>
-          Adversária${positives.length > 1 ? 's' : ''} com saldo positivo após reencontros: ${positives.map(o => `<strong>${escapeHtml(o.name)}</strong> (${o.wins}-${o.losses})`).join(', ')}.
-          ${positives.some(o => o.matches[0]?.result === 'L') ? `Em alguns casos, a primeira partida foi derrota — e o histórico foi reescrito nos confrontos seguintes. Isso mostra que histórico ruim contra uma adversária NÃO é destino.` : ''}
+          ${G.Adversario}${positives.length > 1 ? 's' : ''} com saldo positivo após reencontros: ${positives.map(o => `<strong>${escapeHtml(o.name)}</strong> (${o.wins}-${o.losses})`).join(', ')}.
+          ${positives.some(o => o.matches[0]?.result === 'L') ? `Em alguns casos, a primeira partida foi derrota — e o histórico foi reescrito nos confrontos seguintes. Isso mostra que histórico ruim contra ${G.adversario === 'adversária' ? 'uma adversária' : 'um adversário'} NÃO é destino.` : ''}
         </div>
       </div>
       ` : ''}
@@ -845,7 +863,7 @@ function renderChapter6(ctx) {
         <div class="insight-symbol">⚠</div>
         <div class="insight-content">
           <strong>Fechamento em tiebreak / super-tiebreak.</strong>
-          Combinando derrotas em pontos decisivos (super-TB), surge sinal de que ainda há trabalho específico a desenvolver no jogo de tiebreak — o pequeno detalhe que separa atletas competitivas das elite na categoria.
+          Combinando derrotas em pontos decisivos (super-TB), surge sinal de que ainda há trabalho específico a desenvolver no jogo de tiebreak — o pequeno detalhe que separa ${G.gender === 'F' ? 'atletas competitivas das elite' : 'atletas competitivos da elite'} na categoria.
         </div>
       </div>
       ` : ''}
@@ -859,7 +877,7 @@ function renderChapter6(ctx) {
             <div class="insight-symbol">⚠</div>
             <div class="insight-content">
               <strong>Frequência de pneus (0-6) nos sets perdidos.</strong>
-              ${bagels} sets terminaram com placar 0-6 — frequência relativamente alta. Pode refletir adversárias muito acima do nível, ou queda de produção dentro do jogo após primeiro set ruim. Vale conversar com o coach se há padrão emocional/tático a trabalhar.
+              ${bagels} sets terminaram com placar 0-6 — frequência relativamente alta. Pode refletir ${G.adversarios} muito acima do nível, ou queda de produção dentro do jogo após primeiro set ruim. Vale conversar com o coach se há padrão emocional/tático a trabalhar.
             </div>
           </div>`;
         }
@@ -867,14 +885,14 @@ function renderChapter6(ctx) {
       })()}
 
       <h3>Perguntas pra conversar com o coach</h3>
-      <p>As perguntas abaixo não têm resposta nos dados — eles apenas apontam onde vale investigar. As respostas vêm de quem conhece a atleta em quadra:</p>
+      <p>As perguntas abaixo não têm resposta nos dados — eles apenas apontam onde vale investigar. As respostas vêm de quem ${G.gender === 'F' ? 'conhece a atleta' : 'conhece o atleta'} em quadra:</p>
       <ol>
         ${analysis.tightestLoss?.hasSuperTiebreak ? `<li>Em jogos que vão pro super-tiebreak, qual é o plano de jogo? Já houve foco específico em pontos decisivos?</li>` : ''}
         <li>Quando perde o 1º set, qual é a rotina mental pra entrar no 2º?</li>
         ${recentBarrier ? `<li><strong>${escapeHtml(recentBarrier.name)}</strong> é uma "barreira mental" ou um problema tático específico? Vale revisitar mentalmente esses confrontos.</li>` : ''}
         ${positives.length ? `<li>Como foram os jogos da virada contra ${escapeHtml(positives[0].name)}? Vale entender a fórmula que funcionou — pode ser repetível.</li>` : ''}
         <li>O calendário atual está com a intensidade certa? Há períodos sem torneios que poderiam ser preenchidos?</li>
-        <li>Em torneios fora do estado, ${escapeHtml(athleteFirstName)} se sente mais ou menos pressionada? Como isso pode orientar o calendário?</li>
+        <li>Em torneios fora do estado, ${escapeHtml(athleteFirstName)} se sente mais ou menos ${G.gender === 'F' ? 'pressionada' : 'pressionado'}? Como isso pode orientar o calendário?</li>
       </ol>
 
       <h3>O que o próximo relatório vai poder responder melhor</h3>
@@ -909,7 +927,7 @@ function renderSignature(ctx) {
 }
 
 function renderAnnexA(ctx) {
-  const { matches } = ctx;
+  const { matches, G } = ctx;
   const singles = matches.filter(m => !m.isDoubles && !m.wo)
     .sort((a, b) => (a.endDate || '').split('/').reverse().join('').localeCompare((b.endDate || '').split('/').reverse().join('')));
   const doubles = matches.filter(m => m.isDoubles && !m.wo);
@@ -923,7 +941,7 @@ function renderAnnexA(ctx) {
       <h3>Partidas de simples analisadas (${singles.length})</h3>
       <table class="data-table small">
         <thead>
-          <tr><th>#</th><th>Data</th><th>Tier</th><th>Cidade</th><th>Fase</th><th>Adversária</th><th>R</th><th>Placar</th></tr>
+          <tr><th>#</th><th>Data</th><th>Tier</th><th>Cidade</th><th>Fase</th><th>${G.Adversario}</th><th>R</th><th>Placar</th></tr>
         </thead>
         <tbody>
           ${singles.map((m, i) => `
@@ -945,7 +963,7 @@ function renderAnnexA(ctx) {
       <h3>Partidas de duplas (${doubles.length}) — fora desta análise</h3>
       <table class="data-table small">
         <thead>
-          <tr><th>Data</th><th>Tier</th><th>Cidade</th><th>Adversárias</th><th>R</th><th>Placar</th></tr>
+          <tr><th>Data</th><th>Tier</th><th>Cidade</th><th>${G.Adversarios}</th><th>R</th><th>Placar</th></tr>
         </thead>
         <tbody>
           ${doubles.map(m => `
@@ -976,7 +994,8 @@ function renderAnnexA(ctx) {
   `;
 }
 
-function renderAnnexB() {
+function renderAnnexB(ctx) {
+  const G = ctx?.G || G_DEFAULT;
   return `
     <section class="annex">
       <div class="chapter-num">ANEXO B</div>
@@ -984,10 +1003,10 @@ function renderAnnexB() {
 
       <dl class="glossary">
         <dt>Rating Glicko-2</dt>
-        <dd>Sistema estatístico de pontuação criado por Mark Glickman (Harvard, 2012). Atribui dois números à atleta: rating (estimativa do nível) e RD (incerteza). Atualiza após cada partida considerando o rating da adversária.</dd>
+        <dd>Sistema estatístico de pontuação criado por Mark Glickman (Harvard, 2012). Atribui dois números ${G.do_atleta}: rating (estimativa do nível) e RD (incerteza). Atualiza após cada partida considerando o rating ${G.gender === 'F' ? 'da adversária' : 'do adversário'}.</dd>
 
         <dt>RD (Rating Deviation)</dt>
-        <dd>A "incerteza" do Glicko-2. Quanto menor, mais confiamos no rating estimado. Cresce quando a atleta passa muito tempo sem jogar; diminui com mais partidas.</dd>
+        <dd>A "incerteza" do Glicko-2. Quanto menor, mais confiamos no rating estimado. Cresce quando ${G.atleta} passa muito tempo sem jogar; diminui com mais partidas.</dd>
 
         <dt>IC 95% (Intervalo de Confiança)</dt>
         <dd>Faixa de valores onde é razoável esperar que o "valor verdadeiro" esteja, com 95% de chance. Usado para apresentar o rating como faixa, não número fixo.</dd>
@@ -1002,10 +1021,10 @@ function renderAnnexB() {
         <dd>Match-tiebreak usado como 3º "set" em jogos de 2 sets em empate. Disputado até 10 pontos com diferença de 2.</dd>
 
         <dt>W.O. (Walkover)</dt>
-        <dd>Partida onde uma atleta vence porque a adversária não comparece ou desiste antes do início. Sem disputa efetiva — excluído das análises.</dd>
+        <dd>Partida onde ${G.gender === 'F' ? 'uma atleta vence porque a adversária não comparece' : 'um atleta vence porque o adversário não comparece'} ou desiste antes do início. Sem disputa efetiva — excluído das análises.</dd>
 
         <dt>Pneu</dt>
-        <dd>Set vencido por 6-0. Pneu duplo é um jogo onde a vencedora não cedeu nenhum game (6-0 6-0).</dd>
+        <dd>Set vencido por 6-0. Pneu duplo é um jogo onde ${G.gender === 'F' ? 'a vencedora' : 'o vencedor'} não cedeu nenhum game (6-0 6-0).</dd>
 
         <dt>WTN (World Tennis Number)</dt>
         <dd>Sistema global de classificação de tênis publicado pela ITF na escala 1 (top mundial) a 40 (iniciante).</dd>
@@ -1014,7 +1033,8 @@ function renderAnnexB() {
   `;
 }
 
-function renderAnnexC() {
+function renderAnnexC(ctx) {
+  const G = ctx?.G || G_DEFAULT;
   return `
     <section class="annex">
       <div class="chapter-num">ANEXO C</div>
@@ -1032,9 +1052,9 @@ function renderAnnexC() {
 
       <h3>Buckets de força do oponente</h3>
       <ul>
-        <li>Mais forte: rating do oponente ≥ rating da atleta + 100 pts</li>
-        <li>Parelha: diferença entre -100 e +100 pts</li>
-        <li>Mais fraca: rating do oponente ≤ rating da atleta - 100 pts</li>
+        <li>Mais ${G.gender === 'F' ? 'forte' : 'forte'}: rating do oponente ≥ rating ${G.do_atleta} + 100 pts</li>
+        <li>${G.gender === 'F' ? 'Parelha' : 'Parelho'}: diferença entre -100 e +100 pts</li>
+        <li>Mais ${G.gender === 'F' ? 'fraca' : 'fraco'}: rating do oponente ≤ rating ${G.do_atleta} - 100 pts</li>
         <li>Comparação calculada no momento exato de cada partida (rating dinâmico)</li>
       </ul>
 
@@ -1062,11 +1082,16 @@ export function generateReportHtml(profileId) {
   const profile = getProfile(profileId);
   const synced = getSyncedData(profileId);
   const matchesData = getMatchesData(profileId);
-  const rawMatches = matchesData.matches || [];
-  // Enriquece com tier do catálogo (synced.json) — a página /perfil2/jogos/
-  // não traz tier, mas /torneio_painel_info/ traz.
-  const matches = enrichMatchesWithTier(rawMatches, synced?.tournaments);
-  const analysis = analyzeMatches(matches, profileId);
+  return generateReportHtmlFromData({
+    profile, synced, matches: matchesData.matches || [], profileId,
+  });
+}
+
+// Versão stateless: recebe os dados já carregados em vez de ler do storage.
+// Útil pra rodar localmente a partir de um zip exportado, ou pra tests.
+export function generateReportHtmlFromData({ profile, synced, matches: rawMatches, profileId }) {
+  const matches = enrichMatchesWithTier(rawMatches || [], synced?.tournaments);
+  const analysis = analyzeMatches(matches, profileId || profile?.id);
 
   // Prioriza o nome COMPLETO do TI (synced.athlete.name) sobre o athleteName
   // do profile, que pode ser apenas um apelido/nome curto definido pelo user.
@@ -1078,7 +1103,12 @@ export function generateReportHtml(profileId) {
     ? `${synced.athlete.rankingNational.position}º (${String(synced.athlete.rankingNational.points).replace('.', ',')} pts)`
     : null;
 
-  const narratives = generateAllNarrativesThirdPerson(analysis, athleteFirstName, athleteName);
+  const gender = detectGender(synced, matches);
+  const G = genderTerms(gender);
+  const mainCategory = detectMainCategory(synced, matches);
+  const categoryLabel = mainCategory ? categoryFullLabel(mainCategory, gender) : null;
+
+  const narratives = generateAllNarrativesThirdPerson(analysis, athleteFirstName, athleteName, G);
 
   const today = new Date();
   const dateStr = formatLongDate(today);
@@ -1107,21 +1137,22 @@ export function generateReportHtml(profileId) {
     profile, synced, matches, analysis, narratives,
     athleteName, athleteFirstName, athleteId, ranking,
     periodFrom, periodTo, dateStr,
+    gender, G, mainCategory, categoryLabel,
   };
 
   const body = `
     ${renderCover(ctx)}
     ${renderExecutiveSummary(ctx)}
     ${renderChapter1(ctx)}
-    ${renderChapter2()}
+    ${renderChapter2(ctx)}
     ${renderChapter3(ctx)}
     ${renderChapter4(ctx)}
     ${renderChapter5(ctx)}
     ${renderChapter6(ctx)}
     ${renderSignature(ctx)}
     ${renderAnnexA(ctx)}
-    ${renderAnnexB()}
-    ${renderAnnexC()}
+    ${renderAnnexB(ctx)}
+    ${renderAnnexC(ctx)}
   `;
 
   return baseHtmlShell(athleteName, dateStr, body);
