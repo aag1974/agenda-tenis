@@ -3754,12 +3754,6 @@ function openAthleteCard() {
           class: 'text-xs text-cyan-700 hover:text-cyan-900 underline decoration-dotted',
           onClick: () => { close(); openMatchesModal(); },
         }, 'Ver histórico de jogos →'),
-        el('a', {
-          class: 'text-xs text-violet-700 hover:text-violet-900 underline decoration-dotted',
-          href: `/api/profiles/${profile.id}/report`,
-          target: '_blank',
-          rel: 'noopener',
-        }, '📄 Relatório completo (PDF) →'),
       ),
     );
   })();
