@@ -4030,9 +4030,9 @@ async function loadAnalyticsInto(container, profileId) {
     el('button', {
       class: 'mt-2 text-xs px-3 py-1.5 rounded bg-[#0e3a4d] text-white hover:bg-[#16526a]',
       onClick: () => {
-        const subject = encodeURIComponent('Solicito análise completa');
-        const body = encodeURIComponent('Gostaria de receber o relatório técnico de performance completo, assinado pelo estatístico responsável.');
-        window.location.href = `mailto:alexandre@opiniao.inf.br?subject=${subject}&body=${body}`;
+        const profile = state.profiles.find(p => p.id === profileId);
+        const athleteName = profile?.athleteName || 'a atleta';
+        openCompleteReportRequestModal(athleteName);
       },
     }, 'Solicitar análise completa →'),
   ));
@@ -4047,6 +4047,90 @@ async function loadAnalyticsInto(container, profileId) {
       `Excluídos da análise: ${parts.join(' e ')}.`,
     ));
   }
+}
+
+function openCompleteReportRequestModal(athleteName) {
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-lg bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    style: 'max-height: 85vh;',
+  });
+
+  const header = el('div', { class: 'bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
+    el('span', { class: 'font-medium' }, '📊 Solicitar análise completa'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  );
+
+  const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1 space-y-3' });
+
+  body.appendChild(el('div', { class: 'text-[13px] text-slate-700 leading-relaxed' },
+    'O relatório técnico completo (19 páginas) inclui análise descritiva, exploratória e narrativa do desempenho, com gráficos e interpretação assinada pelo estatístico responsável.',
+  ));
+
+  body.appendChild(el('a', {
+    class: 'block rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-[13px] text-cyan-800 hover:bg-cyan-100',
+    href: '/exemplo-relatorio.pdf',
+    target: '_blank',
+    rel: 'noopener',
+  }, '📄 Ver exemplo — Relatório de Anna Luiza →'));
+
+  const consentBox = el('div', { class: 'rounded-lg border border-amber-200 bg-amber-50 p-3' },
+    el('div', { class: 'text-[11px] font-semibold uppercase tracking-wide text-amber-800 mb-1.5' },
+      '🔒 Autorização de compartilhamento de dados'),
+    el('div', { class: 'text-[12px] text-slate-700 leading-relaxed mb-2' },
+      `Para elaborar o relatório, é preciso compartilhar com Alexandre Garcia (alexandre@opiniao.inf.br), estatístico responsável, os dados de identificação e desempenho esportivo de ${athleteName} (resultados, scores, oponentes, datas e categorias dos jogos). O uso é exclusivo para a confecção deste relatório, em conformidade com a LGPD (Lei nº 13.709/2018). Você pode revogar esta autorização a qualquer momento por email.`,
+    ),
+  );
+
+  const checkbox = el('input', { type: 'checkbox', id: 'lgpd-consent', class: 'mt-0.5' });
+  const consentLabel = el('label', {
+    class: 'flex items-start gap-2 text-[12px] text-slate-800 cursor-pointer select-none',
+    for: 'lgpd-consent',
+  },
+    checkbox,
+    el('span', null, `Autorizo o compartilhamento dos dados de ${athleteName} nos termos acima.`),
+  );
+  consentBox.appendChild(consentLabel);
+  body.appendChild(consentBox);
+
+  const footer = el('div', { class: 'px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-end gap-2' });
+  const cancelBtn = el('button', {
+    class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-100',
+    onClick: close,
+  }, 'Cancelar');
+  const sendBtn = el('button', {
+    class: 'px-3 py-1.5 text-sm rounded bg-[#0e3a4d] text-white font-medium opacity-50 cursor-not-allowed',
+    disabled: true,
+    onClick: () => {
+      if (!checkbox.checked) return;
+      const subject = encodeURIComponent(`Solicito análise completa — ${athleteName}`);
+      const lines = [
+        `Gostaria de receber o relatório técnico de performance completo de ${athleteName}, assinado pelo estatístico responsável.`,
+        '',
+        `Autorizo o compartilhamento dos dados de identificação e desempenho esportivo de ${athleteName} para a confecção do relatório, em conformidade com a LGPD (Lei nº 13.709/2018).`,
+        `Data da autorização: ${new Date().toLocaleString('pt-BR')}`,
+      ];
+      const body2 = encodeURIComponent(lines.join('\n'));
+      window.location.href = `mailto:alexandre@opiniao.inf.br?subject=${subject}&body=${body2}`;
+      close();
+    },
+  }, 'Enviar solicitação →');
+  checkbox.addEventListener('change', () => {
+    if (checkbox.checked) {
+      sendBtn.disabled = false;
+      sendBtn.className = 'px-3 py-1.5 text-sm rounded bg-[#0e3a4d] text-white font-medium hover:bg-[#16526a]';
+    } else {
+      sendBtn.disabled = true;
+      sendBtn.className = 'px-3 py-1.5 text-sm rounded bg-[#0e3a4d] text-white font-medium opacity-50 cursor-not-allowed';
+    }
+  });
+  footer.append(cancelBtn, sendBtn);
+
+  card.append(header, body, footer);
+  root.append(overlay, card);
 }
 
 function openCalendarSetup() {
