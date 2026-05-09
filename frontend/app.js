@@ -3627,15 +3627,34 @@ async function openMatchesModal() {
     ),
   ));
 
-  // Agrupa por torneio (preserva ordem de matches — mais recentes primeiro)
+  // Agrupa por torneio. Ordem dos torneios: mais recente primeiro
+  // (por endDate). Dentro do torneio: cronológica das rondas (R32 → F).
+  const ROUND_RANK = { R128: 0, R64: 1, R32: 2, R16: 3, QF: 4, SF: 5, Final: 6, TT: 7 };
+  const parseDmy = (s) => {
+    if (!s) return 0;
+    const [d, m, y] = s.split('/').map(Number);
+    if (!d || !m || !y) return 0;
+    return new Date(y, m - 1, d).getTime();
+  };
+
   const byTournament = new Map();
   for (const m of matches) {
     const key = m.tournamentId || m.tournamentName;
     if (!byTournament.has(key)) byTournament.set(key, { meta: m, items: [] });
     byTournament.get(key).items.push(m);
   }
+  // Sort dentro de cada torneio (R32 antes de Final = ordem cronológica do evento)
+  for (const g of byTournament.values()) {
+    g.items.sort((a, b) => (ROUND_RANK[a.round] ?? 99) - (ROUND_RANK[b.round] ?? 99));
+  }
+  // Sort entre torneios — mais recente primeiro
+  const ordered = [...byTournament.values()].sort((a, b) => {
+    const da = parseDmy(a.meta.endDate || a.meta.date);
+    const db = parseDmy(b.meta.endDate || b.meta.date);
+    return db - da;
+  });
 
-  for (const { meta, items } of byTournament.values()) {
+  for (const { meta, items } of ordered) {
     const groupCard = el('div', { class: 'mb-3 rounded-lg border border-slate-200 overflow-hidden' });
     groupCard.appendChild(el('div', { class: 'bg-slate-50 px-3 py-2 border-b border-slate-200' },
       el('div', { class: 'text-sm font-medium text-slate-900' }, meta.tournamentName || '—'),
