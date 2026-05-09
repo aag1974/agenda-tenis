@@ -5,3 +5,6 @@ data/
 *.zip
 .secret
 .session-secret
+# PDFs gerados de outros atletas — não devem entrar no repo.
+# O exemplo da Anna Luiza fica em frontend/exemplo-relatorio.pdf (consentimento OK).
+relatorios_atletas/
