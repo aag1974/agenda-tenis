@@ -5139,6 +5139,9 @@ if ('serviceWorker' in navigator) {
     // Check imediato no load (caso a primeira visit ao app já tenha
     // versão nova esperando)
     reg.update().catch(() => {});
+    // Polling a cada 5 min — garante que aba aberta sem trocar de foco
+    // ainda detecte deploy novo. Custo: ~1KB por request, desprezível.
+    setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000);
   }).catch(() => {});
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
