@@ -186,6 +186,27 @@ Memorável, conversável, "explicável em 30 segundos". Vira fala do coach
 
 ---
 
+## 6.5. Princípio: o engine não crava causa
+
+Quando o engine detecta um sinal sem ter como saber a causa (queda na
+forma recente, oscilação, ascensão), a regra é:
+
+> **Descrever o sinal · listar possibilidades · remeter o motivo ao coach.**
+
+Anti-padrão (cravar causa):
+- "...60% — **período de adaptação**." (não dá pra saber)
+- "Pode ser fase, pode ser amostra pequena" (especulação seletiva)
+
+Padrão (factual + aberto):
+- "...60% — **abaixo da média histórica**." (matemática, sem invenção)
+- "Os números mostram a queda — o motivo precisa de contexto humano:
+  adversários mais fortes, calendário diferente, lesão, ajuste técnico,
+  fase mental. O relatório aponta o sinal; a leitura do motivo é com
+  o coach."
+
+Quando o admin sabe o motivo real (ex.: lesão), entra a **curadoria
+manual** — edita direto no HTML antes de gerar o PDF. Engine fica neutro.
+
 ## 7. Caveat inferencial
 
 Quando IC do Glicko é largo (rd ≥ 120), narrativa **não crava**. Em vez
