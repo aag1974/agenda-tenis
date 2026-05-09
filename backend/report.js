@@ -343,36 +343,45 @@ function renderDnaAndMetrics(ctx) {
     { label: 'vs Fortes', value: strongPct },
   ];
 
+  // Layout player-card: header hero com nome + arquétipos como badges,
+  // radar à esquerda + métricas à direita em formato compacto.
   return `
-    <section class="chapter dna-section">
+    <section class="chapter dna-section player-card">
       <div class="chapter-num">PERFIL COMPETITIVO</div>
       <h2 class="chapter-title">Como ${escapeHtml(athleteFirstName)} compete</h2>
-      <p class="dna-intro">Análise vai além do binário ganha/perde — lê textura competitiva real: dominância de placar, performance em pontos decisivos, capacidade de virar adversidade e desempenho contra rivais ${G.gender === 'F' ? 'parelhas e mais fortes' : 'parelhos e mais fortes'}.</p>
 
       ${archetypes && archetypes.length ? `
-      <div class="dna-grid">
-        ${archCards}
+      <div class="archetype-badges">
+        ${archetypes.map(a => `
+          <div class="archetype-badge">
+            <div class="badge-icon">${a.icon}</div>
+            <div class="badge-content">
+              <div class="badge-tag">${escapeHtml(a.tag)}</div>
+              <div class="badge-desc">${escapeHtml(a.desc)}</div>
+            </div>
+          </div>
+        `).join('')}
       </div>
       ` : ''}
 
-      <div class="dna-radar-wrap">
-        ${radarChart(radarData, { width: 380, height: 320 })}
+      <div class="player-card-body">
+        <div class="player-card-radar">
+          ${radarChart(radarData, { width: 320, height: 280 })}
+          <div class="radar-caption">Quanto mais o polígono se estende, mais ${G.ele} performa naquele eixo</div>
+        </div>
+        <div class="player-card-metrics">
+          ${metricCard('Quanto controla o jogo quando vence', cdi,
+            'Vitórias por margem larga ou apertada?',
+            cdiBreak)}
+          ${metricCard('Como joga quando o jogo aperta', clutch,
+            'Tie-breaks, super-tiebreaks e sets decisivos.',
+            clutchBreak)}
+          ${metricCard('Como reage depois de perder um set', res,
+            'Capacidade de virar quando começa atrás.',
+            resBreak)}
+        </div>
       </div>
-      <p class="footnote dna-radar-caption">Radar dos 5 eixos do perfil. Quanto mais o polígono violeta se estende, mais ${G.atleta} performa naquele eixo. Pontuações 0–100.</p>
-
-      <h3 class="metrics-h3">Três leituras que importam</h3>
-      <div class="metric-grid">
-        ${metricCard('Quanto controla o jogo quando vence', cdi,
-          'Vitórias por margem larga ou apertada?',
-          cdiBreak)}
-        ${metricCard('Como joga quando o jogo aperta', clutch,
-          'Tie-breaks, super-tiebreaks e sets decisivos.',
-          clutchBreak)}
-        ${metricCard('Como reage depois de perder um set', res,
-          'Capacidade de virar quando começa atrás.',
-          resBreak)}
-      </div>
-      <p class="footnote">Notas de 0 a 100 (forte ≥ 65 · médio 45–64 · em desenvolvimento &lt; 45). Detalhe técnico no Anexo C.</p>
+      <p class="footnote">Notas de 0 a 100 (forte ≥ 65 · médio 45–64 · em desenvolvimento &lt; 45).</p>
     </section>
   `;
 }
@@ -404,7 +413,7 @@ function renderChapter1(ctx) {
         <div><span>Simples</span><strong>${escapeHtml(wtn.single)}</strong></div>
         <div><span>Duplas</span><strong>${escapeHtml(wtn.double)}</strong></div>
       </div>
-      <p class="footnote">A escala WTN vai de 1 (top mundial) a 40 (iniciante). A faixa 33-40 representa atletas em desenvolvimento competitivo. ${escapeHtml(athleteName.split(' ')[0])} está nessa faixa, coerente com a fase atual da carreira: já está no circuito disputando torneios oficiais, ainda construindo histórico.</p>
+      <p class="footnote">A escala WTN vai de 1 (top mundial) a 40 (iniciante). A faixa 33-40 representa atletas em desenvolvimento. ${escapeHtml(athleteName.split(' ')[0])} está nessa faixa — já entrou no circuito oficial, agora é jogo a jogo.</p>
       ` : ''}
 
       ${rankingNational ? `
@@ -486,10 +495,10 @@ function renderChapter2(ctx) {
       <h3>O que este relatório NÃO substitui</h3>
       <p>Glicko-2 é uma <strong>terceira lente</strong>, não substitui ranking CBT (pontos oficiais) nem WTN (referência mundial). Os três são complementares — WTN diz onde ${G.atleta} está no mundo, CBT no Brasil, Glicko-2 dentro do universo de ${G.adversarios} ${G.enfrentadas}.</p>
 
-      <h3>Limitações</h3>
-      <p>Análise com amostra ainda em construção tem incerteza inerente. Conclusões são <strong>direcionais</strong>, não definitivas. A faixa Glicko ("± X") quantifica essa incerteza. Em 6–12 meses, com 50–100 partidas no histórico, as inferências ficam muito mais firmes.</p>
+      <h3>Cuidado com a leitura</h3>
+      <p>Com pouca amostra, qualquer conclusão é <strong>direção</strong>, não certeza. A faixa do Glicko ("± X") mostra esse tamanho de erro. Em 6 a 12 meses, com mais jogos no histórico, dá pra falar com mais firmeza.</p>
 
-      <p class="footnote">Detalhe técnico do Glicko-2 (atualização passo a passo, buckets, testes inferenciais) está no Anexo C — Notas técnicas.</p>
+      <p class="footnote">Quem quiser entender exatamente como cada conta é feita, o Anexo C tem o detalhe técnico.</p>
     </section>
   `;
 }
@@ -857,7 +866,7 @@ function renderTemporalSection(ctx) {
         }).join('')}
       </tbody>
     </table>
-    <p class="footnote">A aparente concentração nos primeiros meses do ano corrente é uma <strong>ilusão estatística</strong>. O calendário CBT juvenil é distribuído ao longo do ano todo — basta olhar 2025 (ano completo no histórico) pra ver atividade em março, maio, julho, agosto e dezembro. A razão dos meses "vazios" no ano corrente é que o Tênis Integrado popula os torneios cerca de 2 meses antes do início, então o segundo semestre ainda não foi totalmente publicado. Não é falta de calendário — é defasagem da fonte de dados.</p>
+    <p class="footnote">Os meses "vazios" do ano em curso não significam que não haverá torneios — o calendário CBT cobre o ano todo. A explicação é simples: o Tênis Integrado costuma publicar os torneios cerca de 2 meses antes da disputa, então a parte da frente do ano ainda não está completa por aqui.</p>
 
     <h4>Maiores sequências registradas</h4>
     <ul>
@@ -1007,18 +1016,18 @@ function renderChapter6(ctx) {
         <li>Em torneios fora do estado, ${escapeHtml(athleteFirstName)} se sente mais ou menos ${G.gender === 'F' ? 'pressionada' : 'pressionado'}? Como isso pode orientar o calendário?</li>
       </ol>
 
-      <h3>O que o próximo relatório vai poder responder melhor</h3>
-      <p>Com mais ${analysis.counts.analyzed >= 50 ? '50+' : analysis.counts.analyzed * 2}+ partidas no histórico, será possível:</p>
+      <h3>O que o próximo relatório vai conseguir responder melhor</h3>
+      <p>Quando o histórico chegar perto de ${analysis.counts.analyzed >= 50 ? '100' : analysis.counts.analyzed * 2}+ partidas, vai dar pra:</p>
       <ul>
-        <li>Confirmar ou descartar as tendências detectadas nesta edição.</li>
-        <li>Estreitar significativamente a faixa de incerteza do rating.</li>
-        <li>Identificar padrões temporais (sazonalidade, melhores meses) com confiança estatística.</li>
-        <li>Cruzar mais dimensões (ex: tier × fase × UF) com base maior.</li>
-        <li>Aplicar testes inferenciais com poder estatístico real (hoje, com 25 jogos, são direcionais).</li>
+        <li>Confirmar ou descartar as tendências que apareceram aqui.</li>
+        <li>Apertar a faixa de incerteza do nível estimado.</li>
+        <li>Ver com mais clareza os meses fortes e os meses difíceis.</li>
+        <li>Cruzar mais detalhes — tipo: como vai contra G2 fora de casa, ou em fases finais.</li>
+        <li>Falar com mais firmeza onde hoje a gente fala "tendência" — vira "característica".</li>
       </ul>
 
       <div class="closing-note">
-        <strong>Aviso final.</strong> Este relatório foi feito com base em ${analysis.counts.analyzed} partidas analisadas. Toda análise com amostra dessa magnitude tem incerteza inerente. Os números aqui são corretos; as <strong>interpretações</strong> são prováveis, não garantidas. Em 6-12 meses, com 50-100 partidas no histórico, faremos uma versão muito mais firme. ${escapeHtml(athleteFirstName)} está em ascensão — os sinais são consistentes em múltiplas dimensões. Mas o tênis é um esporte que recompensa paciência, consistência e capacidade de aprender com cada partida.
+        <strong>Pra fechar.</strong> Este relatório olhou ${analysis.counts.analyzed} partidas. Os números são exatos; as leituras são <strong>prováveis</strong>, não certezas. Daqui 6 a 12 meses, com mais histórico, vamos conseguir cravar mais. Por enquanto, ${escapeHtml(athleteFirstName)} está dando sinais bons em várias frentes. Tênis é jogo de paciência — o que se constrói agora aparece lá na frente.
       </div>
     </section>
   `;
@@ -1513,28 +1522,60 @@ function baseHtmlShell(athleteName, dateStr, body) {
     color: white; padding-left: 8px;
   }
 
-  /* DNA + MÉTRICAS PROPRIETÁRIAS ─────────────────────────────── */
-  .dna-section .dna-intro {
-    color: ${COLORS.textMuted}; font-size: 12px; margin: 4px 0 18px;
+  /* PERFIL COMPETITIVO — Player card layout ──────────────────── */
+  .player-card .archetype-badges {
+    display: flex; gap: 12px; margin-bottom: 22px; flex-wrap: wrap;
   }
-  .dna-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px;
-  }
-  .dna-grid:has(.dna-card:only-child) { grid-template-columns: 1fr; }
-  .dna-card {
+  .archetype-badge {
+    flex: 1; min-width: 240px;
     background: linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.navyLight} 100%);
-    color: white; padding: 16px 18px; border-radius: 10px;
-    display: flex; flex-direction: column; gap: 6px;
+    color: white; padding: 18px 20px; border-radius: 12px;
+    display: flex; align-items: flex-start; gap: 14px;
+    box-shadow: 0 4px 12px rgba(14,58,77,0.15);
   }
-  .dna-card .dna-icon { font-size: 22px; line-height: 1; }
-  .dna-card .dna-tag {
-    font-size: 16px; font-weight: 700; letter-spacing: -0.2px;
-    color: ${COLORS.cyanLight};
+  .badge-icon {
+    font-size: 32px; line-height: 1;
   }
-  .dna-card .dna-desc {
-    font-size: 12px; line-height: 1.45; color: rgba(255,255,255,0.88);
+  .badge-content { flex: 1; }
+  .badge-tag {
+    font-size: 17px; font-weight: 700; letter-spacing: -0.3px;
+    color: ${COLORS.cyanLight}; margin-bottom: 4px;
   }
-  .metrics-h3 { margin-top: 8px; }
+  .badge-desc {
+    font-size: 12px; line-height: 1.5; color: rgba(255,255,255,0.9);
+  }
+  .player-card-body {
+    display: grid; grid-template-columns: 340px 1fr; gap: 24px;
+    align-items: start; margin: 4px 0 12px;
+  }
+  .player-card-radar {
+    display: flex; flex-direction: column; align-items: center;
+    background: ${COLORS.bgLight};
+    padding: 12px; border-radius: 10px;
+  }
+  .radar-caption {
+    font-size: 10.5px; color: ${COLORS.textMuted};
+    text-align: center; margin-top: 4px; padding: 0 8px;
+  }
+  .player-card-metrics {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .player-card-metrics .metric-card {
+    padding: 12px 14px;
+  }
+  .player-card-metrics .metric-card .metric-title {
+    font-size: 11px; letter-spacing: 0.6px; text-transform: none;
+    font-weight: 600; color: ${COLORS.navy};
+  }
+  .player-card-metrics .metric-card .metric-score {
+    font-size: 28px; margin-top: 2px;
+  }
+  .player-card-metrics .metric-card .metric-sublabel {
+    font-size: 10.5px;
+  }
+  .player-card-metrics .metric-card .metric-breakdown {
+    font-size: 10px;
+  }
   .metric-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
     margin-bottom: 12px;

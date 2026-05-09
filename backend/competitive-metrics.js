@@ -272,8 +272,8 @@ export function computeArchetypes(analysis, gender = 'M') {
       tag: isLowSample ? 'Em construção' : 'Perfil em definição',
       icon: isLowSample ? '🌱' : '🧭',
       desc: isLowSample
-        ? 'Ainda construindo histórico competitivo. O perfil vai se cristalizar com mais jogos.'
-        : 'Os indicadores não apontam ainda um padrão competitivo dominante. Vale acompanhar nos próximos torneios — pequenos ajustes podem definir a vocação tática.',
+        ? 'Histórico ainda jovem. O jeito de jogar vai aparecer com mais clareza nos próximos torneios.'
+        : 'Os números ainda não apontam um padrão dominante. Vale acompanhar nos próximos torneios — um detalhe pode definir o caminho.',
       weight: 0,
     });
   }

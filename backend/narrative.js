@@ -69,10 +69,10 @@ export function athleteSignaturePhrase(analysis, athleteFirstName) {
 
   // Fallback: amostra ainda construindo
   if ((analysis.counts?.analyzed || 0) < 30) {
-    return `${athleteFirstName} ainda está construindo histórico — o perfil competitivo vai se cristalizar nos próximos torneios.`;
+    return `${athleteFirstName} ainda está em começo de carreira competitiva. O jeito de jogar dele vai aparecer mais claro com os próximos torneios.`;
   }
 
-  return `${athleteFirstName} tem perfil em definição. Os próximos torneios vão indicar pra qual caminho ele cresce mais rápido.`;
+  return `${athleteFirstName} ainda está achando o jogo dele. Os próximos torneios vão dizer pra qual caminho cresce mais rápido.`;
 }
 
 // ─── Headline "em uma frase" ────────────────────────────────────────────
@@ -397,30 +397,45 @@ export function h2hOpponentNarrative(opponent) {
     return null;
   };
 
-  // Banco narrativo expandido (8 variantes cada) pra reduzir sensação de
-  // template. Tom: head coach explicando pra atleta + família. Sem palavras
-  // raras (paradoxal, intrínseco, etc.) e sem repetir "chegue afiado" /
-  // "vale revisar com o coach" mais que o necessário.
+  // Banco narrativo amplo (16+ variantes por categoria) pra dissolver a
+  // sensação de template. Tom: head coach inteligente conversando com
+  // atleta e família. Sem academicês, sem palavras raras.
   const recommendDominance = () => pickVariant(seed, [
     `Quem perde várias vezes costuma voltar com algo novo. Esperar isso.`,
-    `Confiança alta vale, mas o adversário vai ajustar. Manter o roteiro com atenção.`,
+    `Confiança alta vale, mas o adversário vai ajustar. Roteiro com atenção.`,
     `Vitórias seguidas viram alvo — ele vai estudar o que tem dado certo.`,
-    `Histórico bom é alavanca, não garantia. Entrar no próximo afiado.`,
+    `O bom histórico é alavanca, não garantia.`,
     `Cuidado: jogo fácil no papel costuma ser o mais traiçoeiro.`,
-    `Manter o que está funcionando e ler o que ele vai trazer de novo.`,
-    `Quando o histórico é bom, o erro mora na falta de foco. Manter intensidade.`,
-    `Próximo jogo é o jogo. Não confiar no histórico — preparar como se fosse o primeiro.`,
+    `Manter o que funciona, mas ler o que ele vai trazer de novo.`,
+    `Quando o histórico é bom, o erro mora na falta de foco. Sustentar intensidade.`,
+    `Tratar o próximo como se fosse o primeiro encontro entre os dois.`,
+    `Adversário derrotado vem mais técnico. Imaginar isso desde o aquecimento.`,
+    `Não dar bandeira. O jogo se decide na primeira meia hora.`,
+    `Manter o pé no chão — favoritismo às vezes joga contra.`,
+    `Imaginar três cenários do que ele pode trazer de diferente. Treinar resposta.`,
+    `O mais perigoso dele agora é a fome de virar o histórico.`,
+    `Entrar pra jogar bonito, não pra "fechar logo". Aí vem o risco.`,
+    `Preparação como se estivesse atrás no histórico.`,
+    `Atenção redobrada no início de set — ele vai testar se a confiança virou displicência.`,
   ]);
 
   const recommendStudy = () => pickVariant(seed, [
-    `Vale conversar com o coach sobre o que travou nos jogos anteriores.`,
-    `Antes do próximo, plano de jogo específico — não jogo padrão.`,
+    `Conversar com o coach sobre o que travou nos jogos anteriores.`,
+    `Antes do próximo, plano de jogo desenhado — não jogo padrão.`,
     `Olhar com calma os pontos que decidiram os jogos passados.`,
-    `Esse pede preparação tática focada — não dá pra ir no automático.`,
+    `Esse pede preparação focada — não dá pra ir no automático.`,
     `Pedir pro coach assistir um jogo dele e desenhar leitura específica.`,
-    `Não é caso de jogo padrão — esse adversário pede roteiro próprio.`,
-    `Estudar como ele vence pode dar a chave. Tem padrão pra quebrar.`,
-    `Antes de pisar na quadra, ter um plano A e um B claros pra ele.`,
+    `Adversário pede roteiro próprio.`,
+    `Estudar como ele vence pode dar a chave.`,
+    `Antes da quadra, ter plano A e plano B claros pra ele.`,
+    `Conversa franca: o que tem feito a diferença no contra-jogo dele?`,
+    `Anotar 3 padrões dele que aparecem sempre. Trabalhar 1 por treino.`,
+    `Olhar vídeo de um jogo, mesmo que rápido. Vai mudar a leitura.`,
+    `Jogar mental antes do encontro real — visualizar como cada ponto deve sair.`,
+    `Pedir treino simulado com alguém que jogue parecido com ele.`,
+    `Não é o mesmo de sempre. Esse merece pranchar tática própria.`,
+    `Atletas que dão trabalho pedem que a gente jogue um pouco diferente do normal.`,
+    `Foco em 2 ou 3 ajustes — mais que isso polui a cabeça em quadra.`,
   ]);
 
   // 1) Sem vitórias ainda — arquétipo barreira (técnica, atual ou aberta)
