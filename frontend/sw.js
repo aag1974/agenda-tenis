@@ -1,7 +1,7 @@
 // Service worker — network-first pra HTML e app.js (sempre serve a versão
 // nova quando online; cai pro cache só offline). Stale-while-revalidate
 // pra ícones / manifest / assets pesados que mudam pouco.
-const CACHE = 'tennis-flow-0.9.4';
+const CACHE = 'tennis-flow-0.9.5';
 const SHELL_OFFLINE = ['/', '/app.js', '/manifest.webmanifest', '/icon-192.svg', '/icon-512.svg'];
 
 self.addEventListener('install', (e) => {
@@ -22,35 +22,43 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/api/')) return;
 
   if (NETWORK_FIRST_PATHS.has(url.pathname)) {
-    // Network-first: tenta rede; se falhar (offline), serve cache
-    e.respondWith((async () => {
-      try {
-        const res = await fetch(e.request);
-        if (res.ok) {
-          const cache = await caches.open(CACHE);
-          cache.put(e.request, res.clone());
-        }
-        return res;
-      } catch {
-        const cache = await caches.open(CACHE);
-        const cached = await cache.match(e.request);
-        return cached || new Response('Offline', { status: 503 });
-      }
-    })());
+    e.respondWith(networkFirst(e.request));
     return;
   }
-
-  // Stale-while-revalidate pra outros assets (ícones, etc)
-  e.respondWith((async () => {
-    const cache = await caches.open(CACHE);
-    const cached = await cache.match(e.request);
-    const networkPromise = fetch(e.request).then((res) => {
-      if (res.ok) cache.put(e.request, res.clone());
-      return res;
-    }).catch(() => null);
-    return cached || (await networkPromise) || new Response('Offline', { status: 503 });
-  })());
+  e.respondWith(staleWhileRevalidate(e.request));
 });
+
+// Helpers blindados — qualquer falha de cache.put (Vary, redirect, quota)
+// não pode quebrar respondWith. Só retornamos a Response da rede ou fallback.
+async function networkFirst(request) {
+  try {
+    const res = await fetch(request);
+    if (res.ok) {
+      caches.open(CACHE)
+        .then(cache => cache.put(request, res.clone()))
+        .catch(() => {});
+    }
+    return res;
+  } catch {
+    try {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(request);
+      if (cached) return cached;
+    } catch {}
+    return new Response('Offline', { status: 503 });
+  }
+}
+
+async function staleWhileRevalidate(request) {
+  let cache = null;
+  try { cache = await caches.open(CACHE); } catch {}
+  const cached = cache ? await cache.match(request).catch(() => null) : null;
+  const networkPromise = fetch(request).then((res) => {
+    if (cache && res.ok) cache.put(request, res.clone()).catch(() => {});
+    return res;
+  }).catch(() => null);
+  return cached || (await networkPromise) || new Response('Offline', { status: 503 });
+}
 
 // ===== Web Push =====
 // O servidor manda payload JSON: { title, body, badge, tag, url }
