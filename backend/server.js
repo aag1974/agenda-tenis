@@ -21,6 +21,7 @@ import {
   createLiveMatchTokens, resolveLiveMatchToken, getLiveMatchTokens, deleteLiveMatchTokens,
 } from './storage.js';
 import { createMatch as createMatchState, applyPoint, undoLastPoint, snapshotScore } from './tennis-score.js';
+import { attachScore } from './match-score.js';
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed, getRegistrationWindowState } from './board.js';
 import {
   listReceipts, addReceipt, getReceiptFile, updateReceiptCategory, deleteReceipt,
@@ -1813,7 +1814,7 @@ app.post('/api/profiles/:id/live-matches', requireAuth, requireEditor, ensureOwn
 
 // Lista matches do profile
 app.get('/api/profiles/:id/live-matches', requireAuth, ensureOwnedProfile, (req, res) => {
-  res.json(listLiveMatches(req.params.id));
+  res.json(listLiveMatches(req.params.id).map(attachScore));
 });
 
 // Tokens de um match (pra dono compartilhar via WhatsApp)
@@ -1833,7 +1834,7 @@ app.get('/api/profiles/:id/live-matches/:matchId/tokens', requireAuth, ensureOwn
 app.get('/api/profiles/:id/live-matches/:matchId', requireAuth, ensureOwnedProfile, (req, res) => {
   const m = getLiveMatch(req.params.id, req.params.matchId);
   if (!m) return res.status(404).json({ error: 'Match não encontrado' });
-  res.json(m);
+  res.json(attachScore(m));
 });
 
 // Adiciona ponto. Body: { winner: 'a'|'o', stat?: string }
@@ -1847,7 +1848,7 @@ app.post('/api/profiles/:id/live-matches/:matchId/points', requireAuth, requireE
   // Preserva metadata do match (tudo fora do state da engine)
   Object.assign(m, next);
   saveLiveMatch(req.params.id, m);
-  res.json(m);
+  res.json(attachScore(m));
 });
 
 // Desfaz último ponto
@@ -1858,7 +1859,7 @@ app.delete('/api/profiles/:id/live-matches/:matchId/points/last', requireAuth, r
   const next = undoLastPoint(m);
   Object.assign(m, next);
   saveLiveMatch(req.params.id, m);
-  res.json(m);
+  res.json(attachScore(m));
 });
 
 // Adiciona nota qualitativa. Body: { text, tag? }
@@ -1877,7 +1878,7 @@ app.post('/api/profiles/:id/live-matches/:matchId/notes', requireAuth, requireEd
     author: 'owner',
   });
   saveLiveMatch(req.params.id, m);
-  res.json(m);
+  res.json(attachScore(m));
 });
 
 // Deleta nota (só dono)
@@ -1886,7 +1887,7 @@ app.delete('/api/profiles/:id/live-matches/:matchId/notes/:noteId', requireAuth,
   if (!m) return res.status(404).json({ error: 'Match não encontrado' });
   m.notes = (m.notes || []).filter(n => n.id !== req.params.noteId);
   saveLiveMatch(req.params.id, m);
-  res.json(m);
+  res.json(attachScore(m));
 });
 
 // Encerra match manualmente (ou marca abandonado)
@@ -1900,7 +1901,7 @@ app.patch('/api/profiles/:id/live-matches/:matchId', requireAuth, requireEditor,
     m.endedAt = new Date().toISOString();
   }
   saveLiveMatch(req.params.id, m);
-  res.json(m);
+  res.json(attachScore(m));
 });
 
 // Deleta um match (limpeza)
@@ -1926,7 +1927,7 @@ function publicMatchByToken(token, requireKind = null) {
 app.get('/api/scout/:token', (req, res) => {
   const r = publicMatchByToken(req.params.token, 'scout');
   if (r.error) return res.status(404).json({ error: r.error });
-  res.json(r.match);
+  res.json(attachScore(r.match));
 });
 
 app.post('/api/scout/:token/points', (req, res) => {
@@ -1939,7 +1940,7 @@ app.post('/api/scout/:token/points', (req, res) => {
   const next = applyPoint(match, winner, stat || null);
   Object.assign(match, next);
   saveLiveMatch(info.profileId, match);
-  res.json(match);
+  res.json(attachScore(match));
 });
 
 app.delete('/api/scout/:token/points/last', (req, res) => {
@@ -1950,7 +1951,7 @@ app.delete('/api/scout/:token/points/last', (req, res) => {
   const next = undoLastPoint(match);
   Object.assign(match, next);
   saveLiveMatch(info.profileId, match);
-  res.json(match);
+  res.json(attachScore(match));
 });
 
 // Scouter público pode adicionar nota qualitativa também (tipo "tá afobada
@@ -1971,7 +1972,7 @@ app.post('/api/scout/:token/notes', (req, res) => {
     author: 'scout',
   });
   saveLiveMatch(info.profileId, match);
-  res.json(match);
+  res.json(attachScore(match));
 });
 
 
@@ -1980,7 +1981,7 @@ app.post('/api/scout/:token/notes', (req, res) => {
 app.get('/api/live/:token', (req, res) => {
   const r = publicMatchByToken(req.params.token, 'viewer');
   if (r.error) return res.status(404).json({ error: r.error });
-  const { notes, ...publicView } = r.match;
+  const { notes, ...publicView } = attachScore(r.match);
   res.json(publicView);
 });
 

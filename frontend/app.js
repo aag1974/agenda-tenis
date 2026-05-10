@@ -4660,6 +4660,14 @@ function scoutListItem(m, profileId, parentClose, isLive) {
   const statusBadge = isLive
     ? el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700' }, '● AO VIVO')
     : el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700' }, m.abandoned ? 'Abandonado' : 'Encerrado');
+  // Nota 0-10 inline (se tem pontos suficientes pra calcular)
+  const cs = m.computedScore;
+  const noteBadge = cs && cs.score != null
+    ? (() => {
+        const color = cs.score < 4 ? 'text-rose-700 bg-rose-100' : cs.score < 7 ? 'text-amber-800 bg-amber-100' : 'text-emerald-700 bg-emerald-100';
+        return el('span', { class: `text-[10px] font-bold px-2 py-0.5 rounded-full ${color}` }, `Nota ${cs.score.toFixed(1)}`);
+      })()
+    : null;
   const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer mt-2' },
     el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
       el('div', { class: 'min-w-0 flex-1' },
@@ -4668,7 +4676,10 @@ function scoutListItem(m, profileId, parentClose, isLive) {
       ),
       statusBadge,
     ),
-    el('div', { class: 'text-xs text-slate-700 font-medium' }, score),
+    el('div', { class: 'flex items-center justify-between gap-2 mt-1' },
+      el('div', { class: 'text-xs text-slate-700 font-medium' }, score),
+      noteBadge,
+    ),
   );
   wrap.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
   return wrap;
@@ -5004,7 +5015,14 @@ function renderActions(m, profileId, onAction) {
 
 function renderStatsPanel(m) {
   const wrap = el('div', { class: 'px-4 py-4' });
-  wrap.appendChild(el('h3', { class: 'text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2' }, 'Stats'));
+
+  // Nota 0-10 (header da seção)
+  const cs = m.computedScore;
+  if (cs && cs.score != null) {
+    wrap.appendChild(renderScoreBadge(cs));
+  }
+
+  wrap.appendChild(el('h3', { class: 'text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2 mt-3' }, 'Stats'));
   const stats = computeStats(m);
   const tbl = el('div', { class: 'bg-white/5 rounded-lg border border-white/10 overflow-hidden' });
   const rows = [
@@ -5160,6 +5178,47 @@ function relativeTimeShort(iso) {
   const hrs = Math.round(mins / 60);
   if (hrs < 24) return `há ${hrs}h`;
   return new Date(iso).toLocaleDateString('pt-BR');
+}
+
+// Badge grande com a nota 0-10 + breakdown compacto
+function renderScoreBadge(cs) {
+  const score = cs.score;
+  // Cor: vermelho < 4, amarelo 4-7, verde 7+
+  const color = score < 4 ? '#e11d48' : score < 7 ? '#f59e0b' : '#10b981';
+  const wrap = el('div', { class: 'rounded-xl p-4 mb-2', style: 'background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);' });
+  wrap.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-white/50 font-bold' }, 'Nota técnica do match'));
+
+  const row = el('div', { class: 'flex items-end gap-3 mt-1' });
+  const big = el('div', { class: 'text-5xl font-extrabold leading-none', style: `color:${color}` }, score.toFixed(1));
+  row.appendChild(big);
+  row.appendChild(el('div', { class: 'text-xs text-white/60 pb-1' }, ' / 10'));
+  wrap.appendChild(row);
+
+  // Breakdown — 4 mini-barras
+  const b = cs.breakdown;
+  const items = [
+    ['% pts ganhos',          b.pctWon?.score],
+    ['Saldo ofensivo',         b.balance?.score],
+    ['Sacando',                b.serving?.score],
+    ['Recebendo',              b.receiving?.score],
+  ];
+  const grid = el('div', { class: 'mt-3 grid grid-cols-2 gap-2' });
+  for (const [label, val] of items) {
+    if (val == null) continue;
+    const c = val < 4 ? '#e11d48' : val < 7 ? '#f59e0b' : '#10b981';
+    const item = el('div', { class: 'text-[11px]' },
+      el('div', { class: 'text-white/60' }, label),
+      el('div', { class: 'flex items-center gap-2 mt-0.5' },
+        el('div', { class: 'flex-1 h-1.5 rounded-full', style: 'background:rgba(255,255,255,0.1)' },
+          el('div', { class: 'h-full rounded-full', style: `width:${val * 10}%; background:${c}` }),
+        ),
+        el('span', { class: 'font-semibold text-white/85', style: 'min-width:1.75rem; text-align:right' }, val.toFixed(1)),
+      ),
+    );
+    grid.appendChild(item);
+  }
+  wrap.appendChild(grid);
+  return wrap;
 }
 
 function computeStats(m) {
