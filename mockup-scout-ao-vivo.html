@@ -232,25 +232,73 @@
     </section>
 
     <!-- Histórico de matches já marcados -->
-    <section class="mb-8">
+    <section class="mb-6">
       <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2">Já marcados (últimos 30 dias)</h2>
       <div class="space-y-2">
-        <div class="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center gap-3">
-          <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/20 rounded px-1.5 py-0.5 shrink-0">Vitória 6-3 6-2</div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium">Anna Luiza vs Júlia Pereira</div>
-            <div class="text-[11px] text-white/60">Festival Belém · R1 · 14/06/2026</div>
+        <div class="bg-white/5 border border-white/10 rounded-lg p-3">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/20 rounded px-1.5 py-0.5 shrink-0">Vitória 6-3 6-2</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">Anna Luiza vs Júlia Pereira</div>
+              <div class="text-[11px] text-white/60">Festival Belém · R1 · 14/06/2026 · nota <b class="text-cyan-200">8.4</b></div>
+            </div>
           </div>
-          <button class="text-[11px] text-cyan-200 hover:underline shrink-0">Ver →</button>
-        </div>
-        <div class="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center gap-3">
-          <div class="text-[10px] font-bold uppercase tracking-wider text-rose-300 bg-rose-500/20 rounded px-1.5 py-0.5 shrink-0">Derrota 4-6 3-6</div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium">Anna Luiza vs Helena Costa</div>
-            <div class="text-[11px] text-white/60">GA Cuiabá · QF · 02/06/2026</div>
+          <div class="flex gap-2">
+            <button class="text-[11px] px-3 py-1.5 rounded border border-white/20 hover:bg-white/10 flex-1">👁 Ver</button>
+            <button class="text-[11px] px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 font-semibold flex-1">📧 Enviar relatório</button>
           </div>
-          <button class="text-[11px] text-cyan-200 hover:underline shrink-0">Ver →</button>
         </div>
+        <div class="bg-white/5 border border-white/10 rounded-lg p-3">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-rose-300 bg-rose-500/20 rounded px-1.5 py-0.5 shrink-0">Derrota 4-6 3-6</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">Anna Luiza vs Helena Costa</div>
+              <div class="text-[11px] text-white/60">GA Cuiabá · QF · 02/06/2026 · nota <b class="text-cyan-200">7.1</b></div>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button class="text-[11px] px-3 py-1.5 rounded border border-white/20 hover:bg-white/10 flex-1">👁 Ver</button>
+            <button class="text-[11px] px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 font-semibold flex-1">📧 Enviar relatório</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Relatórios consolidados -->
+    <section class="mb-8">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2">📧 Relatórios consolidados</h2>
+      <div class="text-[11px] text-white/60 mb-2">Junta vários jogos num único relatório enviado pro coach</div>
+      <div class="space-y-2">
+        <a class="card-tile block bg-white/5 border border-white/10 rounded-lg p-3 cursor-pointer hover:bg-white/10">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-base shrink-0">🏆</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold">Por torneio</div>
+              <div class="text-[11px] text-white/60">Todos os jogos da Anna num torneio (R1 → final)</div>
+            </div>
+            <span class="text-white/40 text-lg">›</span>
+          </div>
+        </a>
+        <a class="card-tile block bg-white/5 border border-white/10 rounded-lg p-3 cursor-pointer hover:bg-white/10">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-base shrink-0">📅</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold">Por período</div>
+              <div class="text-[11px] text-white/60">Última semana · mês · trimestre</div>
+            </div>
+            <span class="text-white/40 text-lg">›</span>
+          </div>
+        </a>
+        <a class="card-tile block bg-white/5 border border-white/10 rounded-lg p-3 cursor-pointer hover:bg-white/10">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-base shrink-0">⏰</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold">Agendamento automático</div>
+              <div class="text-[11px] text-white/60">Coach recebe toda 2ª-feira o resumo da semana</div>
+            </div>
+            <span class="text-white/40 text-lg">›</span>
+          </div>
+        </a>
       </div>
     </section>
 
