@@ -1837,6 +1837,47 @@ app.get('/api/profiles/:id/live-matches/:matchId', requireAuth, ensureOwnedProfi
   res.json(attachScore(m));
 });
 
+// Marcador (não fecha ponto) — pra "1ª de saque errada" e "Devolução boa".
+// Registra evento no log mas não muda placar. Útil pra derivar stats
+// granulares (% 1º saque entrou, % returns made).
+const VALID_MARKERS = new Set(['serveerr', 'returnmade']);
+
+function appendMarker(m, stat) {
+  m.points = m.points || [];
+  m.points.push({
+    n: m.points.length + 1,
+    ts: new Date().toISOString(),
+    stat,
+    winner: null,
+    server: m.server,
+    marker: true,
+  });
+}
+
+app.post('/api/profiles/:id/live-matches/:matchId/markers', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const { stat } = req.body || {};
+  if (!VALID_MARKERS.has(stat)) return res.status(400).json({ error: `stat inválido: ${stat}` });
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  if (m.finished) return res.status(400).json({ error: 'Match já encerrado' });
+  appendMarker(m, stat);
+  saveLiveMatch(req.params.id, m);
+  res.json(attachScore(m));
+});
+
+// Marker via token público (scouter)
+app.post('/api/scout/:token/markers', (req, res) => {
+  const { stat } = req.body || {};
+  if (!VALID_MARKERS.has(stat)) return res.status(400).json({ error: `stat inválido: ${stat}` });
+  const r = publicMatchByToken(req.params.token, 'scout');
+  if (r.error) return res.status(404).json({ error: r.error });
+  const { match, info } = r;
+  if (match.finished) return res.status(400).json({ error: 'Match já encerrado' });
+  appendMarker(match, stat);
+  saveLiveMatch(info.profileId, match);
+  res.json(attachScore(match));
+});
+
 // Adiciona ponto. Body: { winner: 'a'|'o', stat?: string }
 app.post('/api/profiles/:id/live-matches/:matchId/points', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const { winner, stat } = req.body || {};

@@ -569,6 +569,24 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao desfazer');
     return r.json();
   },
+  async addLiveMarker(profileId, matchId, stat) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}/markers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stat }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao registrar marker');
+    return r.json();
+  },
+  async publicAddMarker(token, stat) {
+    const r = await fetch(`/api/scout/${token}/markers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stat }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao registrar marker');
+    return r.json();
+  },
   async publicAddNote(token, text, tag) {
     const r = await fetch(`/api/scout/${token}/notes`, {
       method: 'POST',
@@ -4872,12 +4890,19 @@ async function openScoutTrackModal(profileId, matchId) {
     container.appendChild(renderScorePanel(m));
 
     // Botões de stat (se não terminou)
-    if (isLive) container.appendChild(renderStatButtons(m, profileId, async (winner, stat) => {
-      try {
-        m = await api.addLivePoint(profileId, m.id, winner, stat);
-        render();
-      } catch (err) { alert(err.message); }
-    }));
+    if (isLive) {
+      container.appendChild(renderPhaseBanner(m));
+      container.appendChild(renderStatButtons(m, profileId,
+        async (winner, stat) => {
+          try { m = await api.addLivePoint(profileId, m.id, winner, stat); render(); }
+          catch (err) { alert(err.message); }
+        },
+        async (stat) => {
+          try { m = await api.addLiveMarker(profileId, m.id, stat); render(); }
+          catch (err) { alert(err.message); }
+        },
+      ));
+    }
 
     // Ações (undo / abandonar)
     if (isLive) container.appendChild(renderActions(m, profileId, async (action) => {
@@ -4975,45 +5000,104 @@ function formatGameLabel(cg, ad) {
   return `${cg.a}-${cg.o}`;
 }
 
-function renderStatButtons(m, profileId, onPoint) {
-  const sacando = m.server === 'a';
+// Banner que mostra a fase atual do ponto (acima dos botões de stat)
+function renderPhaseBanner(m) {
+  const state = derivePointState(m);
+  const serverName = state.server === 'a' ? m.athleteName.split(/\s+/)[0] : 'Opponent';
+  const wrap = el('div', { class: 'mx-3 mb-2 rounded-lg px-3 py-2 flex items-center gap-2' });
+  if (state.phase === 'rally') {
+    wrap.style.cssText = 'background: rgba(124, 58, 237, 0.18); border: 1px solid rgba(124, 58, 237, 0.4);';
+    wrap.appendChild(el('span', { class: 'text-base' }, '⚡'));
+    wrap.appendChild(el('span', { class: 'text-sm font-bold uppercase tracking-wide', style: 'color:#c4b5fd' }, 'Rally'));
+  } else {
+    const isAnna = state.server === 'a';
+    const color = isAnna ? '#67e8f9' : '#fda4af';
+    wrap.style.cssText = `background: rgba(255,255,255,0.06); border: 1px solid ${isAnna ? 'rgba(8,145,178,0.4)' : 'rgba(225,29,72,0.4)'};`;
+    wrap.appendChild(el('span', { class: 'text-base' }, '🎾'));
+    wrap.appendChild(el('span', { class: 'text-sm font-bold uppercase tracking-wide', style: `color:${color}` }, `${serverName} serving`));
+    wrap.appendChild(el('span', { class: 'text-xs ml-auto', style: 'color:rgba(255,255,255,0.6)' },
+      state.firstServeIn ? '1st serve' : '2nd serve'));
+  }
+  return wrap;
+}
+
+// Deriva o estado do ponto atual a partir do log:
+// - phase: 'serve' (default ou após 1st serve fault) | 'rally' (após return in play)
+// - firstServeIn: true até alguém marcar 'serve_fault' no ponto atual
+function derivePointState(m) {
+  const pts = m.points || [];
+  let firstServeIn = true;
+  let rally = false;
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i];
+    if (p.winner != null) break;
+    if (p.stat === 'serve_fault') firstServeIn = false;
+    if (p.stat === 'return_in_play') rally = true;
+  }
+  return { phase: rally ? 'rally' : 'serve', firstServeIn, server: m.server };
+}
+
+// Renderiza botões baseado na fase atual. onPoint(winner, stat) fecha ponto;
+// onMarker(stat) registra evento intermediário (não fecha).
+function renderStatButtons(m, profileId, onPoint, onMarker) {
+  const state = derivePointState(m);
   const wrap = el('div', { class: 'mx-3 bg-white text-slate-900 rounded-xl p-3' });
-  // Botões dependem se Anna saca ou recebe
-  const btns = sacando ? [
-    { stat: 'ace',       label: 'Ace',                winner: 'a', cls: 'anna' },
-    { stat: 'winner',    label: 'Serve Winner',       winner: 'a', cls: 'anna' },
-    { stat: 'serveerr',  label: '1º Saque Erro',      winner: 'a', cls: 'anna', noWin: true }, // não fecha ponto, só registra
-    { stat: 'df',        label: 'Dupla Falta',        winner: 'o', cls: 'anna' },
-    { stat: 'ue',        label: 'Erro não forçado',   winner: 'o', cls: 'anna' },
-    { stat: 'fe',        label: 'Erro forçado',       winner: 'o', cls: 'anna' },
-    { stat: 'returnwin', label: 'Return Winner adv.', winner: 'o', cls: 'adv' },
-    { stat: 'oppwinner', label: 'Winner adv.',        winner: 'o', cls: 'adv' },
-  ] : [
-    { stat: 'returnwin_a', label: 'Return Winner',      winner: 'a', cls: 'anna' },
-    { stat: 'oppdf',       label: 'Dupla Falta adv.',   winner: 'a', cls: 'anna' },
-    { stat: 'winner',      label: 'Winner Anna',        winner: 'a', cls: 'anna' },
-    { stat: 'ue',          label: 'Erro não forçado',   winner: 'o', cls: 'anna' },
-    { stat: 'fe',          label: 'Erro forçado',       winner: 'o', cls: 'anna' },
-    { stat: 'oppace',      label: 'Ace adv.',           winner: 'o', cls: 'adv' },
-    { stat: 'oppwinner',   label: 'Serve Winner adv.',  winner: 'o', cls: 'adv' },
-  ];
-  // Filtra "1º saque erro" (não fecha ponto na engine — só log futuro). Removendo por ora pra evitar confusão.
-  const real = btns.filter(b => !b.noWin);
+
+  let btns;
+  if (state.phase === 'serve') {
+    const server = state.server;
+    const receiver = server === 'a' ? 'o' : 'a';
+    const serverCls   = server   === 'a' ? 'anna' : 'adv';
+    const receiverCls = receiver === 'a' ? 'anna' : 'adv';
+    btns = [
+      { stat: 'ace',             label: 'Ace',             winner: server,   cls: serverCls },
+      { stat: 'return_winner',   label: 'Return Winner',   winner: receiver, cls: receiverCls },
+      { stat: 'service_winner',  label: 'Service Winner',  winner: server,   cls: serverCls },
+      { stat: 'return_error',    label: 'Return Error',    winner: server,   cls: receiverCls },
+      { stat: 'serve_fault',     label: '1st Serve Fault', marker: true,     cls: serverCls,   disabled: !state.firstServeIn },
+      { stat: 'return_in_play',  label: 'Return in Play',  marker: true,     cls: receiverCls },
+      { stat: 'double_fault',    label: 'Double Fault',    winner: receiver, cls: serverCls },
+      null, // alinha grid 2x4
+    ];
+  } else {
+    // Rally — qualquer botão fecha o ponto
+    btns = [
+      { stat: 'winner',         label: 'Winner',         winner: 'a', cls: 'anna' },
+      { stat: 'winner',         label: 'Winner',         winner: 'o', cls: 'adv' },
+      { stat: 'forced_error',   label: 'Forced Error',   winner: 'o', cls: 'anna' },
+      { stat: 'forced_error',   label: 'Forced Error',   winner: 'a', cls: 'adv' },
+      { stat: 'unforced_error', label: 'Unforced Error', winner: 'o', cls: 'anna' },
+      { stat: 'unforced_error', label: 'Unforced Error', winner: 'a', cls: 'adv' },
+    ];
+  }
+
   const grid = el('div', { class: 'grid grid-cols-2 gap-2' });
-  for (const b of real) {
-    const bg = b.cls === 'anna' ? '#0891b2' : '#e11d48';
-    const bgHover = b.cls === 'anna' ? '#0e7490' : '#be123c';
-    const btn = el('button', {
-      class: 'rounded-xl py-3 px-2 text-white font-bold text-sm shadow active:scale-95 transition',
-      style: `background:${bg};`,
-    }, b.label);
-    btn.onmouseover = () => btn.style.background = bgHover;
-    btn.onmouseout = () => btn.style.background = bg;
-    btn.onclick = () => onPoint(b.winner, b.stat);
-    grid.appendChild(btn);
+  for (const b of btns) {
+    if (b === null) {
+      grid.appendChild(el('div', { class: 'opacity-0' }));
+      continue;
+    }
+    grid.appendChild(renderStatBtn(b, onPoint, onMarker));
   }
   wrap.appendChild(grid);
   return wrap;
+}
+
+function renderStatBtn(b, onPoint, onMarker) {
+  const bg = b.cls === 'anna' ? '#0891b2' : '#e11d48';
+  const bgHover = b.cls === 'anna' ? '#0e7490' : '#be123c';
+  const btn = el('button', {
+    class: 'rounded-xl py-3 px-2 text-white font-bold text-sm shadow active:scale-95 transition disabled:opacity-40',
+    style: `background:${bg};`,
+  }, b.label);
+  if (b.disabled) btn.disabled = true;
+  btn.onmouseover = () => { if (!btn.disabled) btn.style.background = bgHover; };
+  btn.onmouseout = () => { btn.style.background = bg; };
+  btn.onclick = () => {
+    if (b.marker) onMarker?.(b.stat);
+    else onPoint(b.winner, b.stat);
+  };
+  return btn;
 }
 
 function renderActions(m, profileId, onAction) {
@@ -5064,14 +5148,26 @@ function renderStatsPanel(m) {
     tbl.appendChild(noteRow);
   }
 
-  // Demais métricas
+  // Demais métricas (padrão iOnCourt)
+  const sa = stats.a, so = stats.o;
+  const pctText = (won, total) => total > 0 ? `${won}/${total} (${Math.round(100 * won / total)}%)` : '—';
   const rows = [
-    ['Aces', stats.aces.a, stats.aces.o],
-    ['Duplas faltas', stats.df.a, stats.df.o],
-    ['Winners', stats.winners.a, stats.winners.o],
-    ['Erros não forçados', stats.ue.a, stats.ue.o],
-    ['Erros forçados', stats.fe.a, stats.fe.o],
-    ['Pts ganhos', stats.points.a, stats.points.o],
+    // Serve
+    ['Aces',                    sa.aces, so.aces],
+    ['Double Faults',           sa.doubleFaults, so.doubleFaults],
+    ['Service Winners',         sa.serviceWinners, so.serviceWinners],
+    ['1st Serve %',             pctText(sa.firstServeIn, sa.firstServeAttempted), pctText(so.firstServeIn, so.firstServeAttempted)],
+    ['1st Serve Pts Won',       pctText(sa.pointsWonOn1stServe, sa.pointsPlayedOn1stServe), pctText(so.pointsWonOn1stServe, so.pointsPlayedOn1stServe)],
+    ['2nd Serve Pts Won',       pctText(sa.pointsWonOn2ndServe, sa.pointsPlayedOn2ndServe), pctText(so.pointsWonOn2ndServe, so.pointsPlayedOn2ndServe)],
+    // Return
+    ['Return Winners',          sa.returnWinners, so.returnWinners],
+    ['Return Errors',           sa.returnErrors, so.returnErrors],
+    // Rally
+    ['Winners',                 sa.winners, so.winners],
+    ['Forced Errors',           sa.forcedErrors, so.forcedErrors],
+    ['Unforced Errors',         sa.unforcedErrors, so.unforcedErrors],
+    // Total
+    ['Total Pts Won',           sa.pointsWon, so.pointsWon],
   ];
   rows.forEach(([label, a, o]) => {
     const r = el('div', { class: 'grid grid-cols-3 text-xs border-b border-white/5' });
@@ -5256,26 +5352,86 @@ function renderScoreBadge(cs) {
   return wrap;
 }
 
+// Calcula stats consolidados a partir do log. Cada ponto pertence a um
+// "rally" que começa no saque e termina em winner != null. Markers
+// (serve_fault, return_in_play) atualizam o estado do rally em curso.
 function computeStats(m) {
-  const s = {
-    aces: { a: 0, o: 0 }, df: { a: 0, o: 0 },
-    winners: { a: 0, o: 0 }, ue: { a: 0, o: 0 }, fe: { a: 0, o: 0 },
-    points: { a: 0, o: 0 },
-  };
+  const init = () => ({
+    aces: 0, doubleFaults: 0, serviceWinners: 0,
+    returnWinners: 0, returnErrors: 0, returnsInPlay: 0,
+    winners: 0, forcedErrors: 0, unforcedErrors: 0,
+    pointsWon: 0,
+    firstServeIn: 0, firstServeAttempted: 0,
+    pointsWonOn1stServe: 0, pointsPlayedOn1stServe: 0,
+    pointsWonOn2ndServe: 0, pointsPlayedOn2ndServe: 0,
+  });
+  const s = { a: init(), o: init() };
+
+  // Itera, mantendo state do ponto atual
+  let cur = { firstServeIn: true, server: null, ended: false };
   for (const p of (m.points || [])) {
-    s.points[p.winner]++;
-    const stat = p.stat;
-    if (!stat) continue;
-    // Stats da Anna (lado a) — derivados do label do botão
-    if (stat === 'ace') s.aces.a++;
-    else if (stat === 'oppace') s.aces.o++;
-    else if (stat === 'df') s.df.a++;
-    else if (stat === 'oppdf') s.df.o++;
-    else if (stat === 'winner' || stat === 'returnwin_a') s.winners.a++;
-    else if (stat === 'oppwinner' || stat === 'returnwin') s.winners.o++;
-    else if (stat === 'ue') s.ue.a++;
-    else if (stat === 'fe') s.fe.a++;
+    if (cur.server == null) cur.server = p.server;
+    if (p.winner == null) {
+      // Marker
+      if (p.stat === 'serve_fault') cur.firstServeIn = false;
+      // return_in_play: noop pra stats (já capturado no fluxo)
+      continue;
+    }
+    // Ponto fechado
+    s[p.winner].pointsWon++;
+
+    const server = cur.server || p.server;
+    const receiver = server === 'a' ? 'o' : 'a';
+
+    // % 1º saque (in vs fora): cada ponto conta 1 tentativa de 1º saque
+    s[server].firstServeAttempted++;
+    if (cur.firstServeIn) s[server].firstServeIn++;
+
+    // Pts ganhos no 1º / 2º saque
+    if (cur.firstServeIn) {
+      s[server].pointsPlayedOn1stServe++;
+      if (p.winner === server) s[server].pointsWonOn1stServe++;
+    } else {
+      s[server].pointsPlayedOn2ndServe++;
+      if (p.winner === server) s[server].pointsWonOn2ndServe++;
+    }
+
+    // Stat-specific
+    switch (p.stat) {
+      case 'ace':            s[server].aces++; break;
+      case 'service_winner': s[server].serviceWinners++; break;
+      case 'double_fault':   s[server].doubleFaults++; break;
+      case 'return_winner':  s[receiver].returnWinners++; s[receiver].returnsInPlay++; break;
+      case 'return_error':   s[receiver].returnErrors++; break;
+      case 'winner':         s[p.winner].winners++; break;
+      case 'forced_error': {
+        // p.winner ganhou, o oposto cometeu o erro forçado
+        const loser = p.winner === 'a' ? 'o' : 'a';
+        s[loser].forcedErrors++;
+        break;
+      }
+      case 'unforced_error': {
+        const loser = p.winner === 'a' ? 'o' : 'a';
+        s[loser].unforcedErrors++;
+        break;
+      }
+    }
+
+    // Reset pro próximo ponto
+    cur = { firstServeIn: true, server: null, ended: false };
   }
+
+  // Contagem geral de "returns in play" (devoluções boas) — qualquer return_in_play marker já indica que voltou
+  // (não fechou via return winner/error). Mas return_winner também conta como devolução que entrou.
+  // Vou recontar
+  for (const p of (m.points || [])) {
+    if (p.stat === 'return_in_play') {
+      // Quem está recebendo no ponto? p.server é o servidor, então recebedor é o oposto
+      const receiver = p.server === 'a' ? 'o' : 'a';
+      s[receiver].returnsInPlay++;
+    }
+  }
+
   return s;
 }
 
@@ -5515,10 +5671,17 @@ async function openPublicLiveMatch(kind, token) {
       root.appendChild(renderScorePanel(m));
 
       if (isScout && !m.finished) {
-        root.appendChild(renderStatButtons(m, null, async (winner, stat) => {
-          try { m = await api.publicAddPoint(token, winner, stat); render(); }
-          catch (err) { alert(err.message); }
-        }));
+        root.appendChild(renderPhaseBanner(m));
+        root.appendChild(renderStatButtons(m, null,
+          async (winner, stat) => {
+            try { m = await api.publicAddPoint(token, winner, stat); render(); }
+            catch (err) { alert(err.message); }
+          },
+          async (stat) => {
+            try { m = await api.publicAddMarker(token, stat); render(); }
+            catch (err) { alert(err.message); }
+          },
+        ));
         root.appendChild(renderActions(m, null, async (action) => {
           if (action === 'undo') {
             try { m = await api.publicUndoPoint(token); render(); }

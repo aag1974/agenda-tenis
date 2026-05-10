@@ -1,39 +1,75 @@
 // Nota 0-10 da performance no match — calcula pros 2 lados (atleta e
-// adversária). Pura, sem I/O. Não compara contra histórico (isso vai pro
-// relatório de Performance depois).
+// adversária). Pura, sem I/O.
 //
 // Pesos (somam 100% por lado):
 //   25% — % pts ganhos no match  · sinal macro de domínio
 //   25% — saldo ofensivo         · agressividade controlada
 //   25% — % pts ganhos sacando   · eficiência no saque
 //   25% — % pts ganhos recebendo · pressão sobre o saque adversário
+//
+// Modelo de stats (padrão iOnCourt):
+//   ace, service_winner, double_fault       (lado do server)
+//   return_winner, return_error              (lado do receiver)
+//   winner, forced_error, unforced_error     (rally — `winner` indica quem ganhou,
+//                                              `unforced_error` quem PERDEU = oposto)
 
-const OFFENSIVE = {
-  a: new Set(['ace', 'winner', 'returnwin_a']),
-  o: new Set(['oppace', 'oppwinner', 'returnwin']),
-};
-const ERRORS = {
-  a: new Set(['df', 'ue', 'fe', 'returnue_a']),
-  o: new Set(['oppdf', 'returnue']),
-};
+function classifyForSide(side, p) {
+  // Retorna 'offensive' | 'error' | null pra o `side` (a/o).
+  const other = side === 'a' ? 'o' : 'a';
+  const stat = p.stat;
+  const server = p.server;
+  const receiver = server === 'a' ? 'o' : 'a';
+  if (!stat || p.winner == null) return null; // marker ou ponto inválido
+
+  switch (stat) {
+    case 'ace':
+    case 'service_winner':
+      if (server === side) return 'offensive';
+      return null;
+    case 'double_fault':
+      if (server === side) return 'error';
+      return null;
+    case 'return_winner':
+      if (receiver === side) return 'offensive';
+      return null;
+    case 'return_error':
+      if (receiver === side) return 'error';
+      return null;
+    case 'winner':
+      if (p.winner === side) return 'offensive';
+      return null;
+    case 'forced_error':
+    case 'unforced_error':
+      if (p.winner === other) return 'error'; // side perdeu = errou
+      return null;
+    default:
+      return null;
+  }
+}
 
 function computeOneSide(side, pts) {
   const other = side === 'a' ? 'o' : 'a';
-  const total = pts.length;
+  // Apenas pontos fechados (winner != null) entram nas %s
+  const closed = pts.filter(p => p.winner != null);
+  const total = closed.length;
   if (total === 0) return { score: null, breakdown: null };
 
-  const won = pts.filter(p => p.winner === side).length;
+  const won = closed.filter(p => p.winner === side).length;
   const pctWon = won / total;
 
-  const off = pts.filter(p => p.winner === side && OFFENSIVE[side].has(p.stat)).length;
-  const err = pts.filter(p => p.winner === other && ERRORS[side].has(p.stat)).length;
+  let off = 0, err = 0;
+  for (const p of closed) {
+    const k = classifyForSide(side, p);
+    if (k === 'offensive') off++;
+    else if (k === 'error') err++;
+  }
   const balance = (off - err) / total;
 
-  const servingPts = pts.filter(p => p.server === side);
+  const servingPts = closed.filter(p => p.server === side);
   const wonServing = servingPts.filter(p => p.winner === side).length;
   const pctServing = servingPts.length > 0 ? wonServing / servingPts.length : null;
 
-  const receivingPts = pts.filter(p => p.server === other);
+  const receivingPts = closed.filter(p => p.server === other);
   const wonReceiving = receivingPts.filter(p => p.winner === side).length;
   const pctReceiving = receivingPts.length > 0 ? wonReceiving / receivingPts.length : null;
 
@@ -70,11 +106,10 @@ export function computeMatchScore(m) {
   return {
     a: computeOneSide('a', pts),
     o: computeOneSide('o', pts),
-    totalPts: pts.length,
+    totalPts: pts.filter(p => p.winner != null).length,
   };
 }
 
-// Anexa a nota no objeto de match — chamado nos endpoints antes de res.json.
 export function attachScore(m) {
   if (!m) return m;
   m.computedScore = computeMatchScore(m);
