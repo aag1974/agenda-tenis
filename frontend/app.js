@@ -471,6 +471,11 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao atualizar status');
     return r.json();
   },
+  async listProfileReports(profileId) {
+    const r = await fetch(`/api/profiles/${profileId}/reports`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao listar relatórios');
+    return r.json();
+  },
   async deliverReport(profileId, requestId, html, asEmail) {
     const url = asEmail
       ? `/api/admin/report-requests/${profileId}/${requestId}/deliver?as=${encodeURIComponent(asEmail)}`
@@ -4092,6 +4097,12 @@ async function loadAnalyticsInto(container, profileId) {
   container.innerHTML = '';
   container.appendChild(sectionH);
 
+  // ─── CTA — Análise estatística completa (no topo) ────────────────
+  // Aparece antes da análise interativa pra que o usuário veja o
+  // produto principal (relatório técnico assinado) já de cara, e
+  // tenha acesso aos relatórios já entregues caso haja.
+  container.appendChild(renderReportCta(profileId));
+
   const N = data.narratives || {};
 
   // Helper pra renderizar parágrafo com **bold** (estilo simples markdown)
@@ -4271,21 +4282,6 @@ async function loadAnalyticsInto(container, profileId) {
     }
   }
 
-  // ─── CTA pra relatório completo ──────────────────────────────────
-  container.appendChild(el('div', { class: 'rounded-lg border border-slate-200 bg-slate-50 p-3 mt-3' },
-    el('div', { class: 'flex items-center gap-2 text-[11px] font-semibold text-slate-700 mb-1' }, '📊 Análise estatística completa'),
-    el('div', { class: 'text-[12px] text-slate-600 leading-relaxed' },
-      'Cada partida revela um padrão. Veja o retrato técnico do jogo do atleta — onde está, onde evolui e onde focar. Análise assinada pelo estatístico responsável.',
-    ),
-    el('button', {
-      class: 'mt-2 text-xs px-3 py-1.5 rounded bg-[#0e3a4d] text-white hover:bg-[#16526a]',
-      onClick: () => {
-        const profile = state.profiles.find(p => p.id === profileId);
-        const athleteName = profile?.athleteName || 'a atleta';
-        openCompleteReportRequestModal(athleteName);
-      },
-    }, 'Solicitar análise completa →'),
-  ));
 
   // Disclaimer
   if (data.counts.excluded.wo > 0 || data.counts.excluded.doubles > 0) {
@@ -4297,6 +4293,126 @@ async function loadAnalyticsInto(container, profileId) {
       `Excluídos da análise: ${parts.join(' e ')}.`,
     ));
   }
+}
+
+// CTA no topo do modal de Performance: 2 botões — "Solicitar análise" +
+// "Ver relatórios" (count). Atualiza dinamicamente conforme novos
+// relatórios são entregues.
+function renderReportCta(profileId) {
+  const wrap = el('div', { class: 'rounded-lg border border-slate-200 bg-slate-50 p-3 mb-3' });
+  wrap.appendChild(el('div', { class: 'flex items-center gap-2 text-[11px] font-semibold text-slate-700 mb-1' }, '📊 Análise estatística completa'));
+  wrap.appendChild(el('div', { class: 'text-[12px] text-slate-600 leading-relaxed' },
+    'Cada partida revela um padrão. Veja o retrato técnico do jogo do atleta — onde está, onde evolui e onde focar. Análise assinada pelo estatístico responsável.',
+  ));
+  const btnRow = el('div', { class: 'mt-2 flex gap-2 flex-wrap' });
+  btnRow.appendChild(el('button', {
+    class: 'text-xs px-3 py-1.5 rounded bg-[#0e3a4d] text-white hover:bg-[#16526a]',
+    onClick: () => {
+      const profile = state.profiles.find(p => p.id === profileId);
+      const athleteName = profile?.athleteName || 'a atleta';
+      openCompleteReportRequestModal(athleteName);
+    },
+  }, 'Solicitar análise completa →'));
+  const viewBtn = el('button', {
+    class: 'text-xs px-3 py-1.5 rounded border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50',
+    onClick: () => openDeliveredReportsModal(profileId),
+  }, '📂 Ver relatórios');
+  viewBtn.disabled = true;
+  viewBtn.title = 'Carregando relatórios entregues…';
+  btnRow.appendChild(viewBtn);
+  wrap.appendChild(btnRow);
+
+  // Link discreto pra quem ainda não conhece o produto: PDF de exemplo
+  // assinado (atualmente o relatório da Anna Luiza, template mestre).
+  wrap.appendChild(el('a', {
+    class: 'mt-2 inline-flex items-center gap-1 text-[11px] text-cyan-700 hover:text-cyan-900 underline',
+    href: '/exemplo-relatorio.pdf',
+    target: '_blank',
+    rel: 'noopener',
+  }, '📄 Veja um exemplo de relatório →'));
+
+  // Carrega lista assíncrona pra ajustar o botão e contagem
+  api.listProfileReports(profileId).then(reports => {
+    if (!reports.length) {
+      viewBtn.textContent = '📂 Sem relatórios ainda';
+      viewBtn.title = 'Nenhum relatório foi entregue até o momento';
+      // disabled segue
+    } else {
+      viewBtn.textContent = `📂 Ver relatórios (${reports.length})`;
+      viewBtn.title = `${reports.length} relatório${reports.length > 1 ? 's' : ''} entregue${reports.length > 1 ? 's' : ''}`;
+      viewBtn.disabled = false;
+    }
+  }).catch(() => {
+    viewBtn.textContent = '📂 Ver relatórios';
+    viewBtn.title = 'Erro ao carregar';
+  });
+
+  return wrap;
+}
+
+// Modal: lista de relatórios entregues. Usuário escolhe qual ver, abre em
+// nova aba. Ao abrir, marca o alerta correspondente como visto pra
+// limpar o badge do sino.
+async function openDeliveredReportsModal(profileId) {
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/50 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    style: 'max-height: 80vh;',
+  });
+  card.appendChild(el('div', { class: 'bg-[#0e3a4d] text-white px-5 py-3 flex items-center justify-between' },
+    el('span', { class: 'font-medium' }, '📂 Relatórios entregues'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  ));
+  const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1' });
+  body.appendChild(el('div', { class: 'text-sm text-slate-500 italic' }, 'Carregando…'));
+  card.appendChild(body);
+  root.appendChild(overlay);
+  root.appendChild(card);
+
+  let reports;
+  try {
+    reports = await api.listProfileReports(profileId);
+  } catch (err) {
+    body.innerHTML = '';
+    body.appendChild(el('div', { class: 'text-sm text-red-600' }, `Erro: ${err.message}`));
+    return;
+  }
+  body.innerHTML = '';
+  if (!reports.length) {
+    body.appendChild(el('div', { class: 'text-sm text-slate-500 italic py-6 text-center' },
+      'Nenhum relatório entregue ainda. Quando o estatístico finalizar a análise, aparece aqui.'));
+    return;
+  }
+
+  body.appendChild(el('p', { class: 'text-xs text-slate-500 mb-3' },
+    'Toque em um relatório pra abrir em nova aba. A cada nova edição que entregarmos, ele aparece aqui.'));
+
+  const list = el('ul', { class: 'space-y-2' });
+  reports.forEach((r, i) => {
+    const date = r.deliveredAt ? new Date(r.deliveredAt).toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    }) : '—';
+    const edicao = reports.length - i; // mais recente = maior número de edição
+    const item = el('li', {
+      class: 'border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3',
+      onClick: () => {
+        window.open(`/api/profiles/${profileId}/reports/${r.reportId}`, '_blank', 'noopener');
+        close();
+      },
+    },
+      el('div', { class: 'flex-1 min-w-0' },
+        el('div', { class: 'text-sm font-semibold text-slate-900' },
+          `📊 Relatório de Performance — ${edicao}ª edição`),
+        el('div', { class: 'text-xs text-slate-500 mt-0.5' }, `Entregue em ${date}`),
+      ),
+      el('div', { class: 'text-cyan-700 text-sm font-semibold' }, 'Abrir →'),
+    );
+    list.appendChild(item);
+  });
+  body.appendChild(list);
 }
 
 function openCompleteReportRequestModal(athleteName) {

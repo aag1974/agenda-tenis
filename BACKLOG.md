@@ -94,6 +94,38 @@ saber rapidamente onde cada um está sem rolar a coluna inteira.
 (3) "Dim das colunas sem match" foi descartado — estético mas não
 acrescenta info que (1)+(2) não cobrem.
 
+### 8. Home page como hub de soluções
+Discutido em 2026-05-10. Hoje o app abre direto na Agenda (kanban). Com
+Performance ficando muito forte e Scout no roadmap, faz sentido ter
+uma **landing interna** que apresente as "soluções" do Tennis Flow e
+deixe o usuário escolher onde entrar.
+
+**Visão:**
+- Tela inicial (após login + escolha de perfil) mostra cards grandes:
+  - 📅 **Agenda** — torneios, inscrições, calendário
+  - 📊 **Performance** — análise estatística, relatórios assinados
+  - 🎯 **Scout** — adversários, head-to-head (quando implementado)
+  - "+ outras soluções a serem implementadas no futuro" — placeholder
+    visual reservando espaço pra próximas verticais (boletos? finanças?
+    coach view?)
+- Cada card resume o que tem dentro + atalho de "última atualização" /
+  "novidade" (ex: "1 novo relatório entregue").
+- Skip-to-default: pref do usuário pra abrir direto numa das seções
+  (config no menu) — quem só usa Agenda não quer 1 clique a mais.
+
+**Por quê:** o app deixou de ser monoproduto (agenda) e virou
+plataforma. Hub torna o crescimento explícito pro usuário e reforça
+percepção de valor por solução.
+
+**Pendências de design:**
+- Mobile: cards stacked vs grid 2x2?
+- Onde entra "Atletas / Perfis"? Como filtro global ou seção própria?
+- Entrega de relatório passa a notificar via card de Performance no hub
+  (badge "1 novo") em vez de só no sino?
+
+Esforço estimado: ~1 dia (UI + roteamento + persistência da preferência
+default-route no household-config).
+
 ## Performance Analytics — roadmap (visão "Wow")
 
 Discutido e iniciado em 2026-05-08. Pivot estratégico: o user (estatístico) quer
