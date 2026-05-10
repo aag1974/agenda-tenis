@@ -161,6 +161,70 @@ logística), comunicação rica e quadros livres. Aberto pra iteração.
 - 👨‍🏫 **Coach** (sub-tier) — profissional autônomo com 5-15 alunos de
   famílias diferentes (não tem CNPJ de escola). Versão lite da Escola.
 
+**⭐ Estratégia de aquisição via autocoleta TI** (insight-chave 2026-05-10):
+
+Inverte o fluxo padrão "escola pede ficha → pai preenche papel → secretaria
+digita → erro de cadastro" pra "pai se cadastra no Tennis Flow com email/
+senha do TI → aceita compartilhar com a escola → escola recebe cadastro
+completo automaticamente". Sem formulário, dado correto, escola monta o
+CRM da noite pro dia.
+
+**Mecânica:**
+1. Escola decide adotar Tennis Flow → recebe link de convite branded.
+2. Pai entra no Tennis Flow, faz login com email/senha do TI (fluxo já
+   existe: `syncAthlete({email, password, ...})`).
+3. App pede consentimento explícito — toggle: *"Compartilhar dados de
+   {atleta} com Dummont Tennis Team"* — texto LGPD claro listando o que
+   é compartilhado e por quê.
+4. Pai aceita → escola passa a ver, no painel dela: cadastro completo
+   do atleta, ranking, jogos, torneios inscritos, próximos boletos.
+5. Pai pode revogar a qualquer momento (config do perfil).
+
+**O que precisa tecnicamente:**
+- [ ] **Investigar URL/HTML do TI da área autenticada** que mostra o
+      cadastro completo do atleta (provavelmente `/perfil2/dados-pessoais/`,
+      `/atleta/cadastro/{id}` ou via página de inscrição). Mapear quais
+      campos vêm: CPF, nascimento, telefone, email, endereço, responsável,
+      convênio.
+- [ ] **Estender `scraper.js`** com `fetchAthleteCadastro(client, athleteId)`
+      que parseia esses campos. Cliente já está autenticado pelo
+      `syncAthlete`, então só precisa de mais 1 GET.
+- [ ] **Schema do profile** ganha bloco `cadastro: { cpf, nascimento,
+      telefone, email, endereco, responsavel, convenio, … }`. Criptografado
+      em disco como já é o `tiPassword` (LGPD).
+- [ ] **Toggle de compartilhamento** por escola — no perfil do atleta,
+      lista de escolas vinculadas + status (compartilhando / pendente /
+      revogado). Persistir em `profile.shares: [{ schoolId, scope, ... }]`.
+- [ ] **Endpoint admin da escola** `GET /api/school/:id/atletas` — lista
+      cadastros completos dos atletas que consentiram compartilhar.
+      Filtra automaticamente quem revogou.
+- [ ] **Auditoria** — registro de quem acessou qual cadastro, quando.
+      Exportável pra LGPD.
+
+**Por que isso é o gancho de adoção da Escola:**
+- **Zero atrito**: pai não preenche nada além do login do TI que já tem.
+- **Dado certo**: vem do TI, sem digitação errada, sem desatualização —
+  ranking e categorias atualizam automático em cada sync.
+- **Reutiliza investimento**: a escola que paga TF tem CRM, comunicação,
+  ranking, jogos, performance — tudo num lugar só, sem integração extra.
+- **Valor claro pro pai**: ele entra na plataforma pra usar o app
+  (Performance, Agenda, push de avisos da escola) — compartilhar é
+  natural, não custo separado.
+- **LGPD limpa**: dado é do próprio pai (autocoleta da conta dele), e
+  o compartilhamento é consentimento explícito, granular, revogável.
+
+**Risco / mitigação:**
+- HTML do TI muda → scraper quebra. Mitigação: alerta no painel admin
+  da escola quando algum campo "some" no scrape, ela continua usando o
+  que já tem em cache.
+- Pai não compartilha → escola não tem o cadastro daquele atleta.
+  Mitigação: composer da escola pode mandar lembrete no app + email
+  pedindo compartilhamento.
+- Dado sensível em mãos da escola → criptografia em disco + ACL +
+  auditoria + termo escola↔Tennis Flow assinado na contratação.
+
+---
+
 **Stack de features pra MVP de Escola** (em ordem de valor/esforço):
 1. **Comunicação push** — composer com tipos pré-definidos, audiência
    segmentada (escola toda / turma / viagem / atleta), histórico com
@@ -191,9 +255,12 @@ logística), comunicação rica e quadros livres. Aberto pra iteração.
   comunicação push pra pais, financeiro, branding próprio.
 
 **Próximos passos** (não fazer agora — esperar tração com famílias):
-- [ ] Validar interesse com 1-2 escolas (Dumont, Iate) sem prometer
+- [ ] Validar interesse com 1-2 escolas (Dummont, Iate) sem prometer
       data — entrevista, não venda.
 - [ ] Mockup → iterar com escola interessada (anotar ajustes).
+- [ ] **Investigação técnica TI**: qual URL/HTML expõe o cadastro
+      completo do atleta na área autenticada do pai? Pré-requisito
+      pra estratégia de autocoleta acima.
 - [ ] Decidir se Comunicação Escola é vendida standalone (R$ baixo,
       adoção fácil) ou só dentro de tier Escola.
 - [ ] Schema cross-household (coach vê atletas de N famílias) — hoje
