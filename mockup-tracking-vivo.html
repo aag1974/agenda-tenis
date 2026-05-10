@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tennis Flow — Tracking ao vivo (mockup)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; -webkit-tap-highlight-color: transparent; }
+    .brand-bg { background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%); }
+    .stat-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; padding: 14px 8px; border-radius: 12px;
+      font-weight: 700; user-select: none;
+      transition: transform 0.08s, background 0.08s;
+      cursor: pointer; min-height: 72px;
+      border: 1.5px solid transparent;
+    }
+    .stat-btn:active { transform: scale(0.96); }
+    .stat-pos { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+    .stat-pos:hover { background: #d1fae5; }
+    .stat-neg { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+    .stat-neg:hover { background: #fee2e2; }
+    .stat-label { font-size: 11px; font-weight: 600; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat-count { font-size: 20px; font-weight: 800; line-height: 1; }
+    .side-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    .live-pulse {
+      width: 8px; height: 8px; border-radius: 50%; background: #ef4444;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .momentum-bar {
+      height: 28px; border-radius: 4px;
+      background: linear-gradient(to right,
+        #06b6d4 0%, #06b6d4 60%,
+        #f1f5f9 60%, #f1f5f9 62%,
+        #ef4444 62%, #ef4444 100%);
+    }
+  </style>
+</head>
+<body class="brand-bg min-h-screen text-white">
+
+  <!-- Header com contexto do jogo -->
+  <header class="px-4 py-3 border-b border-white/10 flex items-center gap-3">
+    <button class="text-white/70 hover:text-white text-xl">←</button>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="live-pulse"></span>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-red-400">Ao vivo</span>
+        <span class="text-[10px] text-white/50">· iniciado há 38 min</span>
+      </div>
+      <div class="text-sm font-semibold mt-0.5 truncate">Anna Luiza Garcia <span class="opacity-50">vs</span> Maria Silva</div>
+      <div class="text-[11px] text-cyan-200">G1 Brasiliense — 1ª Etapa · R2 12F · Quadra 5</div>
+    </div>
+    <button class="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20" title="Compartilhar link público">🔗 Compartilhar</button>
+  </header>
+
+  <!-- Placar gigante -->
+  <div class="px-4 py-4">
+    <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+      <div class="grid" style="grid-template-columns: 1fr auto auto auto auto;">
+        <!-- Cabeçalho -->
+        <div class="text-[10px] uppercase tracking-wider text-white/40 px-3 py-1.5 font-bold">Atleta</div>
+        <div class="text-[10px] uppercase tracking-wider text-white/40 px-3 py-1.5 text-center font-bold w-10">1</div>
+        <div class="text-[10px] uppercase tracking-wider text-white/40 px-3 py-1.5 text-center font-bold w-10">2</div>
+        <div class="text-[10px] uppercase tracking-wider text-white/40 px-3 py-1.5 text-center font-bold w-10">3</div>
+        <div class="text-[10px] uppercase tracking-wider text-white/40 px-3 py-1.5 text-center font-bold w-14">Pts</div>
+        <!-- Anna -->
+        <div class="px-3 py-2 text-base font-semibold flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <span class="truncate">Anna L. <span class="text-yellow-400 ml-1" title="Sacando">🎾</span></span>
+        </div>
+        <div class="px-3 py-2 text-center text-lg font-bold">6</div>
+        <div class="px-3 py-2 text-center text-lg font-bold opacity-60">3</div>
+        <div class="px-3 py-2 text-center text-lg font-bold text-yellow-300">3*</div>
+        <div class="px-3 py-2 text-center text-2xl font-extrabold text-yellow-300">30</div>
+        <!-- Maria -->
+        <div class="px-3 py-2 text-base font-semibold flex items-center gap-2 border-t border-white/5">
+          <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+          <span class="truncate">Maria S.</span>
+        </div>
+        <div class="px-3 py-2 text-center text-lg font-bold border-t border-white/5">4</div>
+        <div class="px-3 py-2 text-center text-lg font-bold opacity-60 border-t border-white/5">6</div>
+        <div class="px-3 py-2 text-center text-lg font-bold border-t border-white/5">2</div>
+        <div class="px-3 py-2 text-center text-2xl font-extrabold border-t border-white/5">15</div>
+      </div>
+    </div>
+    <div class="text-center text-[11px] text-white/50 mt-1.5">3º set · game 6 · 30-15 · sacando Anna · 1º saque</div>
+  </div>
+
+  <!-- Tela dividida — 2 lados -->
+  <div class="px-3 grid grid-cols-2 gap-2">
+
+    <!-- Lado Anna -->
+    <div class="bg-white rounded-xl p-3 text-slate-900">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-full bg-cyan-100 text-cyan-800 font-bold text-xs flex items-center justify-center">AL</div>
+          <div class="side-label text-cyan-700">Anna Luiza</div>
+        </div>
+        <div class="text-xs text-slate-500" id="serveAnna">🎾 sacando</div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button class="stat-btn stat-pos" data-side="anna" data-stat="ace">
+          <span class="stat-label">Ace</span>
+          <span class="stat-count" data-count="anna-ace">3</span>
+        </button>
+        <button class="stat-btn stat-pos" data-side="anna" data-stat="winner">
+          <span class="stat-label">Winner</span>
+          <span class="stat-count" data-count="anna-winner">12</span>
+        </button>
+        <button class="stat-btn stat-neg" data-side="anna" data-stat="df">
+          <span class="stat-label">Dupla falta</span>
+          <span class="stat-count" data-count="anna-df">1</span>
+        </button>
+        <button class="stat-btn stat-neg" data-side="anna" data-stat="ue">
+          <span class="stat-label">Erro n. forçado</span>
+          <span class="stat-count" data-count="anna-ue">9</span>
+        </button>
+        <button class="stat-btn stat-neg col-span-2" data-side="anna" data-stat="fe">
+          <span class="stat-label">Erro forçado</span>
+          <span class="stat-count" data-count="anna-fe">4</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Lado Maria -->
+    <div class="bg-white rounded-xl p-3 text-slate-900">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-full bg-rose-100 text-rose-800 font-bold text-xs flex items-center justify-center">MS</div>
+          <div class="side-label text-rose-700">Maria Silva</div>
+        </div>
+        <div class="text-xs text-slate-500" id="serveMaria">recebendo</div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button class="stat-btn stat-pos" data-side="maria" data-stat="ace">
+          <span class="stat-label">Ace</span>
+          <span class="stat-count" data-count="maria-ace">1</span>
+        </button>
+        <button class="stat-btn stat-pos" data-side="maria" data-stat="winner">
+          <span class="stat-label">Winner</span>
+          <span class="stat-count" data-count="maria-winner">8</span>
+        </button>
+        <button class="stat-btn stat-neg" data-side="maria" data-stat="df">
+          <span class="stat-label">Dupla falta</span>
+          <span class="stat-count" data-count="maria-df">3</span>
+        </button>
+        <button class="stat-btn stat-neg" data-side="maria" data-stat="ue">
+          <span class="stat-label">Erro n. forçado</span>
+          <span class="stat-count" data-count="maria-ue">14</span>
+        </button>
+        <button class="stat-btn stat-neg col-span-2" data-side="maria" data-stat="fe">
+          <span class="stat-label">Erro forçado</span>
+          <span class="stat-count" data-count="maria-fe">7</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Barra de ações -->
+  <div class="px-3 mt-3 grid grid-cols-3 gap-2">
+    <button id="btnUndo" class="text-xs px-3 py-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold flex items-center justify-center gap-1">
+      ↶ Desfazer último
+    </button>
+    <button class="text-xs px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 font-semibold">
+      📝 Anotar momento
+    </button>
+    <button class="text-xs px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 font-semibold">
+      ⏸ Pausar match
+    </button>
+  </div>
+
+  <!-- Momentum -->
+  <div class="px-4 mt-5">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80">Momentum do match</h3>
+      <span class="text-[10px] text-white/50">cyan = Anna · rosa = Maria</span>
+    </div>
+    <!-- Mini chart SVG com áreas alternadas -->
+    <div class="bg-white/5 rounded-lg border border-white/10 p-3">
+      <svg viewBox="0 0 600 80" class="w-full h-20" preserveAspectRatio="none">
+        <!-- Linha 0 -->
+        <line x1="0" y1="40" x2="600" y2="40" stroke="rgba(255,255,255,0.2)" stroke-dasharray="3,3" />
+        <!-- Áreas momentum (curva alternada) -->
+        <path d="M0,40 Q40,15 80,20 T160,30 T240,55 T320,65 T400,45 T480,25 T560,35 L600,40 L600,80 L0,80 Z"
+              fill="rgba(244,63,94,0.15)" />
+        <path d="M0,40 Q40,15 80,20 T160,30 T240,55 T320,65 T400,45 T480,25 T560,35 L600,40 L600,0 L0,0 Z"
+              fill="rgba(6,182,212,0.15)" />
+        <!-- Curva -->
+        <path d="M0,40 Q40,15 80,20 T160,30 T240,55 T320,65 T400,45 T480,25 T560,35 L600,40"
+              fill="none" stroke="#06b6d4" stroke-width="2" />
+        <!-- Marcadores de set -->
+        <line x1="200" y1="0" x2="200" y2="80" stroke="rgba(255,255,255,0.25)" stroke-dasharray="2,2" />
+        <line x1="400" y1="0" x2="400" y2="80" stroke="rgba(255,255,255,0.25)" stroke-dasharray="2,2" />
+        <text x="100" y="76" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.6)">Set 1 (6-4)</text>
+        <text x="300" y="76" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.6)">Set 2 (3-6)</text>
+        <text x="500" y="76" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.6)">Set 3 · em curso</text>
+      </svg>
+      <div class="text-[11px] text-white/60 mt-2 italic">
+        💡 Anna teve breakpoints consecutivos no fim do set 1 · perdeu o ritmo no set 2 · está retomando agora.
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats consolidados -->
+  <div class="px-4 mt-4 mb-4">
+    <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2">Stats consolidados</h3>
+    <div class="bg-white/5 rounded-lg border border-white/10 overflow-hidden">
+      <div class="grid grid-cols-3 text-xs">
+        <div class="px-3 py-2 text-center font-bold text-cyan-300 border-b border-white/10">Anna L.</div>
+        <div class="px-3 py-2 text-center text-white/50 border-b border-white/10 uppercase tracking-wide text-[10px]">Métrica</div>
+        <div class="px-3 py-2 text-center font-bold text-rose-300 border-b border-white/10">Maria S.</div>
+
+        <div class="px-3 py-1.5 text-center font-semibold text-emerald-300">12</div>
+        <div class="px-3 py-1.5 text-center text-white/70">Winners</div>
+        <div class="px-3 py-1.5 text-center font-semibold text-emerald-300">8</div>
+
+        <div class="px-3 py-1.5 text-center font-semibold text-emerald-300">3</div>
+        <div class="px-3 py-1.5 text-center text-white/70">Aces</div>
+        <div class="px-3 py-1.5 text-center font-semibold text-emerald-300">1</div>
+
+        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">9</div>
+        <div class="px-3 py-1.5 text-center text-white/70">Erros não forçados</div>
+        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">14</div>
+
+        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">4</div>
+        <div class="px-3 py-1.5 text-center text-white/70">Erros forçados</div>
+        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">7</div>
+
+        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">1</div>
+        <div class="px-3 py-1.5 text-center text-white/70">Duplas faltas</div>
+        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">3</div>
+
+        <div class="px-3 py-1.5 text-center font-semibold">12 / 15</div>
+        <div class="px-3 py-1.5 text-center text-white/70">Pts ganhos / disputados</div>
+        <div class="px-3 py-1.5 text-center font-semibold">3 / 15</div>
+
+        <div class="px-3 py-1.5 text-center font-semibold">6 de 9</div>
+        <div class="px-3 py-1.5 text-center text-white/70">Breakpoints convertidos</div>
+        <div class="px-3 py-1.5 text-center font-semibold">2 de 5</div>
+      </div>
+    </div>
+    <div class="mt-2 text-[11px] text-cyan-200/70 italic">
+      💡 Anna ganha quando saca bem (3 aces) e fecha mais winners. Tá perdendo pontos em erros não forçados — concentração no fim do set 2.
+    </div>
+  </div>
+
+  <!-- Quem está acompanhando -->
+  <div class="px-4 mb-6">
+    <div class="bg-white/5 rounded-lg border border-white/10 p-3 flex items-center justify-between">
+      <div class="text-xs">
+        <div class="font-semibold text-cyan-200">👁️ 14 pessoas acompanhando agora</div>
+        <div class="text-white/50 mt-0.5">Família · Coach · Equipe Dummont · 5 anônimos</div>
+      </div>
+      <button class="text-xs px-3 py-1.5 rounded bg-cyan-500 hover:bg-cyan-600 font-semibold">Ver link público</button>
+    </div>
+  </div>
+
+  <!-- Rodapé scouter -->
+  <footer class="px-4 py-3 text-center text-[11px] text-white/40 border-t border-white/10">
+    Marcando: <b class="text-white/70">Pedro H. (atleta scout)</b> · indicado pelo Coach Ricardo · 38 min de match
+  </footer>
+
+  <script>
+    // Mock simples: cada click incrementa contador + grava no histórico pra undo
+    const history = [];
+    document.querySelectorAll('[data-stat]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const side = btn.dataset.side;
+        const stat = btn.dataset.stat;
+        const counter = document.querySelector(`[data-count="${side}-${stat}"]`);
+        const newVal = parseInt(counter.textContent, 10) + 1;
+        counter.textContent = newVal;
+        history.push({ counter, prev: newVal - 1 });
+      });
+    });
+    document.getElementById('btnUndo').addEventListener('click', () => {
+      const last = history.pop();
+      if (!last) return;
+      last.counter.textContent = last.prev;
+    });
+  </script>
+
+</body>
+</html>
