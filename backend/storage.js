@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, createCipheriv, createDecipheriv, scryptSync } from 'node:crypto';
@@ -560,4 +560,41 @@ export function removeManualTournament(profileId, tournamentId) {
   const list = getManualTournaments(profileId).filter(t => t.id !== tournamentId);
   writeJson(join(profileDir(profileId), 'manual.json'), list);
   return list;
+}
+
+// ===== Scout ao Vivo (live matches) =====
+// 1 arquivo por match em data/profile-{id}/live-matches/{matchId}.json. Mantém o
+// state completo (config, score, points, notas) — replay em undo é local e barato.
+function liveMatchesDir(profileId) {
+  return join(profileDir(profileId), 'live-matches');
+}
+
+export function listLiveMatches(profileId) {
+  const dir = liveMatchesDir(profileId);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter(f => f.endsWith('.json'))
+    .map(f => readJson(join(dir, f), null))
+    .filter(Boolean)
+    .sort((a, b) => (b.startedAt || '').localeCompare(a.startedAt || ''));
+}
+
+export function getLiveMatch(profileId, matchId) {
+  return readJson(join(liveMatchesDir(profileId), `${matchId}.json`), null);
+}
+
+export function saveLiveMatch(profileId, match) {
+  const dir = liveMatchesDir(profileId);
+  mkdirSync(dir, { recursive: true });
+  writeJson(join(dir, `${match.id}.json`), match);
+  return match;
+}
+
+export function deleteLiveMatch(profileId, matchId) {
+  const path = join(liveMatchesDir(profileId), `${matchId}.json`);
+  if (existsSync(path)) unlinkSync(path);
+}
+
+export function newMatchId() {
+  return 'lm-' + newId();
 }

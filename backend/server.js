@@ -17,7 +17,9 @@ import {
   findOrCreateShareToken, getShareLink,
   clearColumnOverrides, saveSyncedData, resetProfileData,
   getMatchesData, upsertYearMatches,
+  listLiveMatches, getLiveMatch, saveLiveMatch, deleteLiveMatch, newMatchId,
 } from './storage.js';
+import { createMatch as createMatchState, applyPoint, undoLastPoint, snapshotScore } from './tennis-score.js';
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed, getRegistrationWindowState } from './board.js';
 import {
   listReceipts, addReceipt, getReceiptFile, updateReceiptCategory, deleteReceipt,
@@ -1776,6 +1778,107 @@ app.get('/api/profiles/:id/tournaments/:tid/receipts.zip', requireAuth, ensureOw
     archive.file(found.filePath, { name: `${folder}/${r.id}.${ext}` });
   }
   archive.finalize();
+});
+
+// ===== Scout ao Vivo (live match tracking) =====
+// Cria novo match. Body aceita { config: { format, ad, firstServer },
+// athleteName, opponentName, tournamentId?, tournamentName?, round?, category?, source? }
+app.post('/api/profiles/:id/live-matches', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const { config = {}, athleteName, opponentName, tournamentId, tournamentName, round, category, source } = req.body || {};
+  if (!opponentName) return res.status(400).json({ error: 'opponentName obrigatório' });
+  const profile = getProfile(req.params.id);
+  const state = createMatchState(config);
+  const match = {
+    id: newMatchId(),
+    profileId: req.params.id,
+    athleteName: athleteName || profile?.athleteName || 'Atleta',
+    opponentName: String(opponentName).trim(),
+    tournamentId: tournamentId || null,
+    tournamentName: tournamentName || null,
+    round: round || null,
+    category: category || null,
+    source: source || (tournamentId ? 'ti' : 'off-ti'),
+    createdBy: req.userId,
+    notes: [],
+    ...state,
+  };
+  saveLiveMatch(req.params.id, match);
+  res.json(match);
+});
+
+// Lista matches do profile
+app.get('/api/profiles/:id/live-matches', requireAuth, ensureOwnedProfile, (req, res) => {
+  res.json(listLiveMatches(req.params.id));
+});
+
+// Detalha 1 match
+app.get('/api/profiles/:id/live-matches/:matchId', requireAuth, ensureOwnedProfile, (req, res) => {
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  res.json(m);
+});
+
+// Adiciona ponto. Body: { winner: 'a'|'o', stat?: string }
+app.post('/api/profiles/:id/live-matches/:matchId/points', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const { winner, stat } = req.body || {};
+  if (winner !== 'a' && winner !== 'o') return res.status(400).json({ error: "winner deve ser 'a' ou 'o'" });
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  if (m.finished) return res.status(400).json({ error: 'Match já encerrado' });
+  const next = applyPoint(m, winner, stat || null);
+  // Preserva metadata do match (tudo fora do state da engine)
+  Object.assign(m, next);
+  saveLiveMatch(req.params.id, m);
+  res.json(m);
+});
+
+// Desfaz último ponto
+app.delete('/api/profiles/:id/live-matches/:matchId/points/last', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  if (!m.points.length) return res.status(400).json({ error: 'Nenhum ponto pra desfazer' });
+  const next = undoLastPoint(m);
+  Object.assign(m, next);
+  saveLiveMatch(req.params.id, m);
+  res.json(m);
+});
+
+// Adiciona nota qualitativa. Body: { text, tag? }
+app.post('/api/profiles/:id/live-matches/:matchId/notes', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const { text, tag } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ error: 'text obrigatório' });
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  m.notes = m.notes || [];
+  m.notes.push({
+    id: 'n-' + Math.random().toString(36).slice(2, 10),
+    ts: new Date().toISOString(),
+    text: text.trim(),
+    tag: tag || null,
+    score: snapshotScore(m),
+  });
+  saveLiveMatch(req.params.id, m);
+  res.json(m);
+});
+
+// Encerra match manualmente (ou marca abandonado)
+app.patch('/api/profiles/:id/live-matches/:matchId', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const { action } = req.body || {};
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  if (action === 'abandon') {
+    m.finished = true;
+    m.abandoned = true;
+    m.endedAt = new Date().toISOString();
+  }
+  saveLiveMatch(req.params.id, m);
+  res.json(m);
+});
+
+// Deleta um match (limpeza)
+app.delete('/api/profiles/:id/live-matches/:matchId', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  deleteLiveMatch(req.params.id, req.params.matchId);
+  res.json({ ok: true });
 });
 
 app.post('/api/shutdown', (req, res) => {
