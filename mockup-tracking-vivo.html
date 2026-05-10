@@ -17,10 +17,14 @@
       border: 1.5px solid transparent;
     }
     .stat-btn:active { transform: scale(0.96); }
-    .stat-pos { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
-    .stat-pos:hover { background: #d1fae5; }
-    .stat-neg { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
-    .stat-neg:hover { background: #fee2e2; }
+    /* Cores fixas por jogador (estilo iOnCourt) — não por semântica.
+       Lê de relance "quem fez o quê" sem decifrar verde vs vermelho. */
+    .stat-anna { background: #1d4ed8; color: white; border-color: #1d4ed8; }
+    .stat-anna:hover { background: #1e40af; }
+    .stat-adv { background: #ea580c; color: white; border-color: #ea580c; }
+    .stat-adv:hover { background: #c2410c; }
+    /* Pequena tag visual por tipo (win/erro) — bem discreta */
+    .stat-tag { font-size: 9px; opacity: 0.75; font-weight: 600; }
     .stat-label { font-size: 11px; font-weight: 600; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.04em; }
     .stat-count { font-size: 20px; font-weight: 800; line-height: 1; }
     .side-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
@@ -183,68 +187,66 @@
 
       <!-- Grid de botões — modo SACANDO (default) -->
       <div id="btnsSacando" class="grid grid-cols-2 gap-2">
-        <button class="stat-btn stat-pos" data-stat="ace" data-mode="saque" data-result="anna">
+        <button class="stat-btn stat-anna" data-stat="ace" data-mode="saque" data-result="anna">
           <span class="stat-label">Ace</span>
           <span class="stat-count" data-count="ace">3</span>
         </button>
-        <button class="stat-btn stat-pos" data-stat="winner" data-mode="saque" data-result="anna">
-          <span class="stat-label">Winner Anna</span>
+        <button class="stat-btn stat-anna" data-stat="winner" data-mode="saque" data-result="anna">
+          <span class="stat-label">Serve Winner</span>
           <span class="stat-count" data-count="winner">12</span>
         </button>
-        <button class="stat-btn stat-neg" data-stat="df" data-mode="saque" data-result="maria">
-          <span class="stat-label">Dupla falta</span>
+        <button class="stat-btn stat-anna" data-stat="serveerr" data-mode="saque" data-result="anna">
+          <span class="stat-label">1º Saque Erro</span>
+          <span class="stat-count" data-count="serveerr">9</span>
+        </button>
+        <button class="stat-btn stat-anna" data-stat="df" data-mode="saque" data-result="maria">
+          <span class="stat-label">Dupla Falta</span>
           <span class="stat-count" data-count="df">1</span>
         </button>
-        <button class="stat-btn stat-neg" data-stat="ue" data-mode="saque" data-result="maria">
-          <span class="stat-label">Erro não forçado</span>
-          <span class="stat-count" data-count="ue">9</span>
+        <button class="stat-btn stat-adv" data-stat="returnwin" data-mode="saque" data-result="maria">
+          <span class="stat-label">Return Winner</span>
+          <span class="stat-count" data-count="returnwin">5</span>
         </button>
-        <button class="stat-btn stat-neg" data-stat="fe" data-mode="saque" data-result="maria">
-          <span class="stat-label">Erro forçado</span>
-          <span class="stat-count" data-count="fe">4</span>
-        </button>
-        <button class="stat-btn" data-stat="oppwinner" data-mode="saque" data-result="maria"
-                style="background:#f1f5f9; color:#475569; border-color:#cbd5e1;">
-          <span class="stat-label">Winner adv.</span>
-          <span class="stat-count" data-count="oppwinner">8</span>
+        <button class="stat-btn stat-adv" data-stat="returnue" data-mode="saque" data-result="anna">
+          <span class="stat-label">Return Err</span>
+          <span class="stat-count" data-count="returnue">7</span>
         </button>
       </div>
 
       <!-- Grid de botões — modo RECEBENDO (oculto até trocar) -->
       <div id="btnsRecebendo" class="grid grid-cols-2 gap-2 hidden">
-        <button class="stat-btn stat-pos" data-stat="winner" data-mode="recepcao" data-result="anna">
-          <span class="stat-label">Winner Anna</span>
-          <span class="stat-count" data-count="winner">12</span>
+        <button class="stat-btn stat-anna" data-stat="returnwin_anna" data-mode="recepcao" data-result="anna">
+          <span class="stat-label">Return Winner</span>
+          <span class="stat-count" data-count="returnwin_anna">4</span>
         </button>
-        <button class="stat-btn stat-pos" data-stat="oppdf" data-mode="recepcao" data-result="anna">
-          <span class="stat-label">Dupla falta adv.</span>
-          <span class="stat-count" data-count="oppdf">3</span>
+        <button class="stat-btn stat-anna" data-stat="returnue_anna" data-mode="recepcao" data-result="maria">
+          <span class="stat-label">Return Err</span>
+          <span class="stat-count" data-count="returnue_anna">5</span>
         </button>
-        <button class="stat-btn stat-neg" data-stat="ue" data-mode="recepcao" data-result="maria">
-          <span class="stat-label">Erro não forçado</span>
-          <span class="stat-count" data-count="ue">9</span>
+        <button class="stat-btn stat-anna" data-stat="returnmade" data-mode="recepcao" data-result="anna">
+          <span class="stat-label">Return Made</span>
+          <span class="stat-count" data-count="returnmade">11</span>
         </button>
-        <button class="stat-btn stat-neg" data-stat="fe" data-mode="recepcao" data-result="maria">
-          <span class="stat-label">Erro forçado</span>
-          <span class="stat-count" data-count="fe">4</span>
-        </button>
-        <button class="stat-btn" data-stat="oppace" data-mode="recepcao" data-result="maria"
-                style="background:#f1f5f9; color:#475569; border-color:#cbd5e1;">
+        <button class="stat-btn stat-adv" data-stat="oppace" data-mode="recepcao" data-result="maria">
           <span class="stat-label">Ace adv.</span>
           <span class="stat-count" data-count="oppace">1</span>
         </button>
-        <button class="stat-btn" data-stat="oppwinner" data-mode="recepcao" data-result="maria"
-                style="background:#f1f5f9; color:#475569; border-color:#cbd5e1;">
-          <span class="stat-label">Winner adv.</span>
+        <button class="stat-btn stat-adv" data-stat="oppwinner" data-mode="recepcao" data-result="maria">
+          <span class="stat-label">Serve Winner adv.</span>
           <span class="stat-count" data-count="oppwinner">8</span>
+        </button>
+        <button class="stat-btn stat-adv" data-stat="oppdf" data-mode="recepcao" data-result="anna">
+          <span class="stat-label">Dupla Falta adv.</span>
+          <span class="stat-count" data-count="oppdf">3</span>
         </button>
       </div>
 
       <!-- Legenda compacta -->
-      <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-center gap-4 text-[10px] text-slate-500">
-        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ponto Anna</span>
-        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> erro Anna</span>
-        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-400"></span> ponto adv. (sem erro Anna)</span>
+      <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-center gap-5 text-[11px] text-slate-600">
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-700"></span> Anna</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-orange-600"></span> Adversária</span>
+        <span class="text-slate-400">·</span>
+        <span class="text-slate-400">cor = quem fez · texto = o que fez</span>
       </div>
     </div>
   </div>
@@ -262,34 +264,85 @@
     </button>
   </div>
 
-  <!-- Momentum -->
+  <!-- Momentum horizontal com scroll — placar no X, ±pontos no Y -->
   <div class="px-4 mt-5">
     <div class="flex items-center justify-between mb-2">
       <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80">Momentum do match</h3>
-      <span class="text-[10px] text-white/50">cyan = Anna · rosa = Maria</span>
+      <span class="text-[10px] text-white/50">→ deslize pra ver o histórico</span>
     </div>
-    <!-- Mini chart SVG com áreas alternadas -->
     <div class="bg-white/5 rounded-lg border border-white/10 p-3">
-      <svg viewBox="0 0 600 80" class="w-full h-20" preserveAspectRatio="none">
-        <!-- Linha 0 -->
-        <line x1="0" y1="40" x2="600" y2="40" stroke="rgba(255,255,255,0.2)" stroke-dasharray="3,3" />
-        <!-- Áreas momentum (curva alternada) -->
-        <path d="M0,40 Q40,15 80,20 T160,30 T240,55 T320,65 T400,45 T480,25 T560,35 L600,40 L600,80 L0,80 Z"
-              fill="rgba(244,63,94,0.15)" />
-        <path d="M0,40 Q40,15 80,20 T160,30 T240,55 T320,65 T400,45 T480,25 T560,35 L600,40 L600,0 L0,0 Z"
-              fill="rgba(6,182,212,0.15)" />
-        <!-- Curva -->
-        <path d="M0,40 Q40,15 80,20 T160,30 T240,55 T320,65 T400,45 T480,25 T560,35 L600,40"
-              fill="none" stroke="#06b6d4" stroke-width="2" />
-        <!-- Marcadores de set -->
-        <line x1="200" y1="0" x2="200" y2="80" stroke="rgba(255,255,255,0.25)" stroke-dasharray="2,2" />
-        <line x1="400" y1="0" x2="400" y2="80" stroke="rgba(255,255,255,0.25)" stroke-dasharray="2,2" />
-        <text x="100" y="76" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.6)">Set 1 (6-4)</text>
-        <text x="300" y="76" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.6)">Set 2 (3-6)</text>
-        <text x="500" y="76" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.6)">Set 3 · em curso</text>
-      </svg>
+      <!-- Y labels fixos à esquerda -->
+      <div class="flex">
+        <div class="flex flex-col justify-between text-[9px] text-white/55 pr-2 py-1" style="height:140px;">
+          <span>+6</span>
+          <span>+3</span>
+          <span class="text-white/80">0</span>
+          <span>-3</span>
+          <span>-6</span>
+        </div>
+        <!-- Container com scroll horizontal -->
+        <div class="flex-1 overflow-x-auto scroll-thin">
+          <svg viewBox="0 0 900 140" preserveAspectRatio="xMinYMid meet" style="width:900px; height:140px; min-width:900px;">
+            <!-- Linha horizontal no zero -->
+            <line x1="0" y1="70" x2="900" y2="70" stroke="rgba(255,255,255,0.35)" stroke-width="1" />
+            <!-- Grids verticais leves (cada game) -->
+            <g stroke="rgba(255,255,255,0.08)" stroke-dasharray="2,2">
+              <line x1="100" y1="0" x2="100" y2="140" />
+              <line x1="200" y1="0" x2="200" y2="140" />
+              <line x1="300" y1="0" x2="300" y2="140" />
+              <line x1="400" y1="0" x2="400" y2="140" />
+              <line x1="500" y1="0" x2="500" y2="140" />
+              <line x1="600" y1="0" x2="600" y2="140" />
+              <line x1="700" y1="0" x2="700" y2="140" />
+              <line x1="800" y1="0" x2="800" y2="140" />
+            </g>
+            <!-- X labels (placar do game na base) -->
+            <g font-size="9" fill="rgba(255,255,255,0.55)" text-anchor="middle">
+              <text x="50" y="135">1-0</text>
+              <text x="150" y="135">2-0</text>
+              <text x="250" y="135">2-1</text>
+              <text x="350" y="135">3-1</text>
+              <text x="450" y="135">3-2</text>
+              <text x="550" y="135">4-2</text>
+              <text x="650" y="135">5-2</text>
+              <text x="750" y="135">6-3 (S1)</text>
+              <text x="850" y="135">3-1 (S3)</text>
+            </g>
+            <!-- Linha conectando os pontos do match -->
+            <polyline
+              points="50,40 150,30 250,55 350,30 450,80 550,50 650,40 750,90 850,30"
+              fill="none" stroke="rgba(234,88,12,0.4)" stroke-width="2" />
+            <!-- Pontos do match -->
+            <g>
+              <circle cx="50" cy="40" r="5" fill="#1d4ed8" />
+              <circle cx="150" cy="30" r="5" fill="#1d4ed8" />
+              <circle cx="250" cy="55" r="5" fill="#ea580c" />
+              <circle cx="350" cy="30" r="5" fill="#1d4ed8" />
+              <circle cx="450" cy="80" r="5" fill="#ea580c" />
+              <circle cx="550" cy="50" r="5" fill="#1d4ed8" />
+              <circle cx="650" cy="40" r="5" fill="#1d4ed8" />
+              <circle cx="750" cy="90" r="5" fill="#ea580c" />
+              <circle cx="850" cy="30" r="5" fill="#1d4ed8" />
+            </g>
+            <!-- Badges GAME nos pontos altos/baixos -->
+            <g font-size="9" font-weight="bold" fill="white">
+              <rect x="135" y="14" width="32" height="14" rx="3" fill="#1d4ed8" />
+              <text x="151" y="24" text-anchor="middle">GAME</text>
+              <rect x="435" y="86" width="32" height="14" rx="3" fill="#ea580c" />
+              <text x="451" y="96" text-anchor="middle">GAME</text>
+              <rect x="635" y="24" width="32" height="14" rx="3" fill="#1d4ed8" />
+              <text x="651" y="34" text-anchor="middle">GAME</text>
+              <rect x="835" y="14" width="32" height="14" rx="3" fill="#1d4ed8" />
+              <text x="851" y="24" text-anchor="middle">GAME</text>
+            </g>
+            <!-- Marcadores de set -->
+            <line x1="800" y1="0" x2="800" y2="140" stroke="rgba(255,255,255,0.3)" stroke-dasharray="4,2" stroke-width="1.5" />
+            <text x="780" y="12" text-anchor="end" font-size="9" font-weight="bold" fill="rgba(255,255,255,0.7)">SET 1 ✓</text>
+          </svg>
+        </div>
+      </div>
       <div class="text-[11px] text-white/60 mt-2 italic">
-        💡 Anna teve breakpoints consecutivos no fim do set 1 · perdeu o ritmo no set 2 · está retomando agora.
+        💡 Set 1 Anna 6-3 com pico +6. Set 3 começou bem, abriu 3-1 — está dominando agora.
       </div>
     </div>
   </div>
@@ -327,21 +380,32 @@
       </div>
     </div>
 
-    <div class="bg-white/5 rounded-lg border border-white/10 overflow-hidden mt-2">
-      <div class="grid grid-cols-2 text-xs divide-x divide-white/10">
-        <div class="px-3 py-2.5">
-          <div class="text-[10px] uppercase tracking-wide text-white/50">Saldo (winners − erros)</div>
-          <div class="font-bold text-lg mt-0.5 text-emerald-300">+1</div>
-        </div>
-        <div class="px-3 py-2.5">
-          <div class="text-[10px] uppercase tracking-wide text-white/50">Breakpoints convertidos</div>
-          <div class="font-bold text-lg mt-0.5">6 / 9 <span class="text-xs text-white/50">· 67%</span></div>
-        </div>
-      </div>
+    <!-- Stats avançados — derivados automaticamente dos cliques -->
+    <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80 mt-4 mb-2">Saque & retorno</h3>
+    <div class="bg-white/5 rounded-lg border border-white/10 overflow-hidden">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-white/50 text-[10px] uppercase tracking-wide">
+            <th class="px-3 py-2 text-center font-semibold">Anna</th>
+            <th class="px-3 py-2 text-center font-semibold">Métrica</th>
+            <th class="px-3 py-2 text-center font-semibold">Adv.</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/10">
+          <tr><td class="px-3 py-1.5 text-center font-semibold text-blue-300">3</td><td class="px-3 py-1.5 text-center text-white/70">Aces</td><td class="px-3 py-1.5 text-center font-semibold text-orange-300">1</td></tr>
+          <tr><td class="px-3 py-1.5 text-center font-semibold text-blue-300">1</td><td class="px-3 py-1.5 text-center text-white/70">Duplas faltas</td><td class="px-3 py-1.5 text-center font-semibold text-orange-300">3</td></tr>
+          <tr><td class="px-3 py-1.5 text-center font-semibold">9 / 13 <span class="text-white/50">(69%)</span></td><td class="px-3 py-1.5 text-center text-white/70">1º saque %</td><td class="px-3 py-1.5 text-center font-semibold">7 / 14 <span class="text-white/50">(50%)</span></td></tr>
+          <tr><td class="px-3 py-1.5 text-center font-semibold text-blue-300">7 / 9 <span class="text-white/50">(78%)</span></td><td class="px-3 py-1.5 text-center text-white/70">Pts no 1º saque</td><td class="px-3 py-1.5 text-center font-semibold text-orange-300">4 / 7 <span class="text-white/50">(57%)</span></td></tr>
+          <tr><td class="px-3 py-1.5 text-center font-semibold text-blue-300">3 / 4 <span class="text-white/50">(75%)</span></td><td class="px-3 py-1.5 text-center text-white/70">Pts no 2º saque</td><td class="px-3 py-1.5 text-center font-semibold text-orange-300">3 / 7 <span class="text-white/50">(43%)</span></td></tr>
+          <tr><td class="px-3 py-1.5 text-center font-semibold">11 / 14 <span class="text-white/50">(79%)</span></td><td class="px-3 py-1.5 text-center text-white/70">Returns realizados</td><td class="px-3 py-1.5 text-center font-semibold">9 / 13 <span class="text-white/50">(69%)</span></td></tr>
+          <tr><td class="px-3 py-1.5 text-center font-semibold text-blue-300">6 / 9 <span class="text-white/50">(67%)</span></td><td class="px-3 py-1.5 text-center text-white/70">Breakpoints convertidos</td><td class="px-3 py-1.5 text-center font-semibold text-orange-300">2 / 5 <span class="text-white/50">(40%)</span></td></tr>
+          <tr class="bg-white/5"><td class="px-3 py-2 text-center font-bold text-blue-300">+1</td><td class="px-3 py-2 text-center text-white/70 font-semibold">Saldo (winners − erros)</td><td class="px-3 py-2 text-center font-bold text-orange-300">−7</td></tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="mt-2 text-[11px] text-cyan-200/70 italic">
-      💡 Anna ganha quando saca bem (3 aces) e fecha mais winners. Tá perdendo pontos em erros não forçados — concentração no fim do set 2.
+      💡 Anna ganha quando saca bem (78% no 1º · 75% no 2º) e converte 67% dos BPs. Adv. perde pontos em erros não forçados — saldo dela está em −7.
     </div>
   </div>
 
