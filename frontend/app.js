@@ -569,6 +569,20 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao desfazer');
     return r.json();
   },
+  async publicAddNote(token, text, tag) {
+    const r = await fetch(`/api/scout/${token}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, tag }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao adicionar nota');
+    return r.json();
+  },
+  async deleteLiveNote(profileId, matchId, noteId) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}/notes/${noteId}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao excluir nota');
+    return r.json();
+  },
   async seedAndDeliverReport(profileId, html, asEmail) {
     const r = await fetch(`/api/admin/profiles/${profileId}/seed-deliver?as=${encodeURIComponent(asEmail)}`, {
       method: 'POST',
@@ -4854,6 +4868,18 @@ async function openScoutTrackModal(profileId, matchId) {
 
     // Stats consolidados
     container.appendChild(renderStatsPanel(m));
+
+    // Notas qualitativas (composer + lista) — dono pode adicionar e deletar
+    container.appendChild(renderNotesPanel(m, {
+      onAdd: async (text, tag) => {
+        m = await api.addLiveNote(profileId, m.id, text, tag);
+        render();
+      },
+      onDelete: async (noteId) => {
+        m = await api.deleteLiveNote(profileId, m.id, noteId);
+        render();
+      },
+    }));
   };
 
   render();
@@ -5003,6 +5029,137 @@ function renderStatsPanel(m) {
   });
   wrap.appendChild(tbl);
   return wrap;
+}
+
+// Composer + lista de notas qualitativas. opts: { onAdd, onDelete?, readOnly? }
+function renderNotesPanel(m, opts = {}) {
+  const wrap = el('div', { class: 'px-4 py-4' });
+  wrap.appendChild(el('h3', { class: 'text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2' }, '📝 Notas de performance'));
+
+  if (!opts.readOnly && opts.onAdd) {
+    const composer = el('div', { class: 'bg-white rounded-xl p-3 text-slate-900 mb-3' });
+    const textarea = el('textarea', {
+      placeholder: 'Observação rápida — ex: "saque externo funcionando" · "errou voleias quando subiu"…',
+      class: 'w-full text-sm border border-slate-200 rounded-lg px-3 py-2 h-16 focus:outline-none focus:ring-2 focus:ring-cyan-300 resize-none',
+    });
+    composer.appendChild(textarea);
+
+    // Tag chips
+    let selectedTag = null;
+    const tags = [
+      ['tecnico',   'Técnico',   '#0e7490'],
+      ['tatico',    'Tático',    '#7c3aed'],
+      ['fisico',    'Físico',    '#ea580c'],
+      ['emocional', 'Emocional', '#be123c'],
+    ];
+    const tagRow = el('div', { class: 'flex gap-1.5 flex-wrap mt-2' });
+    const tagBtns = [];
+    tags.forEach(([key, label, color]) => {
+      const b = el('button', {
+        class: 'text-[11px] px-2 py-1 rounded-full border border-slate-300 text-slate-600 font-semibold',
+      }, label);
+      b.onclick = () => {
+        selectedTag = selectedTag === key ? null : key;
+        tagBtns.forEach(({ key: k, btn, color: c }) => {
+          if (k === selectedTag) {
+            btn.style.background = c;
+            btn.style.color = 'white';
+            btn.style.borderColor = c;
+          } else {
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+            btn.className = 'text-[11px] px-2 py-1 rounded-full border border-slate-300 text-slate-600 font-semibold';
+          }
+        });
+      };
+      tagBtns.push({ key, btn: b, color });
+      tagRow.appendChild(b);
+    });
+    composer.appendChild(tagRow);
+
+    const submit = el('button', {
+      class: 'mt-2 w-full text-xs px-3 py-2 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold disabled:opacity-50',
+    }, '+ Adicionar nota');
+    submit.onclick = async () => {
+      const text = textarea.value.trim();
+      if (!text) { textarea.focus(); return; }
+      submit.disabled = true;
+      submit.textContent = '⏳ Salvando…';
+      try {
+        await opts.onAdd(text, selectedTag);
+        // callback faz re-render
+      } catch (err) {
+        alert(err.message);
+        submit.disabled = false;
+        submit.textContent = '+ Adicionar nota';
+      }
+    };
+    composer.appendChild(submit);
+    wrap.appendChild(composer);
+  }
+
+  // Lista de notas (newest first)
+  const notes = (m.notes || []).slice().reverse();
+  if (notes.length === 0) {
+    wrap.appendChild(el('div', { class: 'text-[11px] text-white/40 italic text-center py-2' },
+      opts.readOnly ? 'Nenhuma nota neste match.' : 'Suas observações aparecem aqui — o que os números não contam.'));
+    return wrap;
+  }
+
+  const tagMeta = {
+    tecnico:   { label: 'Técnico',   color: '#0e7490' },
+    tatico:    { label: 'Tático',    color: '#7c3aed' },
+    fisico:    { label: 'Físico',    color: '#ea580c' },
+    emocional: { label: 'Emocional', color: '#be123c' },
+  };
+
+  const list = el('div', { class: 'space-y-2' });
+  notes.forEach(n => {
+    const meta = n.tag && tagMeta[n.tag];
+    const item = el('div', { class: 'bg-white/5 border border-white/10 rounded-lg p-3' });
+    const head = el('div', { class: 'flex items-center justify-between mb-1 gap-2 flex-wrap' });
+    head.appendChild(el('span', { class: 'text-[10px] font-bold uppercase tracking-wider text-cyan-300' },
+      formatNoteScore(n.score)));
+    if (meta) head.appendChild(el('span', {
+      class: 'text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white',
+      style: `background:${meta.color}`,
+    }, meta.label));
+    const right = el('span', { class: 'ml-auto text-[10px] text-white/40' }, relativeTimeShort(n.ts));
+    head.appendChild(right);
+    if (opts.onDelete) {
+      const del = el('button', { class: 'text-[10px] text-white/40 hover:text-red-300 ml-2' }, '×');
+      del.onclick = async () => {
+        if (!confirm('Excluir esta nota?')) return;
+        try { await opts.onDelete(n.id); } catch (err) { alert(err.message); }
+      };
+      head.appendChild(del);
+    }
+    item.appendChild(head);
+    item.appendChild(el('div', { class: 'text-sm text-white/90' }, n.text));
+    list.appendChild(item);
+  });
+  wrap.appendChild(list);
+  return wrap;
+}
+
+function formatNoteScore(score) {
+  if (!score) return '';
+  const sets = (score.sets || []).map(s => `${s.a}-${s.o}`).join(' · ');
+  const cur = score.currentSetGames ? `${score.currentSetGames.a}-${score.currentSetGames.o}` : '';
+  const cg = score.currentGame || '';
+  return [sets, cur, cg].filter(Boolean).join(' · ');
+}
+
+function relativeTimeShort(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return 'agora';
+  if (mins < 60) return `há ${mins} min`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `há ${hrs}h`;
+  return new Date(iso).toLocaleDateString('pt-BR');
 }
 
 function computeStats(m) {
@@ -5203,6 +5360,17 @@ async function openPublicLiveMatch(kind, token) {
       }
 
       root.appendChild(renderStatsPanel(m));
+
+      // Notas — scouter público pode adicionar e ver; viewer NÃO vê notas
+      // (privacidade: link viewer pode ser compartilhado largamente)
+      if (isScout) {
+        root.appendChild(renderNotesPanel(m, {
+          onAdd: async (text, tag) => {
+            m = await api.publicAddNote(token, text, tag);
+            render();
+          },
+        }));
+      }
 
       if (!isScout && !m.finished) {
         const tip = document.createElement('div');

@@ -1782,6 +1782,8 @@ app.get('/api/profiles/:id/tournaments/:tid/receipts.zip', requireAuth, ensureOw
 });
 
 // ===== Scout ao Vivo (live match tracking) =====
+const VALID_NOTE_TAGS = new Set(['tecnico', 'tatico', 'fisico', 'emocional']);
+
 // Cria novo match. Body aceita { config: { format, ad, firstServer },
 // athleteName, opponentName, tournamentId?, tournamentName?, round?, category?, source? }
 app.post('/api/profiles/:id/live-matches', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
@@ -1869,10 +1871,20 @@ app.post('/api/profiles/:id/live-matches/:matchId/notes', requireAuth, requireEd
   m.notes.push({
     id: 'n-' + Math.random().toString(36).slice(2, 10),
     ts: new Date().toISOString(),
-    text: text.trim(),
-    tag: tag || null,
+    text: String(text).trim().slice(0, 500),
+    tag: VALID_NOTE_TAGS.has(tag) ? tag : null,
     score: snapshotScore(m),
+    author: 'owner',
   });
+  saveLiveMatch(req.params.id, m);
+  res.json(m);
+});
+
+// Deleta nota (só dono)
+app.delete('/api/profiles/:id/live-matches/:matchId/notes/:noteId', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  m.notes = (m.notes || []).filter(n => n.id !== req.params.noteId);
   saveLiveMatch(req.params.id, m);
   res.json(m);
 });
@@ -1941,11 +1953,35 @@ app.delete('/api/scout/:token/points/last', (req, res) => {
   res.json(match);
 });
 
-// Viewer: read-only. Mesma resposta, mas só GET.
+// Scouter público pode adicionar nota qualitativa também (tipo "tá afobada
+// nas devoluções" durante o jogo). Texto + tag opcional.
+app.post('/api/scout/:token/notes', (req, res) => {
+  const { text, tag } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ error: 'text obrigatório' });
+  const r = publicMatchByToken(req.params.token, 'scout');
+  if (r.error) return res.status(404).json({ error: r.error });
+  const { match, info } = r;
+  match.notes = match.notes || [];
+  match.notes.push({
+    id: 'n-' + Math.random().toString(36).slice(2, 10),
+    ts: new Date().toISOString(),
+    text: String(text).trim().slice(0, 500),
+    tag: VALID_NOTE_TAGS.has(tag) ? tag : null,
+    score: snapshotScore(match),
+    author: 'scout',
+  });
+  saveLiveMatch(info.profileId, match);
+  res.json(match);
+});
+
+
+// Viewer: read-only. Notas qualitativas removidas da resposta — link
+// viewer pode ser compartilhado amplamente, notas são sensíveis.
 app.get('/api/live/:token', (req, res) => {
   const r = publicMatchByToken(req.params.token, 'viewer');
   if (r.error) return res.status(404).json({ error: r.error });
-  res.json(r.match);
+  const { notes, ...publicView } = r.match;
+  res.json(publicView);
 });
 
 // Páginas públicas: serve o index.html (SPA detecta o path e abre tela
