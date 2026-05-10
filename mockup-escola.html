@@ -154,18 +154,29 @@
                 <a class="text-xs text-cyan-700 hover:underline cursor-pointer" data-view="torneios">Ver todos →</a>
               </div>
               <div class="space-y-2">
-                ${TORNEIOS.slice(0, 3).map(t => `
-                  <a class="block border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer" data-view="torneio-detalhe">
-                    <div class="flex items-start justify-between gap-3">
+                ${TORNEIOS.slice(0, 3).map(t => {
+                  const [dia, mes] = t.data.split('/');
+                  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+                  const mesLabel = meses[parseInt(mes, 10) - 1] || mes;
+                  return `
+                    <a class="grid items-center gap-3 border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer" style="grid-template-columns: 56px 1fr 130px;" data-view="torneio-detalhe">
+                      <!-- Tile de data -->
+                      <div class="rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-900 text-center py-1">
+                        <div class="text-lg font-bold leading-none">${dia}</div>
+                        <div class="text-[10px] uppercase font-semibold opacity-70 mt-0.5">${mesLabel}</div>
+                      </div>
+                      <!-- Nome + meta -->
                       <div class="min-w-0">
                         <div class="text-sm font-semibold text-slate-900 truncate">${t.nome}</div>
-                        <div class="text-xs text-slate-600 mt-0.5">${t.cidade} · ${t.data}</div>
-                        <div class="text-xs text-slate-500 mt-1">${t.insc} atletas · prof ${t.prof}</div>
+                        <div class="text-xs text-slate-500 mt-0.5 truncate">📍 ${t.cidade} · 👤 ${t.insc} atletas · 👨‍🏫 ${t.prof}</div>
                       </div>
-                      <span class="badge bg-cyan-100 text-cyan-800 shrink-0">${t.status.split('·')[0].trim()}</span>
-                    </div>
-                  </a>
-                `).join('')}
+                      <!-- Status -->
+                      <div class="text-right">
+                        <span class="badge bg-cyan-100 text-cyan-800">${t.status.split('·')[0].trim()}</span>
+                      </div>
+                    </a>
+                  `;
+                }).join('')}
               </div>
             </div>
 
