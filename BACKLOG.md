@@ -342,6 +342,66 @@ inacessível a juvenil brasileiro.
 - Workbench interativo com filtros (ano, tier, UF, oponente)
 - Survival curves Kaplan-Meier por tier
 
+### Fase 6 — Scout ao Vivo + nota técnica + Cap 8 do relatório
+
+Discutido em 2026-05-10. Mockupado em `mockup-tracking-vivo.html`,
+`mockup-scout-ao-vivo.html`. Scout ao vivo é a feature de tracking
+ponto-a-ponto durante torneios, sem login pro scouter (link público
+amber pra marcar, link público cyan pra acompanhar).
+
+**Stack de stats coletados** (5-6 cliques por ponto, derivados
+automaticamente em ~10 métricas):
+- Coletados direto: Ace, Serve Winner, 1º Saque Erro, Dupla Falta,
+  Return Winner, Return Err, Return Made, UE, FE
+- Derivados: % 1º saque, pts no 1º/2º saque, returns realizados %,
+  BPs convertidos, saldo (winners − UEs), total de pts ganhos %
+
+**Nota técnica do match (0-10)** — score automático normalizado pelo
+histórico da própria atleta (não vs benchmark genérico). Pesos:
+- 20% — % pts ganhos no match (sinal macro de domínio)
+- 20% — saldo (winners − erros não forçados)
+- 20% — pts ganhos no 1º saque
+- 10% — pts ganhos no 2º saque
+- 10% — % devoluções dentro
+- 20% — BPs convertidos (atacando + defendendo)
+
+Total 100%. Bate o olho num número e sabe se o jogo foi bom independente
+do placar (vencer 6-0 6-0 com 25 UEs ≠ perder 5-7 6-7 jogando bem).
+
+**Notas qualitativas** — composer rápido com texto + voz (10s grava e
+transcreve depois) + tag opcional (técnico/tático/físico/emocional) +
+sugestões automáticas contextuais (3 DFs em 4 pontos → chip "💡 anotar
+pressão no saque?"). Cada nota fica timestamped com o placar do momento.
+Privacidade default: visível só pra coach/atleta/família — não vai pro
+link público.
+
+**Cap 8 do relatório de Performance** — quando ≥10-15 scouts acumulados,
+abre análises que só esse dataset desbloqueia (nenhuma vem do TI):
+- **Pontos críticos** — % pts ganhos em deuce, 0-30, 30-30, BP contra.
+  Mostra onde a atleta cede sob pressão.
+- **Padrão por contexto** — vs atletas mais ranqueadas, em saibro vs
+  duro, 1º vs 2º jogo do dia.
+- **Estilo do jogo** — proporção winners/UEs ao longo do tempo, padrão
+  por set (derrete no 2º? aguenta no 3º?).
+- **Tendência da nota 0-10** — média móvel últimos N matches com bandas
+  de confiança. Coach paga pra ter esse tipo de leitura.
+Threshold: 5 scouts pra estatísticas pontuais aparecerem (com aviso
+"amostra pequena"); 10-15 pra entrar como capítulo firme do relatório.
+
+**Envio do relatório do match/torneio pro coach** — fim do match tem
+botão "📧 Enviar relatório":
+- Por jogo: PDF/HTML 1 página com placar, stats, nota 0-10, momentum,
+  notas qualitativas. Anexo no email + link permanente.
+- Por torneio: consolida todos os jogos da Anna no torneio (R1, R2, QF,
+  ...) num único relatório.
+- Por período: semanal/mensal/trimestral, agendado.
+Granularidade escolhida pelo pai/atleta no momento do envio. Coach
+recebe email branded TF, abre direto no navegador (sem login).
+
+**Mockups ainda standalone** (raiz do repo, fora de `frontend/`).
+Próximo passo: descobrir endpoint do TI pra chave do torneio em curso
+(pré-req pra Scout ao Vivo automático preencher adversária do dia).
+
 ### Bonus / Extensões futuras
 - **Scouting cross-user (rede)**: lookup `/api/scouting/athlete/{tiId}` que
   consulta matches em todos os profiles do household. Modelo de rede
