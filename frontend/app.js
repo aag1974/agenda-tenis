@@ -4968,10 +4968,14 @@ function renderScorePanel(m) {
 
 function rowForSide(side, name, m, cs, cg, sets) {
   const isServer = m.server === side && !m.finished;
-  const row = el('div', { class: 'grid items-center', style: 'grid-template-columns: 1fr 32px 32px 32px 50px;' });
-  row.appendChild(el('div', { class: 'px-3 py-2 text-sm font-semibold flex items-center gap-2' },
+  const isWinner = m.finished && m.winner === side;
+  const isLoser  = m.finished && m.winner && m.winner !== side;
+  const rowStyle = 'grid-template-columns: 1fr 32px 32px 32px 50px;' + (isLoser ? ' opacity: 0.5;' : '');
+  const row = el('div', { class: 'grid items-center', style: rowStyle });
+  const nameSuffix = isWinner ? ' 🏆' : (isServer ? ' 🎾' : '');
+  row.appendChild(el('div', { class: `px-3 py-2 text-sm flex items-center gap-2 ${isWinner ? 'font-extrabold' : 'font-semibold'}` },
     el('span', { class: 'inline-block w-2.5 h-2.5 rounded-full', style: `background: ${side === 'a' ? '#0891b2' : '#e11d48'}` }),
-    el('span', { class: 'truncate' }, name + (isServer ? ' 🎾' : '')),
+    el('span', { class: 'truncate' }, name + nameSuffix),
   ));
   for (let i = 0; i < 3; i++) {
     const s = sets[i];
