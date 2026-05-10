@@ -598,3 +598,50 @@ export function deleteLiveMatch(profileId, matchId) {
 export function newMatchId() {
   return 'lm-' + newId();
 }
+
+// ===== Tokens públicos do Scout ao Vivo =====
+// Cada match tem 2 tokens: scout (pode marcar) e viewer (só lê). Quem
+// recebe o link no WhatsApp não precisa de conta — o token autoriza.
+// Mapeamento token → {profileId, matchId, kind} num arquivo só, simples.
+const LIVE_TOKENS_FILE = join(DATA_DIR, 'live-match-tokens.json');
+
+export function createLiveMatchTokens(profileId, matchId) {
+  const all = readJson(LIVE_TOKENS_FILE, {});
+  const scoutToken = randomBytes(16).toString('hex');
+  const viewerToken = randomBytes(16).toString('hex');
+  all[scoutToken] = { profileId, matchId, kind: 'scout', createdAt: new Date().toISOString() };
+  all[viewerToken] = { profileId, matchId, kind: 'viewer', createdAt: new Date().toISOString() };
+  writeJson(LIVE_TOKENS_FILE, all);
+  return { scoutToken, viewerToken };
+}
+
+export function resolveLiveMatchToken(token) {
+  if (!token || !/^[a-f0-9]{32}$/.test(token)) return null;
+  const all = readJson(LIVE_TOKENS_FILE, {});
+  return all[token] || null;
+}
+
+export function getLiveMatchTokens(profileId, matchId) {
+  const all = readJson(LIVE_TOKENS_FILE, {});
+  const result = { scoutToken: null, viewerToken: null };
+  for (const [token, info] of Object.entries(all)) {
+    if (info.profileId === profileId && info.matchId === matchId) {
+      if (info.kind === 'scout') result.scoutToken = token;
+      else if (info.kind === 'viewer') result.viewerToken = token;
+    }
+  }
+  return result;
+}
+
+// Limpa tokens de um match deletado (mantém o arquivo enxuto)
+export function deleteLiveMatchTokens(profileId, matchId) {
+  const all = readJson(LIVE_TOKENS_FILE, {});
+  let changed = false;
+  for (const [token, info] of Object.entries(all)) {
+    if (info.profileId === profileId && info.matchId === matchId) {
+      delete all[token];
+      changed = true;
+    }
+  }
+  if (changed) writeJson(LIVE_TOKENS_FILE, all);
+}

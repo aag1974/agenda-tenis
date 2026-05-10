@@ -544,6 +544,31 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao deletar');
     return r.json();
   },
+  async getLiveMatchTokens(profileId, matchId) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}/tokens`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao buscar tokens');
+    return r.json();
+  },
+  // Endpoints públicos via token (sem login)
+  async publicGetMatch(kind, token) {
+    const r = await fetch(`/api/${kind}/${token}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro');
+    return r.json();
+  },
+  async publicAddPoint(token, winner, stat) {
+    const r = await fetch(`/api/scout/${token}/points`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ winner, stat }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao registrar ponto');
+    return r.json();
+  },
+  async publicUndoPoint(token) {
+    const r = await fetch(`/api/scout/${token}/points/last`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao desfazer');
+    return r.json();
+  },
   async seedAndDeliverReport(profileId, html, asEmail) {
     const r = await fetch(`/api/admin/profiles/${profileId}/seed-deliver?as=${encodeURIComponent(asEmail)}`, {
       method: 'POST',
@@ -557,6 +582,14 @@ const api = {
 
 // ===== Init =====
 async function init() {
+  // Páginas públicas de Scout ao Vivo: /scout/:token (marcar) e /live/:token
+  // (espectador). Bypass total do login — token autoriza, render direto.
+  const publicMatch = window.location.pathname.match(/^\/(scout|live)\/([a-f0-9]{32})$/);
+  if (publicMatch) {
+    openPublicLiveMatch(publicMatch[1], publicMatch[2]);
+    return;
+  }
+
   // Captura token de convite na URL (compartilhado por WhatsApp/email)
   const urlInviteToken = new URLSearchParams(window.location.search).get('invite');
 
@@ -4810,6 +4843,7 @@ async function openScoutTrackModal(profileId, matchId) {
     if (isLive) container.appendChild(renderActions(m, profileId, async (action) => {
       try {
         if (action === 'undo') m = await api.undoLivePoint(profileId, m.id);
+        else if (action === 'share') return openScoutShareModal(profileId, m);
         else if (action === 'abandon') {
           if (!confirm('Encerrar este match? Você não poderá adicionar mais pontos.')) return;
           m = await api.abandonLiveMatch(profileId, m.id);
@@ -4920,17 +4954,25 @@ function renderStatButtons(m, profileId, onPoint) {
 }
 
 function renderActions(m, profileId, onAction) {
-  const wrap = el('div', { class: 'px-3 mt-3 grid grid-cols-2 gap-2' });
+  // profileId null = scouter público (sem login). Mostra só undo, não pode encerrar.
+  const isOwner = !!profileId;
+  const wrap = el('div', { class: `px-3 mt-3 grid gap-2 ${isOwner ? 'grid-cols-3' : 'grid-cols-1'}` });
   const undoBtn = el('button', {
     class: 'text-xs px-3 py-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold disabled:opacity-50',
     onClick: () => onAction('undo'),
   }, '↶ Desfazer último');
   if (!m.points || m.points.length === 0) undoBtn.disabled = true;
   wrap.appendChild(undoBtn);
-  wrap.appendChild(el('button', {
-    class: 'text-xs px-3 py-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 font-semibold',
-    onClick: () => onAction('abandon'),
-  }, '⏹ Encerrar match'));
+  if (isOwner) {
+    wrap.appendChild(el('button', {
+      class: 'text-xs px-3 py-2.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 font-semibold',
+      onClick: () => onAction('share'),
+    }, '🔗 Compartilhar'));
+    wrap.appendChild(el('button', {
+      class: 'text-xs px-3 py-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 font-semibold',
+      onClick: () => onAction('abandon'),
+    }, '⏹ Encerrar'));
+  }
   return wrap;
 }
 
@@ -4984,6 +5026,186 @@ function computeStats(m) {
     else if (stat === 'fe') s.fe.a++;
   }
   return s;
+}
+
+// Modal "compartilhar" — gera links pra scouter (marcar) e espectador (ver)
+async function openScoutShareModal(profileId, match) {
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-1rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    style: 'max-height: 92dvh;',
+  });
+  card.appendChild(el('div', { class: 'bg-gradient-to-br from-[#0e3a4d] to-[#1f5b75] text-white px-5 py-3 flex items-center justify-between' },
+    el('span', { class: 'font-medium' }, '🔗 Compartilhar tracking'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  ));
+  const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1 space-y-4' });
+  card.appendChild(body);
+  root.append(overlay, card);
+
+  body.appendChild(el('div', { class: 'text-xs text-slate-500 italic' }, 'Carregando links…'));
+
+  let tokens;
+  try {
+    tokens = await api.getLiveMatchTokens(profileId, match.id);
+  } catch (err) {
+    body.innerHTML = '';
+    body.appendChild(el('div', { class: 'text-sm text-red-600' }, `Erro: ${err.message}`));
+    return;
+  }
+  body.innerHTML = '';
+
+  const origin = window.location.origin;
+  const scoutUrl = `${origin}/scout/${tokens.scoutToken}`;
+  const viewUrl  = `${origin}/live/${tokens.viewerToken}`;
+  const matchLabel = `${match.athleteName} vs ${match.opponentName}`;
+  const wppText = (label, url) => encodeURIComponent(`${label} — ${matchLabel}\n${url}`);
+
+  // Scouter
+  body.appendChild(el('div', { class: 'border-2 border-amber-300 bg-amber-50/50 rounded-xl p-3' },
+    el('div', { class: 'flex items-center gap-2 mb-2' },
+      el('span', { class: 'text-lg' }, '📝'),
+      el('div', null,
+        el('div', { class: 'text-sm font-bold text-amber-900' }, 'Link pra quem vai marcar'),
+        el('div', { class: 'text-[11px] text-amber-700' }, 'Sem app, sem login. Quem tem o link pode editar pontos.'),
+      ),
+    ),
+    el('div', { class: 'bg-white border border-amber-200 rounded p-2 mb-2 text-[11px] text-slate-700 font-mono break-all' }, scoutUrl),
+    el('div', { class: 'grid grid-cols-2 gap-2' },
+      el('a', {
+        class: 'text-xs px-3 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-center no-underline',
+        href: `https://wa.me/?text=${wppText('Vai marcar pra mim?', scoutUrl)}`,
+        target: '_blank', rel: 'noopener',
+      }, '📱 WhatsApp'),
+      copyButton(scoutUrl),
+    ),
+  ));
+
+  // Viewer
+  body.appendChild(el('div', { class: 'border border-cyan-200 bg-cyan-50/50 rounded-xl p-3' },
+    el('div', { class: 'flex items-center gap-2 mb-2' },
+      el('span', { class: 'text-lg' }, '👁️'),
+      el('div', null,
+        el('div', { class: 'text-sm font-bold text-cyan-900' }, 'Link pra acompanhar'),
+        el('div', { class: 'text-[11px] text-cyan-700' }, 'Família, escola, amigos — vê em tempo real.'),
+      ),
+    ),
+    el('div', { class: 'bg-white border border-cyan-200 rounded p-2 mb-2 text-[11px] text-slate-700 font-mono break-all' }, viewUrl),
+    el('div', { class: 'grid grid-cols-2 gap-2' },
+      el('a', {
+        class: 'text-xs px-3 py-2 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-center no-underline',
+        href: `https://wa.me/?text=${wppText('Acompanha o jogo', viewUrl)}`,
+        target: '_blank', rel: 'noopener',
+      }, '📱 WhatsApp'),
+      copyButton(viewUrl),
+    ),
+  ));
+}
+
+function copyButton(text) {
+  const btn = el('button', {
+    class: 'text-xs px-3 py-2 rounded border border-slate-300 hover:bg-slate-50 font-semibold',
+  }, '📋 Copiar');
+  btn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copiado';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch {
+      alert('Copie manualmente: ' + text);
+    }
+  };
+  return btn;
+}
+
+// Página pública via token — bypass total do login.
+async function openPublicLiveMatch(kind, token) {
+  // Limpa o body — não vai ter header/sidebar do app normal
+  document.body.innerHTML = '<div id="public-root"></div>';
+  document.body.className = 'min-h-screen text-white';
+  document.body.style.background = 'linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%)';
+  const root = document.getElementById('public-root');
+
+  const renderError = (msg) => {
+    root.innerHTML = `
+      <div class="max-w-md mx-auto p-6 text-center">
+        <div class="text-4xl mb-3">🎾</div>
+        <div class="text-lg font-semibold mb-1">Tennis Flow</div>
+        <div class="text-sm text-red-300 mt-4">${msg}</div>
+        <div class="text-xs text-white/50 mt-2">O link pode ter expirado ou estar incorreto.</div>
+      </div>`;
+  };
+
+  let m;
+  try {
+    m = await api.publicGetMatch(kind, token);
+  } catch (err) {
+    return renderError(err.message);
+  }
+
+  // Container compartilhado (max-w-md, full height)
+  const container = document.createElement('div');
+  container.className = 'max-w-md mx-auto min-h-screen flex flex-col';
+  root.appendChild(container);
+
+  const isScout = kind === 'scout';
+  const renderHeader = () => {
+    return `
+      <div class="px-4 py-3 border-b border-white/10 flex items-center gap-3" style="height:60px;">
+        <div class="text-2xl">🎾</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-[10px] uppercase tracking-wider ${m.finished ? 'text-slate-400' : 'text-red-400'} font-bold flex items-center gap-1.5">
+            ${m.finished ? '' : '<span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>'}
+            ${m.finished ? (m.abandoned ? 'Encerrado' : 'Final') : (isScout ? 'Você está marcando' : 'Acompanhando')}
+          </div>
+          <div class="text-sm font-semibold truncate">${m.athleteName} vs ${m.opponentName}</div>
+          ${m.tournamentName ? `<div class="text-[11px] text-cyan-200 truncate">${m.tournamentName}</div>` : ''}
+        </div>
+        <div class="text-[10px] text-white/50">Tennis Flow</div>
+      </div>`;
+  };
+
+  const render = () => {
+    container.innerHTML = renderHeader();
+    container.appendChild(renderScorePanel(m));
+    if (isScout && !m.finished) {
+      container.appendChild(renderStatButtons(m, null, async (winner, stat) => {
+        try { m = await api.publicAddPoint(token, winner, stat); render(); }
+        catch (err) { alert(err.message); }
+      }));
+      container.appendChild(renderActions(m, null, async (action) => {
+        if (action === 'undo') {
+          try { m = await api.publicUndoPoint(token); render(); }
+          catch (err) { alert(err.message); }
+        }
+      }));
+    }
+    container.appendChild(renderStatsPanel(m));
+    if (!isScout && !m.finished) {
+      const tip = document.createElement('div');
+      tip.className = 'px-4 py-2 text-[11px] text-white/50 text-center';
+      tip.textContent = 'Atualizando automaticamente a cada 5 segundos.';
+      container.appendChild(tip);
+    }
+  };
+
+  render();
+
+  // Espectador: polling pra atualizar o placar conforme o scouter marca
+  if (!isScout && !m.finished) {
+    const id = setInterval(async () => {
+      try {
+        const fresh = await api.publicGetMatch(kind, token);
+        m = fresh;
+        render();
+        if (m.finished) clearInterval(id);
+      } catch {}
+    }, 5000);
+  }
 }
 
 function openCompleteReportRequestModal(athleteName) {

@@ -18,6 +18,7 @@ import {
   clearColumnOverrides, saveSyncedData, resetProfileData,
   getMatchesData, upsertYearMatches,
   listLiveMatches, getLiveMatch, saveLiveMatch, deleteLiveMatch, newMatchId,
+  createLiveMatchTokens, resolveLiveMatchToken, getLiveMatchTokens, deleteLiveMatchTokens,
 } from './storage.js';
 import { createMatch as createMatchState, applyPoint, undoLastPoint, snapshotScore } from './tennis-score.js';
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed, getRegistrationWindowState } from './board.js';
@@ -1803,12 +1804,27 @@ app.post('/api/profiles/:id/live-matches', requireAuth, requireEditor, ensureOwn
     ...state,
   };
   saveLiveMatch(req.params.id, match);
-  res.json(match);
+  // Gera tokens públicos pra scout e viewer
+  const tokens = createLiveMatchTokens(req.params.id, match.id);
+  res.json({ ...match, ...tokens });
 });
 
 // Lista matches do profile
 app.get('/api/profiles/:id/live-matches', requireAuth, ensureOwnedProfile, (req, res) => {
   res.json(listLiveMatches(req.params.id));
+});
+
+// Tokens de um match (pra dono compartilhar via WhatsApp)
+app.get('/api/profiles/:id/live-matches/:matchId/tokens', requireAuth, ensureOwnedProfile, (req, res) => {
+  const tokens = getLiveMatchTokens(req.params.id, req.params.matchId);
+  if (!tokens.scoutToken && !tokens.viewerToken) {
+    // Match antigo sem tokens — gera agora
+    const m = getLiveMatch(req.params.id, req.params.matchId);
+    if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+    const fresh = createLiveMatchTokens(req.params.id, req.params.matchId);
+    return res.json(fresh);
+  }
+  res.json(tokens);
 });
 
 // Detalha 1 match
@@ -1877,8 +1893,65 @@ app.patch('/api/profiles/:id/live-matches/:matchId', requireAuth, requireEditor,
 
 // Deleta um match (limpeza)
 app.delete('/api/profiles/:id/live-matches/:matchId', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  deleteLiveMatchTokens(req.params.id, req.params.matchId);
   deleteLiveMatch(req.params.id, req.params.matchId);
   res.json({ ok: true });
+});
+
+// ===== Endpoints públicos via token (sem auth) =====
+// Resolve token uma vez e devolve match + kind. JS frontend usa isso pra
+// decidir se mostra UI de tracking (scout) ou read-only (viewer).
+function publicMatchByToken(token, requireKind = null) {
+  const info = resolveLiveMatchToken(token);
+  if (!info) return { error: 'Token inválido' };
+  if (requireKind && info.kind !== requireKind) return { error: 'Token não autoriza esta operação' };
+  const m = getLiveMatch(info.profileId, info.matchId);
+  if (!m) return { error: 'Match não encontrado' };
+  return { match: m, info };
+}
+
+// Scout: lê o match (pra renderizar tela) + adiciona ponto + undo
+app.get('/api/scout/:token', (req, res) => {
+  const r = publicMatchByToken(req.params.token, 'scout');
+  if (r.error) return res.status(404).json({ error: r.error });
+  res.json(r.match);
+});
+
+app.post('/api/scout/:token/points', (req, res) => {
+  const { winner, stat } = req.body || {};
+  if (winner !== 'a' && winner !== 'o') return res.status(400).json({ error: "winner deve ser 'a' ou 'o'" });
+  const r = publicMatchByToken(req.params.token, 'scout');
+  if (r.error) return res.status(404).json({ error: r.error });
+  const { match, info } = r;
+  if (match.finished) return res.status(400).json({ error: 'Match já encerrado' });
+  const next = applyPoint(match, winner, stat || null);
+  Object.assign(match, next);
+  saveLiveMatch(info.profileId, match);
+  res.json(match);
+});
+
+app.delete('/api/scout/:token/points/last', (req, res) => {
+  const r = publicMatchByToken(req.params.token, 'scout');
+  if (r.error) return res.status(404).json({ error: r.error });
+  const { match, info } = r;
+  if (!match.points.length) return res.status(400).json({ error: 'Nenhum ponto pra desfazer' });
+  const next = undoLastPoint(match);
+  Object.assign(match, next);
+  saveLiveMatch(info.profileId, match);
+  res.json(match);
+});
+
+// Viewer: read-only. Mesma resposta, mas só GET.
+app.get('/api/live/:token', (req, res) => {
+  const r = publicMatchByToken(req.params.token, 'viewer');
+  if (r.error) return res.status(404).json({ error: r.error });
+  res.json(r.match);
+});
+
+// Páginas públicas: serve o index.html (SPA detecta o path e abre tela
+// apropriada sem login). Tem que vir ANTES do express.static catch-all.
+app.get(['/scout/:token', '/live/:token'], (req, res) => {
+  res.sendFile(join(__dirname, '..', 'frontend', 'index.html'));
 });
 
 app.post('/api/shutdown', (req, res) => {
