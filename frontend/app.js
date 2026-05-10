@@ -3891,13 +3891,6 @@ function openAthleteCard() {
   const next = future[0];
   const last = past[0];
 
-  const inscribedThisYear = tournaments.filter(t => {
-    const d = brToDate(t.startDate);
-    return (t.isAnnaInscribed || t.notes?.manualInscribed) && d && d.getFullYear() === today.getFullYear();
-  }).length;
-  const pendingPayments = tournaments.filter(t => t.pendingPayment);
-  const totalPending = pendingPayments.reduce((sum, t) => sum + parseBrCurrency(t.pendingPayment?.value), 0);
-
   const root = $('modal-root');
   root.innerHTML = '';
   const close = () => { root.innerHTML = ''; };
@@ -3939,17 +3932,6 @@ function openAthleteCard() {
     el('div', { class: 'text-sm font-medium text-slate-900 leading-snug' }, t.name),
     el('div', { class: 'text-xs text-slate-600 mt-0.5' },
       `${[t.city, t.state].filter(Boolean).join(' / ')} • ${formatCardDate(t)} (${relativeDateLabel(t)})`,
-    ),
-  );
-
-  const statsGrid = el('div', { class: 'grid grid-cols-2 gap-2' },
-    tile('Inscrito em ' + today.getFullYear(), String(inscribedThisYear), inscribedThisYear === 1 ? 'torneio' : 'torneios', 'cyan'),
-    tile('Boletos pendentes',
-      String(pendingPayments.length),
-      pendingPayments.length
-        ? `R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-        : 'tudo em dia',
-      pendingPayments.length ? 'amber' : 'emerald',
     ),
   );
 
@@ -4037,7 +4019,6 @@ function openAthleteCard() {
           el('span', { class: 'shrink-0 w-12 h-12 rounded-full bg-white/15 border border-white/20 text-white text-base font-semibold flex items-center justify-center' }, initials),
           el('div', { class: 'min-w-0' },
             el('h2', { class: 'text-lg font-semibold truncate' }, name),
-            athlete.about && el('div', { class: 'text-xs text-white/70 truncate mt-0.5' }, athlete.about),
           ),
         ),
         el('button', { class: 'shrink-0 text-white/70 hover:text-white text-xl leading-none', onClick: close, title: 'Fechar' }, '×'),
@@ -4049,10 +4030,9 @@ function openAthleteCard() {
       athlete.id && !athlete.profileUrl && el('div', { class: 'text-xs text-white/60' }, `ID TI ${athlete.id}`),
     ),
     el('div', { class: 'flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4' },
-      statsGrid,
-      rankingTiles,
-      performanceBlock,
       analyticsBlock,
+      performanceBlock,
+      rankingTiles,
       calendarBlock,
       noTournaments,
     ),
@@ -4322,21 +4302,25 @@ function renderReportCta(profileId) {
   btnRow.appendChild(viewBtn);
   wrap.appendChild(btnRow);
 
-  // Link discreto pra quem ainda não conhece o produto: PDF de exemplo
-  // assinado (atualmente o relatório da Anna Luiza, template mestre).
-  wrap.appendChild(el('a', {
-    class: 'mt-2 inline-flex items-center gap-1 text-[11px] text-cyan-700 hover:text-cyan-900 underline',
-    href: '/exemplo-relatorio.pdf',
-    target: '_blank',
-    rel: 'noopener',
-  }, '📄 Veja um exemplo de relatório →'));
+  // Link "Veja um exemplo" só aparece quando o atleta ainda não tem
+  // relatório próprio entregue — quem já tem, vê o seu na lista.
+  // Adicionado depois do then() abaixo, pra não piscar antes de saber
+  // se há entregas.
 
-  // Carrega lista assíncrona pra ajustar o botão e contagem
+  // Carrega lista assíncrona pra ajustar o botão, contagem e exibir
+  // (ou não) o link de exemplo.
   api.listProfileReports(profileId).then(reports => {
     if (!reports.length) {
       viewBtn.textContent = '📂 Sem relatórios ainda';
       viewBtn.title = 'Nenhum relatório foi entregue até o momento';
       // disabled segue
+      // Mostra o exemplo só pra quem ainda não conhece o produto
+      wrap.appendChild(el('a', {
+        class: 'mt-2 inline-flex items-center gap-1 text-[11px] text-cyan-700 hover:text-cyan-900 underline',
+        href: '/exemplo-relatorio.pdf',
+        target: '_blank',
+        rel: 'noopener',
+      }, '📄 Veja um exemplo de relatório →'));
     } else {
       viewBtn.textContent = `📂 Ver relatórios (${reports.length})`;
       viewBtn.title = `${reports.length} relatório${reports.length > 1 ? 's' : ''} entregue${reports.length > 1 ? 's' : ''}`;
