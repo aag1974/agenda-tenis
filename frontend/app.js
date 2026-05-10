@@ -3458,6 +3458,10 @@ function openAdminModal() {
   // de consentimento LGPD, fica registrado em /report-requests com profileId
   // já amarrado. Aqui é a entrada natural — admin não precisa adivinhar
   // qual atleta é o do pedido.
+  // Compartilhado entre as seções de pedidos e entrega retroativa: a entrega
+  // (de qualquer caminho) precisa atualizar o card "Pedidos de relatório".
+  let reloadPendingRequests = () => {};
+
   function pendingRequestsSection() {
     const wrap = el('div', { class: 'border border-emerald-200 rounded-lg p-3 bg-emerald-50/40' });
     wrap.appendChild(el('div', { class: 'text-sm font-semibold text-slate-700' }, '📬 Pedidos de relatório'));
@@ -3578,6 +3582,7 @@ function openAdminModal() {
       }
     };
     renderRequests();
+    reloadPendingRequests = renderRequests;
 
     return wrap;
   }
@@ -3691,6 +3696,9 @@ function openAdminModal() {
         emailInput.value = '';
         fileInput.value = '';
         fileLabel.textContent = 'Nenhum arquivo selecionado';
+        // Atualiza o card "📬 Pedidos de relatório" pra mostrar a entrega
+        // recém-feita sem precisar de refresh manual.
+        reloadPendingRequests();
         setTimeout(() => {
           deliverBtn.disabled = false;
           deliverBtn.textContent = '📤 Entregar agora';
