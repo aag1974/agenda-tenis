@@ -206,44 +206,62 @@ function renderCover(ctx) {
 // data-driven do produto + rodapé LGPD. Aparece logo após a capa pra
 // estabelecer o tom antes do conteúdo. 3 audiências (atleta, família, coach)
 // se reconhecem aqui.
+//
+// Layout: HTML usa <details> nativo — fechados por default, leitor abre se
+// quiser. PDF (print) força tudo aberto via @media print + JS de
+// beforeprint, garantindo que a versão impressa contenha o texto inteiro.
 function renderManifesto(ctx) {
   return `
     <section class="manifesto">
       <div class="manifesto-inner">
 
-        <h2 class="manifesto-title">Por que esse relatório existe</h2>
+        <details class="manifesto-block">
+          <summary class="manifesto-summary">
+            <span class="manifesto-toggle">▶</span>
+            <span class="manifesto-summary-title">Por que esse relatório existe</span>
+            <span class="manifesto-readmore">Ler mais</span>
+          </summary>
+          <div class="manifesto-content">
+            <p>Há 30 anos transformo dados em inteligência. Jogo tênis desde os 11 — hoje, aos 52, são <strong>41 anos de raquete na mão</strong>. Esta é a primeira vez que cruzo os dois mundos. Esse relatório é o resultado desse encontro.</p>
 
-        <p>Tenho acompanhado o circuito de tênis há tempo. Em quadra, vejo coisas técnicas que a gente trabalha — segundo saque que precisa subir, estratégia em ponto de break, leitura de tie-break. Os dados deste relatório mostram parte disso.</p>
+            <p>Em quadra, vejo coisas técnicas que a gente trabalha — segundo saque que precisa subir, estratégia em ponto de break, leitura de tie-break. Os dados deste relatório mostram parte disso.</p>
 
-        <p>Mas o que mais me chama atenção não é técnica. É ver atletas perdendo o controle dentro da quadra — quebrando raquetes, xingando, gritando depois de um ponto que não saiu. E o mais preocupante: esse padrão já aparece cedo, ainda na formação de base. <strong>Quando vira hábito de criança, vira identidade de adulto.</strong></p>
+            <p>Mas o que mais me chama atenção não é técnica. É ver atletas perdendo o controle dentro da quadra — quebrando raquetes, xingando, gritando depois de um ponto que não saiu. E o mais preocupante: esse padrão já aparece cedo, ainda na formação de base. <strong>Quando vira hábito de criança, vira identidade de adulto.</strong></p>
 
-        <p>Travam ali, ficam reféns daquele erro. E daí pra frente é ladeira abaixo — não porque o adversário é melhor, mas porque a cabeça já saiu de quadra.</p>
+            <p>Travam ali, ficam reféns daquele erro. E daí pra frente é ladeira abaixo — não porque o adversário é melhor, mas porque a cabeça já saiu de quadra.</p>
 
-        <p>A diferença dos campeões mora aí. Não na técnica. Na <strong>capacidade de se perdoar do ponto anterior e voltar a jogar</strong>.</p>
+            <p>A diferença dos campeões mora aí. Não na técnica. Na <strong>capacidade de se perdoar do ponto anterior e voltar a jogar</strong>.</p>
 
-        <p>Esse relatório não te ensina isso. Esse trabalho é seu, do treinador, da família. O que ele faz é dar o mapa: onde você está, onde dá pra chegar, quais são os padrões dos seus jogos. <strong>Razão onde costuma reinar emoção.</strong></p>
+            <p>Esse relatório não te ensina isso. Esse trabalho é seu, do treinador, da família. O que ele faz é dar o mapa: onde você está, onde dá pra chegar, quais são os padrões dos seus jogos. <strong>Razão onde costuma reinar emoção.</strong></p>
 
-        <p>Vejo atletas com técnica boa, jogo bonito, qualidade real — e que desabam ao menor vacilo. Não é falta de capacidade pra jogar. É falta de espaço mental pra absorver o erro e seguir. O que esse relatório quer fazer é dar dados concretos que ajudem o atleta a olhar pro próprio jogo de fora, ver os padrões, e <strong>trocar a emoção do ponto perdido pela razão da próxima decisão</strong>.</p>
+            <p>Vejo atletas com técnica boa, jogo bonito, qualidade real — e que desabam ao menor vacilo. Não é falta de capacidade pra jogar. É falta de espaço mental pra absorver o erro e seguir. O que esse relatório quer fazer é dar dados concretos que ajudem o atleta a olhar pro próprio jogo de fora, ver os padrões, e <strong>trocar a emoção do ponto perdido pela razão da próxima decisão</strong>.</p>
 
-        <p>Quando o jogo está difícil — e a gente vai estar tecnicamente abaixo do oponente várias vezes na vida — a pergunta não é <em>"como ganho?"</em>. É <em>"o que posso testar aqui? como saio dessa partida tendo aprendido alguma coisa? como mantenho a postura mesmo perdendo?"</em>.</p>
+            <p>Quando o jogo está difícil — e a gente vai estar tecnicamente abaixo do oponente várias vezes na vida — a pergunta não é <em>"como ganho?"</em>. É <em>"o que posso testar aqui? como saio dessa partida tendo aprendido alguma coisa? como mantenho a postura mesmo perdendo?"</em>.</p>
 
-        <p>Esse tipo de jogo, mesmo quando termina em derrota no placar, <strong>é vitória no caminho</strong>. E é esse caminho que o relatório tenta apontar.</p>
+            <p>Esse tipo de jogo, mesmo quando termina em derrota no placar, <strong>é vitória no caminho</strong>. E é esse caminho que o relatório tenta apontar.</p>
 
-        <div class="manifesto-signature">— Alexandre</div>
+            <div class="manifesto-signature">— Alexandre</div>
+          </div>
+        </details>
 
-        <div class="manifesto-divider"></div>
+        <details class="manifesto-block">
+          <summary class="manifesto-summary">
+            <span class="manifesto-toggle">▶</span>
+            <span class="manifesto-summary-title">Como esse relatório se encaixa no trabalho do atleta</span>
+            <span class="manifesto-readmore">Ler mais</span>
+          </summary>
+          <div class="manifesto-content">
+            <p>Esse é um relatório <strong>data-driven</strong>. Não fala sobre comportamento, postura ou caráter — fala sobre dados de partidas reais, analisados estatisticamente ao longo do tempo. Foi pensado pra ser útil <strong>pra três pessoas ao mesmo tempo</strong>: o atleta, que ganha um espelho do próprio jogo; a família, que acompanha sem precisar virar especialista; e o treinador, que recebe uma camada de dado que complementa o que ele já vê em quadra.</p>
 
-        <h2 class="manifesto-title">Como esse relatório se encaixa no trabalho do atleta</h2>
+            <p><strong>Dados sozinhos, porém, não valem muita coisa.</strong> A camada que vale ouro é o conhecimento empírico do atleta sobre o próprio jogo, e principalmente do treinador sobre o que funciona em quadra. Treinador olha o saque, lê a postura, corrige a movimentação, ajusta o backhand — esse trabalho é insubstituível e é o que muda o atleta na prática.</p>
 
-        <p>Esse é um relatório <strong>data-driven</strong>. Não fala sobre comportamento, postura ou caráter — fala sobre dados de partidas reais, analisados estatisticamente ao longo do tempo. Foi pensado pra ser útil <strong>pra três pessoas ao mesmo tempo</strong>: o atleta, que ganha um espelho do próprio jogo; a família, que acompanha sem precisar virar especialista; e o treinador, que recebe uma camada de dado que complementa o que ele já vê em quadra.</p>
+            <p>O que muitas vezes falta nesse processo é uma camada complementar: <strong>dado preciso de performance real</strong>, que ajude o treinador a ser mais assertivo na hora de priorizar — contra quem o atleta perde mais? em que tipo de set? quando o jogo aperta, ele fecha ou desliga? — e a customizar o trabalho à realidade específica de cada um.</p>
 
-        <p><strong>Dados sozinhos, porém, não valem muita coisa.</strong> A camada que vale ouro é o conhecimento empírico do atleta sobre o próprio jogo, e principalmente do treinador sobre o que funciona em quadra. Treinador olha o saque, lê a postura, corrige a movimentação, ajusta o backhand — esse trabalho é insubstituível e é o que muda o atleta na prática.</p>
+            <p>É essa lacuna que esse relatório quer preencher.</p>
 
-        <p>O que muitas vezes falta nesse processo é uma camada complementar: <strong>dado preciso de performance real</strong>, que ajude o treinador a ser mais assertivo na hora de priorizar — contra quem o atleta perde mais? em que tipo de set? quando o jogo aperta, ele fecha ou desliga? — e a customizar o trabalho à realidade específica de cada um.</p>
-
-        <p>É essa lacuna que esse relatório quer preencher.</p>
-
-        <p><strong>Profissionalização além da quadra</strong>: análise estatística ao longo do tempo, indicadores de referência, observação de padrões que escapam à percepção semana a semana. À medida que mais atletas entram na base, esse trabalho fica ainda mais sólido — comparativos por categoria, benchmarks regionais, percentis. Por enquanto, a leitura é em torno do próprio atleta no tempo. <strong>É um começo, não o fim.</strong></p>
+            <p><strong>Profissionalização além da quadra</strong>: análise estatística ao longo do tempo, indicadores de referência, observação de padrões que escapam à percepção semana a semana. À medida que mais atletas entram na base, esse trabalho fica ainda mais sólido — comparativos por categoria, benchmarks regionais, percentis. Por enquanto, a leitura é em torno do próprio atleta no tempo. <strong>É um começo, não o fim.</strong></p>
+          </div>
+        </details>
 
         <div class="manifesto-footer">
           <strong>Sobre os dados deste relatório.</strong> Análise estatística baseada nas partidas oficiais registradas pelo Tênis Integrado durante o período coberto. Conclusões são direcionais, não definitivas. Não substitui avaliação clínica, plano técnico do treinador ou orientação esportiva profissional. Dados acessados via login autenticado ${ctx.G?.do_atleta || 'do atleta'} no Tênis Integrado, com consentimento expresso do responsável legal — uso exclusivo para a elaboração deste relatório, em conformidade com a LGPD (Lei nº 13.709/2018). Você pode revogar essa autorização a qualquer momento por email.
@@ -1849,12 +1867,56 @@ function baseHtmlShell(athleteName, dateStr, body) {
     max-width: 580px;
     margin: 0 auto;
   }
-  .manifesto-title {
-    font-size: 22px; font-weight: 700; letter-spacing: -0.3px;
-    color: ${COLORS.cyanLight};
-    margin: 0 0 18px;
-    line-height: 1.25;
+
+  /* Collapse interativo (HTML <details>) */
+  .manifesto-block {
+    margin-bottom: 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    padding-bottom: 18px;
   }
+  .manifesto-block:last-of-type { border-bottom: none; }
+  .manifesto-summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 12px;
+    padding: 6px 0;
+    user-select: none;
+  }
+  .manifesto-summary::-webkit-details-marker { display: none; }
+  .manifesto-toggle {
+    color: ${COLORS.cyanLight};
+    font-size: 12px;
+    transition: transform 200ms ease;
+    flex-shrink: 0;
+    width: 14px;
+  }
+  details[open] > .manifesto-summary .manifesto-toggle {
+    transform: rotate(90deg);
+  }
+  .manifesto-summary-title {
+    font-size: 19px; font-weight: 700; letter-spacing: -0.2px;
+    color: ${COLORS.cyanLight};
+    flex: 1;
+    line-height: 1.3;
+  }
+  .manifesto-readmore {
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  details[open] > .manifesto-summary .manifesto-readmore {
+    display: none;
+  }
+  .manifesto-summary:hover .manifesto-summary-title {
+    color: white;
+  }
+  .manifesto-content {
+    padding-top: 14px;
+  }
+
   .manifesto p {
     font-size: 13.5px;
     line-height: 1.7;
@@ -1879,23 +1941,27 @@ function baseHtmlShell(athleteName, dateStr, body) {
     margin: 18px 0 0;
     font-weight: 500;
   }
-  .manifesto-divider {
-    width: 60px;
-    height: 2px;
-    background: ${COLORS.cyanLight};
-    opacity: 0.5;
-    margin: 36px auto;
-  }
   .manifesto-footer {
     font-size: 9.5px;
     line-height: 1.55;
     color: rgba(255,255,255,0.55);
     border-top: 1px solid rgba(255,255,255,0.15);
-    margin-top: 28px;
+    margin-top: 16px;
     padding-top: 14px;
   }
   .manifesto-footer strong {
     color: rgba(255,255,255,0.8);
+  }
+
+  /* Em print, força tudo aberto e esconde indicador de toggle/Ler mais */
+  @media print {
+    details.manifesto-block { display: block; }
+    details.manifesto-block > .manifesto-content,
+    details.manifesto-block:not([open]) > .manifesto-content {
+      display: block !important;
+    }
+    .manifesto-toggle, .manifesto-readmore { display: none !important; }
+    .manifesto-summary { padding: 0; cursor: default; }
   }
 
   /* FRASE DO ATLETA — assinatura editorial ───────────────────── */
@@ -2388,6 +2454,34 @@ function baseHtmlShell(athleteName, dateStr, body) {
 <body>
 <div class="no-print">📄 Use ⌘+P (Mac) ou Ctrl+P (Win) para salvar este relatório como PDF. O PDF preserva o layout e a identidade visual.</div>
 ${body}
+<script>
+  // Antes de imprimir, força <details> abertos pra garantir que o PDF
+  // contenha o texto do manifesto inteiro (CSS @media print sozinho não
+  // basta em todos browsers).
+  (function() {
+    var openAll = function() {
+      document.querySelectorAll('details').forEach(function(d) {
+        d.dataset._wasOpen = d.open ? '1' : '';
+        d.open = true;
+      });
+    };
+    var restore = function() {
+      document.querySelectorAll('details').forEach(function(d) {
+        if (d.dataset._wasOpen !== '1') d.open = false;
+        delete d.dataset._wasOpen;
+      });
+    };
+    window.addEventListener('beforeprint', openAll);
+    window.addEventListener('afterprint', restore);
+    // Safari não dispara beforeprint sempre — fallback via media match
+    if (window.matchMedia) {
+      var mq = window.matchMedia('print');
+      if (mq.addEventListener) {
+        mq.addEventListener('change', function(e) { if (e.matches) openAll(); else restore(); });
+      }
+    }
+  })();
+</script>
 </body>
 </html>`;
 }
