@@ -4668,7 +4668,9 @@ function scoutListItem(m, profileId, parentClose, isLive) {
         return el('span', { class: `text-[10px] font-bold px-2 py-0.5 rounded-full ${color}` }, `Nota ${cs.score.toFixed(1)}`);
       })()
     : null;
-  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer mt-2' },
+
+  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 hover:bg-slate-50 mt-2' });
+  const head = el('div', { class: 'cursor-pointer' },
     el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
       el('div', { class: 'min-w-0 flex-1' },
         el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${m.athleteName} vs ${m.opponentName}`),
@@ -4681,7 +4683,20 @@ function scoutListItem(m, profileId, parentClose, isLive) {
       noteBadge,
     ),
   );
-  wrap.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
+  head.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
+  wrap.appendChild(head);
+
+  // Matches encerrados ganham botão "Enviar relatório" inline
+  if (!isLive) {
+    const sendBtn = el('button', {
+      class: 'mt-2 w-full text-[11px] px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold',
+    }, '📧 Enviar relatório');
+    sendBtn.onclick = (e) => {
+      e.stopPropagation();
+      openMatchReportShareModal(profileId, m);
+    };
+    wrap.appendChild(sendBtn);
+  }
   return wrap;
 }
 
@@ -5015,16 +5030,29 @@ function renderActions(m, profileId, onAction) {
 
 function renderStatsPanel(m) {
   const wrap = el('div', { class: 'px-4 py-4' });
-
-  // Nota 0-10 (header da seção)
-  const cs = m.computedScore;
-  if (cs && cs.score != null) {
-    wrap.appendChild(renderScoreBadge(cs));
-  }
-
-  wrap.appendChild(el('h3', { class: 'text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2 mt-3' }, 'Stats'));
+  wrap.appendChild(el('h3', { class: 'text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2' }, 'Stats'));
   const stats = computeStats(m);
   const tbl = el('div', { class: 'bg-white/5 rounded-lg border border-white/10 overflow-hidden' });
+
+  // Header
+  const head = el('div', { class: 'grid grid-cols-3 text-[10px] uppercase tracking-wide text-white/50 border-b border-white/10' });
+  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-cyan-300' }, 'Anna'));
+  head.appendChild(el('div', { class: 'px-3 py-2 text-center' }, ''));
+  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-rose-300' }, 'Adv'));
+  tbl.appendChild(head);
+
+  // 1ª linha: Nota técnica (destacada)
+  const cs = m.computedScore;
+  if (cs && cs.score != null) {
+    const color = cs.score < 4 ? '#fda4af' : cs.score < 7 ? '#fcd34d' : '#6ee7b7';
+    const noteRow = el('div', { class: 'grid grid-cols-3 text-xs border-b border-white/10', style: 'background: rgba(255,255,255,0.04)' });
+    noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center font-extrabold text-lg', style: `color:${color}` }, cs.score.toFixed(1)));
+    noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center text-white/85 font-semibold uppercase tracking-wide text-[10px]' }, 'Nota técnica · 0-10'));
+    noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center text-white/40' }, '—'));
+    tbl.appendChild(noteRow);
+  }
+
+  // Demais métricas
   const rows = [
     ['Aces', stats.aces.a, stats.aces.o],
     ['Duplas faltas', stats.df.a, stats.df.o],
@@ -5033,11 +5061,6 @@ function renderStatsPanel(m) {
     ['Erros forçados', stats.fe.a, stats.fe.o],
     ['Pts ganhos', stats.points.a, stats.points.o],
   ];
-  const head = el('div', { class: 'grid grid-cols-3 text-[10px] uppercase tracking-wide text-white/50 border-b border-white/10' });
-  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-cyan-300' }, 'Anna'));
-  head.appendChild(el('div', { class: 'px-3 py-2 text-center' }, ''));
-  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-rose-300' }, 'Adv'));
-  tbl.appendChild(head);
   rows.forEach(([label, a, o]) => {
     const r = el('div', { class: 'grid grid-cols-3 text-xs border-b border-white/5' });
     r.appendChild(el('div', { class: 'px-3 py-1.5 text-center font-semibold' }, String(a)));
@@ -5242,6 +5265,80 @@ function computeStats(m) {
     else if (stat === 'fe') s.fe.a++;
   }
   return s;
+}
+
+// Modal de envio do relatório do match — só pra match encerrado
+async function openMatchReportShareModal(profileId, match) {
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-1rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    style: 'max-height: 92dvh;',
+  });
+  card.appendChild(el('div', { class: 'bg-gradient-to-br from-[#0e3a4d] to-[#1f5b75] text-white px-5 py-3 flex items-center justify-between' },
+    el('span', { class: 'font-medium' }, '📧 Enviar relatório do match'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  ));
+  const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1 space-y-4' });
+  card.appendChild(body);
+  root.append(overlay, card);
+
+  body.appendChild(el('div', { class: 'text-xs text-slate-500 italic' }, 'Carregando…'));
+
+  let tokens;
+  try {
+    tokens = await api.getLiveMatchTokens(profileId, match.id);
+  } catch (err) {
+    body.innerHTML = '';
+    body.appendChild(el('div', { class: 'text-sm text-red-600' }, `Erro: ${err.message}`));
+    return;
+  }
+  body.innerHTML = '';
+
+  const origin = window.location.origin;
+  const reportUrl = `${origin}/live/${tokens.viewerToken}`;
+  const matchLabel = `${match.athleteName} vs ${match.opponentName}`;
+  const placar = renderScoreSummary(match);
+  const cs = match.computedScore;
+  const notaText = cs && cs.score != null ? `Nota técnica: ${cs.score.toFixed(1)}/10` : '';
+
+  // Resumo
+  body.appendChild(el('div', { class: 'rounded-lg border border-slate-200 bg-slate-50 p-3' },
+    el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2' }, 'Resumo do relatório'),
+    el('div', { class: 'text-sm font-semibold text-slate-900' }, matchLabel),
+    match.tournamentName ? el('div', { class: 'text-[11px] text-slate-600 mt-0.5' }, match.tournamentName) : null,
+    el('div', { class: 'text-xs text-slate-700 mt-2' }, `📊 ${placar}`),
+    notaText ? el('div', { class: 'text-xs text-cyan-700 font-semibold mt-1' }, notaText) : null,
+  ));
+
+  // Link permanente
+  body.appendChild(el('div', { class: 'rounded-lg border border-cyan-200 bg-cyan-50/50 p-3' },
+    el('div', { class: 'text-sm font-bold text-cyan-900 mb-1' }, '🔗 Link permanente'),
+    el('div', { class: 'text-[11px] text-cyan-700 mb-2' }, 'Coach/família abre direto no navegador — sem app, sem login.'),
+    el('div', { class: 'bg-white border border-cyan-200 rounded p-2 mb-2 text-[11px] text-slate-700 font-mono break-all' }, reportUrl),
+    el('div', { class: 'grid grid-cols-2 gap-2' },
+      el('a', {
+        class: 'text-xs px-3 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-center no-underline',
+        href: `https://wa.me/?text=${encodeURIComponent(`Relatório do match ${matchLabel}\n${placar}${notaText ? ' · ' + notaText : ''}\n\n${reportUrl}`)}`,
+        target: '_blank', rel: 'noopener',
+      }, '📱 WhatsApp'),
+      copyButton(reportUrl),
+    ),
+  ));
+
+  // Email (mailto)
+  const subject = `Relatório do match — ${matchLabel}`;
+  const bodyText = `Segue o relatório do match:\n\n${matchLabel}\n${match.tournamentName || ''}\n${placar}${notaText ? ' · ' + notaText : ''}\n\nLink completo (placar, stats, nota técnica):\n${reportUrl}\n\n—\nEnviado pelo Tennis Flow.`;
+  body.appendChild(el('div', { class: 'rounded-lg border border-slate-200 p-3' },
+    el('div', { class: 'text-sm font-bold text-slate-900 mb-1' }, '✉️ Enviar por email'),
+    el('div', { class: 'text-[11px] text-slate-600 mb-2' }, 'Abre seu cliente de email padrão com assunto e corpo preenchidos.'),
+    el('a', {
+      class: 'block text-center text-xs px-3 py-2 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold no-underline',
+      href: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`,
+    }, '✉️ Abrir cliente de email'),
+  ));
 }
 
 // Modal "compartilhar" — gera links pra scouter (marcar) e espectador (ver)
