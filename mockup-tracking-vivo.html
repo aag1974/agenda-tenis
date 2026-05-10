@@ -55,8 +55,73 @@
       <div class="text-sm font-semibold mt-0.5 truncate">Anna Luiza Garcia <span class="opacity-50">vs</span> Maria Silva</div>
       <div class="text-[11px] text-cyan-200">G1 Brasiliense — 1ª Etapa · R2 12F · Quadra 5</div>
     </div>
-    <button class="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20" title="Compartilhar link público">🔗 Compartilhar</button>
+    <button id="btnCompartilhar" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 font-semibold" title="Convidar scouter ou compartilhar com a família">🔗 Compartilhar</button>
   </header>
+
+  <!-- Modal de compartilhamento -->
+  <div id="modalCompartilhar" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white text-slate-900 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div class="brand-bg text-white px-5 py-3 flex items-center justify-between rounded-t-2xl">
+        <div class="font-semibold">🔗 Compartilhar tracking</div>
+        <button id="btnFecharModal" class="text-white/70 hover:text-white text-xl leading-none">×</button>
+      </div>
+      <div class="p-5 space-y-4">
+
+        <!-- Link de scouter -->
+        <div class="border-2 border-amber-300 bg-amber-50/50 rounded-xl p-3">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-lg">📝</span>
+            <div>
+              <div class="text-sm font-bold text-amber-900">Link pra quem vai marcar</div>
+              <div class="text-[11px] text-amber-700">Quem abrir esse link marca o jogo direto pelo celular. Sem app, sem login.</div>
+            </div>
+          </div>
+          <div class="bg-white border border-amber-200 rounded p-2 mb-2 text-[11px] text-slate-700 font-mono break-all">
+            tennisflow.com.br/scout/3f9a-ANNA-G1BSB-R2
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="text-xs px-3 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-white font-semibold">📱 WhatsApp</button>
+            <button class="text-xs px-3 py-2 rounded border border-slate-300 hover:bg-slate-50 font-semibold">📋 Copiar</button>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-600 italic">
+            ⚠️ Dê esse link só pra quem você confia pra marcar — quem tem o link pode editar os pontos.
+          </div>
+        </div>
+
+        <!-- Link público (espectador) -->
+        <div class="border border-cyan-200 bg-cyan-50/50 rounded-xl p-3">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-lg">👁️</span>
+            <div>
+              <div class="text-sm font-bold text-cyan-900">Link pra acompanhar</div>
+              <div class="text-[11px] text-cyan-700">Família, escola, amigos — vê em tempo real, sem editar.</div>
+            </div>
+          </div>
+          <div class="bg-white border border-cyan-200 rounded p-2 mb-2 text-[11px] text-slate-700 font-mono break-all">
+            tennisflow.com.br/live/anna-vs-maria-g1bsb
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="text-xs px-3 py-2 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold">📱 WhatsApp</button>
+            <button class="text-xs px-3 py-2 rounded border border-slate-300 hover:bg-slate-50 font-semibold">📋 Copiar</button>
+          </div>
+        </div>
+
+        <!-- Quem está marcando -->
+        <div class="border-t border-slate-200 pt-3">
+          <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Quem está marcando agora</div>
+          <div class="flex items-center gap-2 bg-slate-50 rounded-lg p-2.5">
+            <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-semibold text-xs flex items-center justify-center">PH</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold text-slate-900">Pedro Henrique</div>
+              <div class="text-[11px] text-slate-500">atleta scout · indicado pelo Coach Ricardo · há 38 min</div>
+            </div>
+            <button class="text-[11px] text-rose-600 hover:underline">Revogar</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <!-- Placar gigante -->
   <div class="px-4 py-4">
@@ -91,75 +156,97 @@
     <div class="text-center text-[11px] text-white/50 mt-1.5">3º set · game 6 · 30-15 · sacando Anna · 1º saque</div>
   </div>
 
-  <!-- Tela dividida — 2 lados -->
-  <div class="px-3 grid grid-cols-2 gap-2">
-
-    <!-- Lado Anna -->
+  <!-- Painel único focado em Anna · botões mudam conforme saca/recebe -->
+  <div class="px-3">
     <div class="bg-white rounded-xl p-3 text-slate-900">
-      <div class="flex items-center justify-between mb-2">
+
+      <!-- Toggle saque/recepção -->
+      <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
-          <div class="w-7 h-7 rounded-full bg-cyan-100 text-cyan-800 font-bold text-xs flex items-center justify-center">AL</div>
-          <div class="side-label text-cyan-700">Anna Luiza</div>
+          <div class="w-8 h-8 rounded-full bg-cyan-100 text-cyan-800 font-bold text-sm flex items-center justify-center">AL</div>
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Marcando</div>
+            <div class="font-semibold text-slate-900 text-sm">Anna Luiza</div>
+          </div>
         </div>
-        <div class="text-xs text-slate-500" id="serveAnna">🎾 sacando</div>
+        <button id="btnTrocaSaque" class="text-[11px] px-2.5 py-1 rounded border border-slate-300 hover:bg-slate-50 text-slate-600">
+          ⇄ Trocar saque
+        </button>
       </div>
-      <div class="grid grid-cols-2 gap-2">
-        <button class="stat-btn stat-pos" data-side="anna" data-stat="ace">
+
+      <!-- Indicador grande de quem saca -->
+      <div id="modeBanner" class="rounded-lg px-3 py-2 mb-3 flex items-center gap-2 bg-cyan-50 border border-cyan-200">
+        <span class="text-xl">🎾</span>
+        <span class="text-sm font-bold text-cyan-800 uppercase tracking-wide" id="modeLabel">Anna sacando</span>
+        <span class="text-xs text-cyan-700/70 ml-auto" id="modeHint">marque o resultado de cada ponto</span>
+      </div>
+
+      <!-- Grid de botões — modo SACANDO (default) -->
+      <div id="btnsSacando" class="grid grid-cols-2 gap-2">
+        <button class="stat-btn stat-pos" data-stat="ace" data-mode="saque" data-result="anna">
           <span class="stat-label">Ace</span>
-          <span class="stat-count" data-count="anna-ace">3</span>
+          <span class="stat-count" data-count="ace">3</span>
         </button>
-        <button class="stat-btn stat-pos" data-side="anna" data-stat="winner">
-          <span class="stat-label">Winner</span>
-          <span class="stat-count" data-count="anna-winner">12</span>
+        <button class="stat-btn stat-pos" data-stat="winner" data-mode="saque" data-result="anna">
+          <span class="stat-label">Winner Anna</span>
+          <span class="stat-count" data-count="winner">12</span>
         </button>
-        <button class="stat-btn stat-neg" data-side="anna" data-stat="df">
+        <button class="stat-btn stat-neg" data-stat="df" data-mode="saque" data-result="maria">
           <span class="stat-label">Dupla falta</span>
-          <span class="stat-count" data-count="anna-df">1</span>
+          <span class="stat-count" data-count="df">1</span>
         </button>
-        <button class="stat-btn stat-neg" data-side="anna" data-stat="ue">
-          <span class="stat-label">Erro n. forçado</span>
-          <span class="stat-count" data-count="anna-ue">9</span>
+        <button class="stat-btn stat-neg" data-stat="ue" data-mode="saque" data-result="maria">
+          <span class="stat-label">Erro não forçado</span>
+          <span class="stat-count" data-count="ue">9</span>
         </button>
-        <button class="stat-btn stat-neg col-span-2" data-side="anna" data-stat="fe">
+        <button class="stat-btn stat-neg" data-stat="fe" data-mode="saque" data-result="maria">
           <span class="stat-label">Erro forçado</span>
-          <span class="stat-count" data-count="anna-fe">4</span>
+          <span class="stat-count" data-count="fe">4</span>
         </button>
+        <button class="stat-btn" data-stat="oppwinner" data-mode="saque" data-result="maria"
+                style="background:#f1f5f9; color:#475569; border-color:#cbd5e1;">
+          <span class="stat-label">Winner adv.</span>
+          <span class="stat-count" data-count="oppwinner">8</span>
+        </button>
+      </div>
+
+      <!-- Grid de botões — modo RECEBENDO (oculto até trocar) -->
+      <div id="btnsRecebendo" class="grid grid-cols-2 gap-2 hidden">
+        <button class="stat-btn stat-pos" data-stat="winner" data-mode="recepcao" data-result="anna">
+          <span class="stat-label">Winner Anna</span>
+          <span class="stat-count" data-count="winner">12</span>
+        </button>
+        <button class="stat-btn stat-pos" data-stat="oppdf" data-mode="recepcao" data-result="anna">
+          <span class="stat-label">Dupla falta adv.</span>
+          <span class="stat-count" data-count="oppdf">3</span>
+        </button>
+        <button class="stat-btn stat-neg" data-stat="ue" data-mode="recepcao" data-result="maria">
+          <span class="stat-label">Erro não forçado</span>
+          <span class="stat-count" data-count="ue">9</span>
+        </button>
+        <button class="stat-btn stat-neg" data-stat="fe" data-mode="recepcao" data-result="maria">
+          <span class="stat-label">Erro forçado</span>
+          <span class="stat-count" data-count="fe">4</span>
+        </button>
+        <button class="stat-btn" data-stat="oppace" data-mode="recepcao" data-result="maria"
+                style="background:#f1f5f9; color:#475569; border-color:#cbd5e1;">
+          <span class="stat-label">Ace adv.</span>
+          <span class="stat-count" data-count="oppace">1</span>
+        </button>
+        <button class="stat-btn" data-stat="oppwinner" data-mode="recepcao" data-result="maria"
+                style="background:#f1f5f9; color:#475569; border-color:#cbd5e1;">
+          <span class="stat-label">Winner adv.</span>
+          <span class="stat-count" data-count="oppwinner">8</span>
+        </button>
+      </div>
+
+      <!-- Legenda compacta -->
+      <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-center gap-4 text-[10px] text-slate-500">
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ponto Anna</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> erro Anna</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-400"></span> ponto adv. (sem erro Anna)</span>
       </div>
     </div>
-
-    <!-- Lado Maria -->
-    <div class="bg-white rounded-xl p-3 text-slate-900">
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-2">
-          <div class="w-7 h-7 rounded-full bg-rose-100 text-rose-800 font-bold text-xs flex items-center justify-center">MS</div>
-          <div class="side-label text-rose-700">Maria Silva</div>
-        </div>
-        <div class="text-xs text-slate-500" id="serveMaria">recebendo</div>
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <button class="stat-btn stat-pos" data-side="maria" data-stat="ace">
-          <span class="stat-label">Ace</span>
-          <span class="stat-count" data-count="maria-ace">1</span>
-        </button>
-        <button class="stat-btn stat-pos" data-side="maria" data-stat="winner">
-          <span class="stat-label">Winner</span>
-          <span class="stat-count" data-count="maria-winner">8</span>
-        </button>
-        <button class="stat-btn stat-neg" data-side="maria" data-stat="df">
-          <span class="stat-label">Dupla falta</span>
-          <span class="stat-count" data-count="maria-df">3</span>
-        </button>
-        <button class="stat-btn stat-neg" data-side="maria" data-stat="ue">
-          <span class="stat-label">Erro n. forçado</span>
-          <span class="stat-count" data-count="maria-ue">14</span>
-        </button>
-        <button class="stat-btn stat-neg col-span-2" data-side="maria" data-stat="fe">
-          <span class="stat-label">Erro forçado</span>
-          <span class="stat-count" data-count="maria-fe">7</span>
-        </button>
-      </div>
-    </div>
-
   </div>
 
   <!-- Barra de ações -->
@@ -207,82 +294,154 @@
     </div>
   </div>
 
-  <!-- Stats consolidados -->
+  <!-- Stats consolidados — foco em Anna -->
   <div class="px-4 mt-4 mb-4">
-    <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2">Stats consolidados</h3>
-    <div class="bg-white/5 rounded-lg border border-white/10 overflow-hidden">
-      <div class="grid grid-cols-3 text-xs">
-        <div class="px-3 py-2 text-center font-bold text-cyan-300 border-b border-white/10">Anna L.</div>
-        <div class="px-3 py-2 text-center text-white/50 border-b border-white/10 uppercase tracking-wide text-[10px]">Métrica</div>
-        <div class="px-3 py-2 text-center font-bold text-rose-300 border-b border-white/10">Maria S.</div>
-
-        <div class="px-3 py-1.5 text-center font-semibold text-emerald-300">12</div>
-        <div class="px-3 py-1.5 text-center text-white/70">Winners</div>
-        <div class="px-3 py-1.5 text-center font-semibold text-emerald-300">8</div>
-
-        <div class="px-3 py-1.5 text-center font-semibold text-emerald-300">3</div>
-        <div class="px-3 py-1.5 text-center text-white/70">Aces</div>
-        <div class="px-3 py-1.5 text-center font-semibold text-emerald-300">1</div>
-
-        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">9</div>
-        <div class="px-3 py-1.5 text-center text-white/70">Erros não forçados</div>
-        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">14</div>
-
-        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">4</div>
-        <div class="px-3 py-1.5 text-center text-white/70">Erros forçados</div>
-        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">7</div>
-
-        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">1</div>
-        <div class="px-3 py-1.5 text-center text-white/70">Duplas faltas</div>
-        <div class="px-3 py-1.5 text-center font-semibold text-rose-300">3</div>
-
-        <div class="px-3 py-1.5 text-center font-semibold">12 / 15</div>
-        <div class="px-3 py-1.5 text-center text-white/70">Pts ganhos / disputados</div>
-        <div class="px-3 py-1.5 text-center font-semibold">3 / 15</div>
-
-        <div class="px-3 py-1.5 text-center font-semibold">6 de 9</div>
-        <div class="px-3 py-1.5 text-center text-white/70">Breakpoints convertidos</div>
-        <div class="px-3 py-1.5 text-center font-semibold">2 de 5</div>
+    <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2">Stats da Anna no match</h3>
+    <div class="grid grid-cols-2 gap-2">
+      <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
+        <div class="text-[10px] uppercase tracking-wide text-emerald-300 font-bold mb-1">Pontos ofensivos</div>
+        <div class="flex justify-between text-sm">
+          <span class="text-white/70">Aces</span><span class="font-bold text-emerald-200">3</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-white/70">Winners</span><span class="font-bold text-emerald-200">12</span>
+        </div>
+        <div class="flex justify-between text-sm pt-1 border-t border-emerald-500/20 mt-1">
+          <span class="text-white/90 font-semibold">Total</span><span class="font-bold text-emerald-200">15</span>
+        </div>
+      </div>
+      <div class="bg-rose-500/10 border border-rose-500/30 rounded-lg p-3">
+        <div class="text-[10px] uppercase tracking-wide text-rose-300 font-bold mb-1">Erros</div>
+        <div class="flex justify-between text-sm">
+          <span class="text-white/70">Não forçados</span><span class="font-bold text-rose-200">9</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-white/70">Forçados</span><span class="font-bold text-rose-200">4</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-white/70">Duplas faltas</span><span class="font-bold text-rose-200">1</span>
+        </div>
+        <div class="flex justify-between text-sm pt-1 border-t border-rose-500/20 mt-1">
+          <span class="text-white/90 font-semibold">Total</span><span class="font-bold text-rose-200">14</span>
+        </div>
       </div>
     </div>
+
+    <div class="bg-white/5 rounded-lg border border-white/10 overflow-hidden mt-2">
+      <div class="grid grid-cols-2 text-xs divide-x divide-white/10">
+        <div class="px-3 py-2.5">
+          <div class="text-[10px] uppercase tracking-wide text-white/50">Saldo (winners − erros)</div>
+          <div class="font-bold text-lg mt-0.5 text-emerald-300">+1</div>
+        </div>
+        <div class="px-3 py-2.5">
+          <div class="text-[10px] uppercase tracking-wide text-white/50">Breakpoints convertidos</div>
+          <div class="font-bold text-lg mt-0.5">6 / 9 <span class="text-xs text-white/50">· 67%</span></div>
+        </div>
+      </div>
+    </div>
+
     <div class="mt-2 text-[11px] text-cyan-200/70 italic">
       💡 Anna ganha quando saca bem (3 aces) e fecha mais winners. Tá perdendo pontos em erros não forçados — concentração no fim do set 2.
     </div>
   </div>
 
-  <!-- Quem está acompanhando -->
-  <div class="px-4 mb-6">
+  <!-- Quem está envolvido -->
+  <div class="px-4 mb-6 space-y-2">
+    <!-- Scouter ativo -->
+    <div class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full bg-amber-100 text-amber-800 font-semibold text-xs flex items-center justify-center shrink-0">PH</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs text-amber-300 font-bold uppercase tracking-wider">Marcando</div>
+        <div class="text-sm font-semibold text-white">Pedro Henrique</div>
+        <div class="text-[11px] text-white/60">atleta scout · convidado via link · sem login</div>
+      </div>
+    </div>
+
+    <!-- Espectadores -->
     <div class="bg-white/5 rounded-lg border border-white/10 p-3 flex items-center justify-between">
       <div class="text-xs">
-        <div class="font-semibold text-cyan-200">👁️ 14 pessoas acompanhando agora</div>
+        <div class="font-semibold text-cyan-200">👁️ 14 pessoas acompanhando</div>
         <div class="text-white/50 mt-0.5">Família · Coach · Equipe Dummont · 5 anônimos</div>
       </div>
-      <button class="text-xs px-3 py-1.5 rounded bg-cyan-500 hover:bg-cyan-600 font-semibold">Ver link público</button>
+      <button id="btnCompartilhar2" class="text-xs px-3 py-1.5 rounded bg-cyan-500 hover:bg-cyan-600 font-semibold">+ Convidar</button>
     </div>
   </div>
 
-  <!-- Rodapé scouter -->
+  <!-- Rodapé -->
   <footer class="px-4 py-3 text-center text-[11px] text-white/40 border-t border-white/10">
-    Marcando: <b class="text-white/70">Pedro H. (atleta scout)</b> · indicado pelo Coach Ricardo · 38 min de match
+    Tennis Flow · tracking ao vivo · 38 min
   </footer>
 
   <script>
-    // Mock simples: cada click incrementa contador + grava no histórico pra undo
+    // Mock: contadores sincronizados entre os 2 modos (saque/recepção). Ace
+    // só existe no modo saque, oppDF/oppAce só na recepção. Os demais (winner,
+    // ue, fe, oppwinner) aparecem nos 2 modos, então sincronizo pelo data-count.
     const history = [];
+
+    function bumpStat(stat, delta) {
+      document.querySelectorAll(`[data-count="${stat}"]`).forEach(el => {
+        el.textContent = parseInt(el.textContent, 10) + delta;
+      });
+    }
+
     document.querySelectorAll('[data-stat]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const side = btn.dataset.side;
         const stat = btn.dataset.stat;
-        const counter = document.querySelector(`[data-count="${side}-${stat}"]`);
-        const newVal = parseInt(counter.textContent, 10) + 1;
-        counter.textContent = newVal;
-        history.push({ counter, prev: newVal - 1 });
+        bumpStat(stat, +1);
+        history.push({ stat });
       });
     });
+
     document.getElementById('btnUndo').addEventListener('click', () => {
       const last = history.pop();
       if (!last) return;
-      last.counter.textContent = last.prev;
+      bumpStat(last.stat, -1);
+    });
+
+    // Toggle saque/recepção
+    let modo = 'saque';
+    const btnsSacando = document.getElementById('btnsSacando');
+    const btnsRecebendo = document.getElementById('btnsRecebendo');
+    const banner = document.getElementById('modeBanner');
+    const label = document.getElementById('modeLabel');
+    const hint = document.getElementById('modeHint');
+    // Modal compartilhar
+    const modal = document.getElementById('modalCompartilhar');
+    const abrirModal = () => {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+    document.getElementById('btnCompartilhar').addEventListener('click', abrirModal);
+    const btn2 = document.getElementById('btnCompartilhar2');
+    if (btn2) btn2.addEventListener('click', abrirModal);
+    document.getElementById('btnFecharModal').addEventListener('click', () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    });
+
+    document.getElementById('btnTrocaSaque').addEventListener('click', () => {
+      modo = (modo === 'saque') ? 'recepcao' : 'saque';
+      if (modo === 'saque') {
+        btnsSacando.classList.remove('hidden');
+        btnsRecebendo.classList.add('hidden');
+        banner.className = 'rounded-lg px-3 py-2 mb-3 flex items-center gap-2 bg-cyan-50 border border-cyan-200';
+        label.className = 'text-sm font-bold text-cyan-800 uppercase tracking-wide';
+        hint.className = 'text-xs text-cyan-700/70 ml-auto';
+        label.textContent = 'Anna sacando';
+      } else {
+        btnsSacando.classList.add('hidden');
+        btnsRecebendo.classList.remove('hidden');
+        banner.className = 'rounded-lg px-3 py-2 mb-3 flex items-center gap-2 bg-rose-50 border border-rose-200';
+        label.className = 'text-sm font-bold text-rose-800 uppercase tracking-wide';
+        hint.className = 'text-xs text-rose-700/70 ml-auto';
+        label.textContent = 'Anna recebendo';
+      }
     });
   </script>
 
