@@ -123,6 +123,86 @@ percepção de valor por solução.
 - Entrega de relatório passa a notificar via card de Performance no hub
   (badge "1 novo") em vez de só no sino?
 
+## Tennis Flow Escola — visão de longo prazo
+
+Discutido em 2026-05-10. O app já tem 80% da arquitetura pra suportar o
+caso de uso de **escola/academia**: household, perfis múltiplos, roles
+(admin/editor/viewer), push, alertas, Performance e Scout. A evolução
+natural é empacotar tudo numa SKU **Coach/Escola** quando tiver tração
+B2C com famílias.
+
+**Princípio guia:** "previsibilidade traz confiança" (declarado pelo
+user em 2026-05-10, ver `feedback_previsibilidade.md` em memory). O app
+ganha adoção respondendo dúvida operacional **antes** de a família
+precisar ligar na recepção — não com features bonitas. Aplicar em todo
+design, copy e cadência.
+
+**Validação feita** (2026-05-10): análise de ~6k mensagens de grupo
+real de WhatsApp de uma escola de tênis (Dumont) mostrou os padrões:
+- 80% das mensagens são Q&A operacional curto (mudança de quadra,
+  horário, "vai ter aula?"). Reposta rápida no app substituiria o grupo
+  de WhatsApp e seria o gancho de adoção.
+- Mudança de quadra/local é o tipo de aviso mais frequente (quadras do
+  clube principal bloqueadas → divide entre 2-3 instalações alternativas).
+- Decisões last-minute são comuns ("avisamos pela manhã").
+- Inscrições com prazo apertado precisam de push agressivo.
+- Reconhecimento público (parabéns por torneio) é categoria à parte.
+
+**Mockup:** `mockup-escola.html` na raiz (standalone, fora do
+`frontend/` pra não vazar pro Render). Tem visão geral, atletas,
+colaboradores, torneios com Kanban específico (atletas inscritos,
+professores escalados, hotel, passagens "escola paga vs família compra",
+logística), comunicação rica e quadros livres. Aberto pra iteração.
+
+**Verticais sugeridas pro hub** (item 8 acima evolui pra isso):
+- 📅 Agenda · 📊 Performance · 🎯 Scout (atual)
+- 🏫 **Escola** — gestão de atletas/colaboradores/turmas/torneios da
+  academia, comunicação push pros pais, financeiro
+- 👨‍🏫 **Coach** (sub-tier) — profissional autônomo com 5-15 alunos de
+  famílias diferentes (não tem CNPJ de escola). Versão lite da Escola.
+
+**Stack de features pra MVP de Escola** (em ordem de valor/esforço):
+1. **Comunicação push** — composer com tipos pré-definidos, audiência
+   segmentada (escola toda / turma / viagem / atleta), histórico com
+   taxa de leitura, Q&A 2-vias (pai pergunta, escola responde inline).
+   Validar primeiro — é o gancho de adoção.
+2. **Agenda da escola** — calendário consolidado de torneios + treinos
+   + reuniões + eventos. Push com lead time configurado.
+3. **Atletas (CRUD multi-perfil)** — listagem da escola toda, com
+   categoria/ranking/professor/responsável. Já existe parcialmente.
+4. **Torneios com Kanban de logística** — colunas por torneio: atletas
+   inscritos, professores escalados, hotel, passagens, logística no
+   local. Diferencia "escola paga" (passagens dos profs) vs "família
+   compra" (passagens dos atletas).
+5. **Colaboradores** — CRUD de professores/staff, vínculo a turmas e a
+   atletas, agenda própria.
+6. **Quadros livres** — Kanban genérico tipo Trello pra qualquer
+   assunto interno (reforma, captação, eventos sociais).
+7. **Turmas** — horários, atletas matriculados, presença, professor.
+8. **Financeiro** — mensalidades, boletos, despesas com torneios,
+   recebíveis. (Pesado — adiar até validar 1-3.)
+
+**Modelo de negócio sugerido:**
+- Free pra famílias (mantém atual).
+- Pro pessoal R$297 vitalício (mantém — promessa de fundador).
+- **Coach autônomo** R$497-697/mês — múltiplos atletas + dashboard
+  agregado.
+- **Escola/Academia** R$1.5k-3k/mês conforme volume — multi-coach,
+  comunicação push pra pais, financeiro, branding próprio.
+
+**Próximos passos** (não fazer agora — esperar tração com famílias):
+- [ ] Validar interesse com 1-2 escolas (Dumont, Iate) sem prometer
+      data — entrevista, não venda.
+- [ ] Mockup → iterar com escola interessada (anotar ajustes).
+- [ ] Decidir se Comunicação Escola é vendida standalone (R$ baixo,
+      adoção fácil) ou só dentro de tier Escola.
+- [ ] Schema cross-household (coach vê atletas de N famílias) — hoje
+      household = família única, evolução grande.
+
+**Risco principal:** começar a desenhar pra escola agora **dilui** o
+foco em famílias. Manter Performance + Scout como prioridade até ter
+volume validado, e só então puxar Escola.
+
 Esforço estimado: ~1 dia (UI + roteamento + persistência da preferência
 default-route no household-config).
 

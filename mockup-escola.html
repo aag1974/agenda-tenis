@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tennis Flow — Escola (mockup)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+    .brand-bg { background: linear-gradient(135deg, #0e3a4d 0%, #1f5b75 100%); }
+    .sidebar { background: #0a2530; }
+    .sidebar-link { display: block; padding: 8px 16px; font-size: 13px; color: rgba(255,255,255,0.85); cursor: pointer; border-left: 3px solid transparent; }
+    .sidebar-link:hover { background: rgba(255,255,255,0.06); }
+    .sidebar-link.active { background: rgba(6,182,212,0.12); border-left-color: #06b6d4; color: #fff; }
+    .sidebar-sub { padding: 6px 16px 6px 28px; font-size: 12px; color: #93c5d8; cursor: pointer; }
+    .sidebar-sub:hover { background: rgba(255,255,255,0.06); color: #fff; }
+    .sidebar-section { padding: 16px 16px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.4); font-weight: 600; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+    .kanban-col { background: #f1f5f9; border-radius: 12px; padding: 12px; min-width: 280px; max-width: 280px; display: flex; flex-direction: column; max-height: calc(100vh - 280px); }
+    .kanban-card { background: white; border-radius: 8px; padding: 10px 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-bottom: 8px; border: 1px solid #e2e8f0; cursor: grab; }
+    .kanban-card:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen overflow-hidden">
+
+  <!-- Header -->
+  <header class="brand-bg text-white px-6 py-3 flex items-center justify-between shadow-md" style="height: 60px;">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🎾</span>
+      <div>
+        <div class="text-base font-semibold leading-tight">Tennis Flow <span class="opacity-70 font-normal">— Escola</span></div>
+        <div class="text-[11px] text-cyan-200">Academia Brasília Tênis · 42 atletas</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <input type="search" placeholder="Buscar atleta, torneio, turma…" class="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm w-72 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+      <button class="bg-cyan-500 hover:bg-cyan-600 px-4 py-1.5 rounded-lg text-sm font-semibold">+ Criar</button>
+      <button class="text-white/80 hover:text-white relative">🔔
+        <span class="absolute -top-1 -right-1 bg-red-500 text-[10px] rounded-full w-4 h-4 flex items-center justify-center">3</span>
+      </button>
+      <div class="w-9 h-9 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-sm font-semibold">RP</div>
+    </div>
+  </header>
+
+  <div class="flex" style="height: calc(100vh - 60px);">
+    <!-- Sidebar -->
+    <aside class="sidebar text-white w-64 overflow-y-auto scroll-thin shrink-0">
+      <div class="py-2">
+        <a class="sidebar-link" data-view="dashboard">📊 Visão geral</a>
+        <a class="sidebar-link" data-view="atletas">👤 Atletas <span class="text-[10px] text-cyan-300 ml-1">42</span></a>
+        <a class="sidebar-link" data-view="colaboradores">👨‍🏫 Colaboradores <span class="text-[10px] text-cyan-300 ml-1">8</span></a>
+        <a class="sidebar-link" data-view="turmas">🎾 Turmas &amp; aulas</a>
+        <a class="sidebar-link" data-view="torneios">📅 Torneios <span class="text-[10px] text-cyan-300 ml-1">5</span></a>
+
+        <div class="sidebar-section">Próximos torneios</div>
+        <a class="sidebar-sub" data-view="torneio-detalhe">🏆 G1 Brasiliense — 26/05</a>
+        <a class="sidebar-sub" data-view="torneio-detalhe">🏆 GA Cuiabá — 02/06</a>
+        <a class="sidebar-sub" data-view="torneio-detalhe">🏆 Festival Belém — 14/06</a>
+
+        <div class="sidebar-section">Gestão</div>
+        <a class="sidebar-link" data-view="financeiro">💰 Financeiro</a>
+        <a class="sidebar-link" data-view="comunicacao">💬 Comunicação</a>
+        <a class="sidebar-link" data-view="quadros">📋 Quadros livres</a>
+
+        <div class="sidebar-section">Quadros recentes</div>
+        <a class="sidebar-sub" data-view="quadro-livre">📋 Reforma quadra 3</a>
+        <a class="sidebar-sub" data-view="quadro-livre">📋 Avaliação física trim</a>
+        <a class="sidebar-sub" data-view="quadro-livre">📋 Captação clientes 2026</a>
+
+        <div class="border-t border-white/10 mt-4 pt-2">
+          <a class="sidebar-link" data-view="config">⚙️ Configurações</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main id="content" class="flex-1 overflow-y-auto scroll-thin"></main>
+  </div>
+
+  <script>
+    // ===== Mock data =====
+    const ATLETAS = [
+      { nome: 'Anna Luiza Garcia', cat: '12F', cbt: 55, prof: 'Ricardo P.', tags: ['DF', 'Top 100'] },
+      { nome: 'Rafael Queiroz', cat: '14M', cbt: 78, prof: 'Diego M.', tags: ['DF'] },
+      { nome: 'Marina Coutinho', cat: '12F', cbt: 92, prof: 'Ricardo P.', tags: ['DF'] },
+      { nome: 'Thiago Albuquerque', cat: '16M', cbt: 31, prof: 'Diego M.', tags: ['DF', 'Top 50'] },
+      { nome: 'Bia Mendes', cat: '14F', cbt: 124, prof: 'Camila S.', tags: ['DF'] },
+      { nome: 'Pedro Henrique', cat: '12M', cbt: 67, prof: 'Camila S.', tags: ['DF'] },
+      { nome: 'Lara Vasconcelos', cat: '10F', cbt: 18, prof: 'Camila S.', tags: ['DF', 'Top 20'] },
+      { nome: 'Gustavo Rocha', cat: '16M', cbt: 89, prof: 'Diego M.', tags: ['GO'] },
+      { nome: 'Sofia Almeida', cat: '14F', cbt: 156, prof: 'Camila S.', tags: ['DF'] },
+      { nome: 'Felipe Andrade', cat: '12M', cbt: 203, prof: 'Ricardo P.', tags: ['DF'] },
+    ];
+
+    const PROFS = [
+      { nome: 'Ricardo Paulino', tipo: 'Alta performance', alunos: 8, foto: 'RP' },
+      { nome: 'Diego Martínez', tipo: 'Performance', alunos: 12, foto: 'DM' },
+      { nome: 'Camila Souza', tipo: 'Formativo / Kids', alunos: 14, foto: 'CS' },
+      { nome: 'Bruno Lima', tipo: 'Preparador físico', alunos: 42, foto: 'BL' },
+    ];
+
+    const TORNEIOS = [
+      { nome: 'G1 Brasiliense — 1ª Etapa', data: '26/05', cidade: 'Brasília/DF', insc: 6, prof: 'Ricardo + Diego', status: 'Inscrito · Boletos pagos' },
+      { nome: 'GA Cuiabá', data: '02/06', cidade: 'Cuiabá/MT', insc: 4, prof: 'Diego', status: 'Inscrito · 2 boletos pendentes' },
+      { nome: 'Festival Belém', data: '14/06', cidade: 'Belém/PA', insc: 3, prof: 'Ricardo', status: 'Inscrição aberta · escolher atletas' },
+      { nome: 'III Aberto Niterói Infantojuvenil', data: '29/06', cidade: 'Niterói/RJ', insc: 0, prof: '—', status: 'Monitorando' },
+      { nome: 'Copa das Federações 2026', data: '21/07', cidade: 'Uberlândia/MG', insc: 0, prof: '—', status: 'Monitorando' },
+    ];
+
+    // ===== Helpers =====
+    const tile = (label, value, hint, color = 'cyan') => {
+      const cmap = {
+        cyan: 'border-cyan-200 bg-cyan-50 text-cyan-900',
+        emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+        amber: 'border-amber-200 bg-amber-50 text-amber-900',
+        violet: 'border-violet-200 bg-violet-50 text-violet-900',
+      };
+      return `<div class="rounded-xl border ${cmap[color]} p-4">
+        <div class="text-[10px] font-semibold uppercase tracking-wide opacity-70">${label}</div>
+        <div class="text-3xl font-bold leading-tight mt-1">${value}</div>
+        ${hint ? `<div class="text-xs opacity-70 mt-1">${hint}</div>` : ''}
+      </div>`;
+    };
+
+    const initials = (name) => name.split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+
+    const sectionTitle = (title, sub) => `<div class="mb-4">
+      <h2 class="text-lg font-semibold text-slate-800">${title}</h2>
+      ${sub ? `<div class="text-sm text-slate-500 mt-0.5">${sub}</div>` : ''}
+    </div>`;
+
+    // ===== Views =====
+    const views = {
+
+      // ---- Dashboard ----
+      dashboard: () => `
+        <div class="p-6 max-w-7xl mx-auto space-y-6">
+          ${sectionTitle('Visão geral da escola', 'Resumo do mês corrente · Maio/2026')}
+
+          <div class="grid grid-cols-4 gap-3">
+            ${tile('Atletas ativos', '42', '+3 no mês', 'cyan')}
+            ${tile('Torneios em andamento', '5', '2 com boleto pendente', 'amber')}
+            ${tile('Professores ativos', '8', '6 com agenda hoje', 'emerald')}
+            ${tile('Receita do mês', 'R$ 38,4k', '92% das mensalidades em dia', 'violet')}
+          </div>
+
+          <div class="grid grid-cols-3 gap-4">
+            <!-- Próximos torneios -->
+            <div class="col-span-2 bg-white border border-slate-200 rounded-xl p-4">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-slate-700">📅 Próximos torneios</h3>
+                <a class="text-xs text-cyan-700 hover:underline cursor-pointer" data-view="torneios">Ver todos →</a>
+              </div>
+              <div class="space-y-2">
+                ${TORNEIOS.slice(0, 3).map(t => `
+                  <a class="block border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer" data-view="torneio-detalhe">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="text-sm font-semibold text-slate-900 truncate">${t.nome}</div>
+                        <div class="text-xs text-slate-600 mt-0.5">${t.cidade} · ${t.data}</div>
+                        <div class="text-xs text-slate-500 mt-1">${t.insc} atletas · prof ${t.prof}</div>
+                      </div>
+                      <span class="badge bg-cyan-100 text-cyan-800 shrink-0">${t.status.split('·')[0].trim()}</span>
+                    </div>
+                  </a>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Alertas -->
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+              <h3 class="text-sm font-semibold text-slate-700 mb-3">🔔 Precisa de você</h3>
+              <ul class="space-y-2 text-sm">
+                <li class="flex gap-2 items-start"><span>⚠️</span><span class="text-slate-700">2 boletos do <b>GA Cuiabá</b> vencem amanhã</span></li>
+                <li class="flex gap-2 items-start"><span>📨</span><span class="text-slate-700">3 pais aguardam resposta da viagem de junho</span></li>
+                <li class="flex gap-2 items-start"><span>📊</span><span class="text-slate-700">Relatório trimestral da Bia M. pendente</span></li>
+                <li class="flex gap-2 items-start"><span>🏨</span><span class="text-slate-700">Hotel Festival Belém: confirmar até 15/05</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Atletas em destaque -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-slate-700">🌟 Atletas em destaque</h3>
+              <a class="text-xs text-cyan-700 hover:underline cursor-pointer" data-view="atletas">Ver todos →</a>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              ${ATLETAS.slice(0, 3).map(a => `
+                <div class="border border-slate-200 rounded-lg p-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-cyan-100 text-cyan-800 font-semibold text-sm flex items-center justify-center">${initials(a.nome)}</div>
+                    <div class="min-w-0">
+                      <div class="text-sm font-semibold text-slate-900 truncate">${a.nome}</div>
+                      <div class="text-xs text-slate-500">${a.cat} · CBT ${a.cbt}º</div>
+                    </div>
+                  </div>
+                  <div class="text-xs text-slate-600 mt-2">Prof: ${a.prof}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>`,
+
+      // ---- Atletas ----
+      atletas: () => `
+        <div class="p-6 max-w-7xl mx-auto">
+          ${sectionTitle('Atletas', '42 ativos · filtre por categoria, professor ou tag')}
+
+          <div class="flex gap-2 mb-4 items-center flex-wrap">
+            <button class="text-xs bg-cyan-600 text-white px-3 py-1.5 rounded font-semibold">+ Novo atleta</button>
+            <select class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white"><option>Categoria · todas</option><option>10F</option><option>12F</option><option>14M</option></select>
+            <select class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white"><option>Professor · todos</option><option>Ricardo</option><option>Diego</option><option>Camila</option></select>
+            <select class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white"><option>Status · ativos</option><option>Inativos</option></select>
+            <input type="search" placeholder="Buscar nome…" class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white w-48" />
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                <tr>
+                  <th class="text-left px-4 py-2">Atleta</th>
+                  <th class="text-left px-4 py-2">Categoria</th>
+                  <th class="text-left px-4 py-2">Ranking CBT</th>
+                  <th class="text-left px-4 py-2">Professor</th>
+                  <th class="text-left px-4 py-2">Tags</th>
+                  <th class="text-left px-4 py-2">Próx. torneio</th>
+                  <th class="text-right px-4 py-2"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${ATLETAS.map(a => `
+                  <tr class="hover:bg-slate-50 cursor-pointer">
+                    <td class="px-4 py-2.5">
+                      <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-cyan-100 text-cyan-800 font-semibold text-xs flex items-center justify-center">${initials(a.nome)}</div>
+                        <div class="font-medium text-slate-900">${a.nome}</div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-2.5 text-slate-700">${a.cat}</td>
+                    <td class="px-4 py-2.5 text-slate-700">${a.cbt}º</td>
+                    <td class="px-4 py-2.5 text-slate-700">${a.prof}</td>
+                    <td class="px-4 py-2.5">${a.tags.map(t => `<span class="badge bg-slate-100 text-slate-700 mr-1">${t}</span>`).join('')}</td>
+                    <td class="px-4 py-2.5 text-xs text-slate-500">G1 Brasiliense · 26/05</td>
+                    <td class="px-4 py-2.5 text-right text-cyan-700 hover:underline">Abrir →</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`,
+
+      // ---- Colaboradores ----
+      colaboradores: () => `
+        <div class="p-6 max-w-7xl mx-auto">
+          ${sectionTitle('Colaboradores', 'Professores, prep. físico, fisio, psicólogo e administrativo')}
+
+          <div class="flex gap-2 mb-4">
+            <button class="text-xs bg-cyan-600 text-white px-3 py-1.5 rounded font-semibold">+ Novo colaborador</button>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            ${PROFS.map(p => `
+              <div class="bg-white border border-slate-200 rounded-xl p-4">
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-12 h-12 rounded-full bg-violet-100 text-violet-800 font-semibold flex items-center justify-center">${p.foto}</div>
+                  <div>
+                    <div class="font-semibold text-slate-900">${p.nome}</div>
+                    <div class="text-xs text-slate-500">${p.tipo}</div>
+                  </div>
+                </div>
+                <div class="text-xs text-slate-600">👥 ${p.alunos} atletas vinculados</div>
+                <div class="text-xs text-slate-600">📅 Próx. viagem: G1 Brasiliense · 26/05</div>
+                <div class="mt-3 flex gap-2">
+                  <button class="text-[11px] px-2 py-1 rounded border border-slate-300 hover:bg-slate-50">Ver alunos</button>
+                  <button class="text-[11px] px-2 py-1 rounded border border-slate-300 hover:bg-slate-50">Agenda</button>
+                </div>
+              </div>
+            `).join('')}
+            <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 flex items-center justify-center text-slate-400 text-sm hover:border-cyan-400 hover:text-cyan-600 cursor-pointer">
+              + Adicionar colaborador
+            </div>
+          </div>
+        </div>`,
+
+      // ---- Torneios (lista) ----
+      torneios: () => `
+        <div class="p-6 max-w-7xl mx-auto">
+          ${sectionTitle('Torneios', 'Visão consolidada · cada torneio tem seu próprio quadro de logística')}
+
+          <div class="flex gap-2 mb-4">
+            <button class="text-xs bg-cyan-600 text-white px-3 py-1.5 rounded font-semibold">+ Adicionar torneio</button>
+            <select class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white"><option>Status · todos</option><option>Em andamento</option><option>Monitorando</option></select>
+          </div>
+
+          <div class="space-y-2">
+            ${TORNEIOS.map(t => `
+              <a class="block bg-white border border-slate-200 rounded-xl p-4 hover:border-cyan-300 cursor-pointer" data-view="torneio-detalhe">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-base font-semibold text-slate-900">${t.nome}</div>
+                    <div class="text-xs text-slate-600 mt-0.5">📍 ${t.cidade} · 📅 ${t.data}</div>
+                    <div class="text-xs text-slate-500 mt-2">👤 ${t.insc} atletas inscritos · 👨‍🏫 ${t.prof}</div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <span class="badge bg-cyan-100 text-cyan-800">${t.status}</span>
+                    <div class="text-xs text-cyan-700 mt-2 hover:underline">Abrir quadro →</div>
+                  </div>
+                </div>
+              </a>
+            `).join('')}
+          </div>
+        </div>`,
+
+      // ---- Torneio detalhe (Kanban específico) ----
+      'torneio-detalhe': () => `
+        <div class="px-6 pt-5 pb-3 max-w-full">
+          <div class="flex items-baseline gap-3 mb-1">
+            <a class="text-xs text-cyan-700 hover:underline cursor-pointer" data-view="torneios">← Torneios</a>
+          </div>
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h2 class="text-xl font-semibold text-slate-800">🏆 G1 Brasiliense — 1ª Etapa</h2>
+              <div class="text-sm text-slate-500 mt-0.5">📍 Brasília/DF · 📅 26/05/2026 · 👤 6 atletas · 👨‍🏫 Ricardo + Diego</div>
+            </div>
+            <div class="flex gap-2">
+              <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-100">⚙️ Editar</button>
+              <button class="text-xs px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold">+ Adicionar atleta</button>
+            </div>
+          </div>
+
+          <div class="flex gap-3 overflow-x-auto pb-4 scroll-thin">
+
+            <!-- Atletas inscritos -->
+            <div class="kanban-col">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-700 uppercase">👤 Atletas inscritos · 6</span>
+                <button class="text-slate-400 text-sm hover:text-slate-700">⋯</button>
+              </div>
+              <div class="overflow-y-auto scroll-thin pr-1 flex-1">
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Anna Luiza Garcia</div>
+                  <div class="text-xs text-slate-500">12F · CBT 55º</div>
+                  <div class="mt-1.5 flex gap-1 flex-wrap">
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ boleto</span>
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ confirmou</span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Marina Coutinho</div>
+                  <div class="text-xs text-slate-500">12F · CBT 92º</div>
+                  <div class="mt-1.5 flex gap-1 flex-wrap">
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ boleto</span>
+                    <span class="badge bg-amber-100 text-amber-800">⏳ aguarda confirm.</span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Rafael Queiroz</div>
+                  <div class="text-xs text-slate-500">14M · CBT 78º</div>
+                  <div class="mt-1.5 flex gap-1 flex-wrap">
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ boleto</span>
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ confirmou</span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Pedro Henrique</div>
+                  <div class="text-xs text-slate-500">12M · CBT 67º</div>
+                  <div class="mt-1.5 flex gap-1 flex-wrap">
+                    <span class="badge bg-amber-100 text-amber-800">⏳ boleto pend.</span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Lara Vasconcelos</div>
+                  <div class="text-xs text-slate-500">10F · CBT 18º</div>
+                  <div class="mt-1.5 flex gap-1 flex-wrap">
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ boleto</span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Thiago Albuquerque</div>
+                  <div class="text-xs text-slate-500">16M · CBT 31º</div>
+                  <div class="mt-1.5 flex gap-1 flex-wrap">
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ boleto</span>
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ confirmou</span>
+                  </div>
+                </div>
+              </div>
+              <button class="mt-2 text-xs text-slate-500 hover:text-slate-800 text-left">+ Adicionar atleta</button>
+            </div>
+
+            <!-- Professores escalados -->
+            <div class="kanban-col">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-700 uppercase">👨‍🏫 Professores · 2</span>
+                <button class="text-slate-400 text-sm hover:text-slate-700">⋯</button>
+              </div>
+              <div class="overflow-y-auto scroll-thin pr-1 flex-1">
+                <div class="kanban-card">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-violet-100 text-violet-800 font-semibold text-xs flex items-center justify-center">RP</div>
+                    <div>
+                      <div class="font-semibold text-sm text-slate-900">Ricardo Paulino</div>
+                      <div class="text-xs text-slate-500">Acompanha 4 atletas</div>
+                    </div>
+                  </div>
+                  <div class="mt-2 text-xs text-slate-600">📋 Anna, Marina, Lara, Thiago</div>
+                  <div class="mt-1.5 flex gap-1">
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ confirmou</span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-violet-100 text-violet-800 font-semibold text-xs flex items-center justify-center">DM</div>
+                    <div>
+                      <div class="font-semibold text-sm text-slate-900">Diego Martínez</div>
+                      <div class="text-xs text-slate-500">Acompanha 2 atletas</div>
+                    </div>
+                  </div>
+                  <div class="mt-2 text-xs text-slate-600">📋 Rafael, Pedro Henrique</div>
+                  <div class="mt-1.5 flex gap-1">
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ confirmou</span>
+                  </div>
+                </div>
+              </div>
+              <button class="mt-2 text-xs text-slate-500 hover:text-slate-800 text-left">+ Escalar professor</button>
+            </div>
+
+            <!-- Hotel -->
+            <div class="kanban-col">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-700 uppercase">🏨 Hotel</span>
+                <button class="text-slate-400 text-sm hover:text-slate-700">⋯</button>
+              </div>
+              <div class="overflow-y-auto scroll-thin pr-1 flex-1">
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Hotel Nacional Inn — Asa Sul</div>
+                  <div class="text-xs text-slate-500">Check-in 25/05 · Check-out 28/05</div>
+                  <div class="mt-1.5 flex gap-1 flex-wrap">
+                    <span class="badge bg-emerald-100 text-emerald-800">✓ reservado</span>
+                    <span class="badge bg-slate-100 text-slate-700">3 quartos</span>
+                  </div>
+                  <div class="mt-2 text-xs text-slate-600">R$ 4.200 · pago pela escola</div>
+                </div>
+                <div class="kanban-card border-amber-200 bg-amber-50/30">
+                  <div class="font-semibold text-sm text-slate-900">⚠️ Quarto extra — Lara V.</div>
+                  <div class="text-xs text-slate-500">Pais pediram quarto separado</div>
+                  <div class="mt-1.5 flex gap-1 flex-wrap">
+                    <span class="badge bg-amber-100 text-amber-800">⏳ aguarda confirmação</span>
+                  </div>
+                </div>
+              </div>
+              <button class="mt-2 text-xs text-slate-500 hover:text-slate-800 text-left">+ Adicionar reserva</button>
+            </div>
+
+            <!-- Passagens -->
+            <div class="kanban-col">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-700 uppercase">✈️ Passagens</span>
+                <button class="text-slate-400 text-sm hover:text-slate-700">⋯</button>
+              </div>
+              <div class="overflow-y-auto scroll-thin pr-1 flex-1">
+                <div class="text-[10px] uppercase tracking-wide text-slate-500 mb-1.5">Professores · escola paga</div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Ricardo Paulino</div>
+                  <div class="text-xs text-slate-500">GRU → BSB · 25/05 · LATAM</div>
+                  <span class="badge bg-emerald-100 text-emerald-800 mt-1.5">✓ emitido</span>
+                </div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Diego Martínez</div>
+                  <div class="text-xs text-slate-500">GRU → BSB · 25/05 · GOL</div>
+                  <span class="badge bg-emerald-100 text-emerald-800 mt-1.5">✓ emitido</span>
+                </div>
+
+                <div class="text-[10px] uppercase tracking-wide text-slate-500 mt-3 mb-1.5">Atletas · família compra</div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Anna Luiza Garcia</div>
+                  <div class="text-xs text-slate-500">CGH → BSB · 25/05</div>
+                  <span class="badge bg-emerald-100 text-emerald-800 mt-1.5">✓ família confirmou</span>
+                </div>
+                <div class="kanban-card border-amber-200 bg-amber-50/30">
+                  <div class="font-semibold text-sm text-slate-900">Pedro Henrique</div>
+                  <div class="text-xs text-slate-500">CNF → BSB</div>
+                  <span class="badge bg-amber-100 text-amber-800 mt-1.5">⏳ família ainda não comprou</span>
+                </div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Marina Coutinho</div>
+                  <div class="text-xs text-slate-500">GIG → BSB · 25/05</div>
+                  <span class="badge bg-emerald-100 text-emerald-800 mt-1.5">✓ família confirmou</span>
+                </div>
+              </div>
+              <button class="mt-2 text-xs text-slate-500 hover:text-slate-800 text-left">+ Lançar passagem</button>
+            </div>
+
+            <!-- Logística no local -->
+            <div class="kanban-col">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-700 uppercase">🚐 Logística no local</span>
+                <button class="text-slate-400 text-sm hover:text-slate-700">⋯</button>
+              </div>
+              <div class="overflow-y-auto scroll-thin pr-1 flex-1">
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Transfer aeroporto</div>
+                  <div class="text-xs text-slate-500">Van 12 lugares · 25/05 · 14h</div>
+                  <span class="badge bg-emerald-100 text-emerald-800 mt-1.5">✓ contratado</span>
+                </div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Aluguel quadras treino</div>
+                  <div class="text-xs text-slate-500">CT Brasília · 25/05 · 16h-18h</div>
+                  <span class="badge bg-emerald-100 text-emerald-800 mt-1.5">✓ reservado</span>
+                </div>
+                <div class="kanban-card border-amber-200 bg-amber-50/30">
+                  <div class="font-semibold text-sm text-slate-900">⚠️ Cordoamento de 4 raquetes</div>
+                  <div class="text-xs text-slate-500">Anna, Rafael, Marina, Thiago</div>
+                  <span class="badge bg-amber-100 text-amber-800 mt-1.5">⏳ até 24/05</span>
+                </div>
+                <div class="kanban-card">
+                  <div class="font-semibold text-sm text-slate-900">Almoço pré-jogo</div>
+                  <div class="text-xs text-slate-500">Restaurante Park Way</div>
+                </div>
+              </div>
+              <button class="mt-2 text-xs text-slate-500 hover:text-slate-800 text-left">+ Adicionar item</button>
+            </div>
+
+            <!-- Adicionar coluna -->
+            <div class="kanban-col bg-slate-200/50 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-500 text-sm cursor-pointer hover:border-cyan-400 hover:text-cyan-600" style="min-width: 220px;">
+              + Adicionar coluna
+            </div>
+
+          </div>
+        </div>`,
+
+      // ---- Quadros livres ----
+      quadros: () => `
+        <div class="p-6 max-w-7xl mx-auto">
+          ${sectionTitle('Quadros livres', 'Quadros Kanban customizáveis pra qualquer assunto interno da escola')}
+
+          <div class="grid grid-cols-3 gap-3">
+            ${[
+              ['Reforma quadra 3', 'Acompanhamento da obra', '#0e7490'],
+              ['Avaliação física trim.', '42 atletas · 8 já feitos', '#15803d'],
+              ['Captação clientes 2026', 'Funil comercial', '#9333ea'],
+              ['Eventos sociais', 'Festa de fim de ano, Open day', '#c2410c'],
+              ['Compras gerais', 'Bolas, redes, raquetes', '#0369a1'],
+            ].map(([t, sub, color]) => `
+              <div class="rounded-xl p-4 text-white cursor-pointer hover:scale-[1.02] transition-transform" style="background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%); min-height: 120px;" data-view="quadro-livre">
+                <div class="text-base font-semibold">${t}</div>
+                <div class="text-xs opacity-80 mt-1">${sub}</div>
+              </div>
+            `).join('')}
+            <div class="border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center text-slate-400 hover:border-cyan-400 hover:text-cyan-600 cursor-pointer min-h-[120px]">
+              + Criar novo quadro
+            </div>
+          </div>
+        </div>`,
+
+      // ---- Quadro livre genérico ----
+      'quadro-livre': () => `
+        <div class="px-6 pt-5 pb-3 max-w-full">
+          <div class="flex items-baseline gap-3 mb-1">
+            <a class="text-xs text-cyan-700 hover:underline cursor-pointer" data-view="quadros">← Quadros</a>
+          </div>
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h2 class="text-xl font-semibold text-slate-800">📋 Reforma quadra 3</h2>
+              <div class="text-sm text-slate-500 mt-0.5">Quadro Kanban livre · você define colunas e cards</div>
+            </div>
+          </div>
+          <div class="flex gap-3 overflow-x-auto pb-4 scroll-thin">
+            ${['A fazer', 'Fazendo', 'Aguardando aprovação', 'Pronto'].map((col, i) => `
+              <div class="kanban-col">
+                <div class="text-xs font-semibold text-slate-700 uppercase mb-2">${col}</div>
+                <div class="overflow-y-auto scroll-thin pr-1 flex-1">
+                  ${[1,2,3].slice(0, 3 - i % 2).map(n => `
+                    <div class="kanban-card">
+                      <div class="font-semibold text-sm text-slate-900">Item exemplo ${n}</div>
+                      <div class="text-xs text-slate-500 mt-0.5">Descrição curta</div>
+                    </div>
+                  `).join('')}
+                </div>
+                <button class="mt-2 text-xs text-slate-500 hover:text-slate-800 text-left">+ Adicionar card</button>
+              </div>
+            `).join('')}
+            <div class="kanban-col bg-slate-200/50 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-500 text-sm cursor-pointer hover:border-cyan-400 hover:text-cyan-600">
+              + Coluna
+            </div>
+          </div>
+        </div>`,
+
+      // ---- Outras (placeholder) ----
+      turmas: () => `<div class="p-8 max-w-3xl mx-auto"><h2 class="text-lg font-semibold text-slate-800 mb-2">🎾 Turmas &amp; aulas</h2><p class="text-slate-500 text-sm">Tabela de horários por professor · atletas matriculados · presença · próxima avaliação. <em>Em construção neste mockup.</em></p></div>`,
+      financeiro: () => `<div class="p-8 max-w-3xl mx-auto"><h2 class="text-lg font-semibold text-slate-800 mb-2">💰 Financeiro</h2><p class="text-slate-500 text-sm">Mensalidades, boletos, despesas com torneios, recebíveis. <em>Em construção neste mockup.</em></p></div>`,
+      comunicacao: () => `
+        <div class="p-6 max-w-7xl mx-auto">
+          ${sectionTitle('Comunicação', 'Avisos com push pro app dos pais — substitui grupo de WhatsApp')}
+
+          <div class="grid grid-cols-3 gap-4">
+            <!-- Composer (col 2/3) -->
+            <div class="col-span-2 bg-white border border-slate-200 rounded-xl p-4">
+              <h3 class="text-sm font-semibold text-slate-700 mb-3">📣 Novo aviso</h3>
+
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo</label>
+              <div class="flex gap-2 mb-3 flex-wrap">
+                <button class="text-xs px-3 py-1.5 rounded border border-cyan-300 bg-cyan-50 text-cyan-800 font-semibold">📍 Mudança de quadra</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">🌧️ Suspensão por chuva</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">🎉 Feriado / sem aula</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">👨‍🏫 Troca de professor</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">📅 Mudança de horário</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">⏰ Aula reposta</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">🚨 Prazo de inscrição</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">🏆 Pré-temporada / camp.</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">📢 Reunião de pais</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">💪 Reconhecimento</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">🩺 Saúde / parceria</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">🎫 Ingressos / convites</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">🔗 Conteúdo / mídia</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">+ Outro</button>
+              </div>
+
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Para quem</label>
+              <div class="flex gap-2 mb-3 flex-wrap">
+                <button class="text-xs px-3 py-1.5 rounded border border-emerald-300 bg-emerald-50 text-emerald-800 font-semibold">🏫 Toda a escola (42 famílias)</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">🎾 Turma específica</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">🏆 Viagem específica</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">👤 Atleta(s) específicos</button>
+              </div>
+
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Título</label>
+              <input class="w-full text-sm border border-slate-300 rounded px-3 py-2 mb-3" value="📍 Treino de hoje na quadra do Vamo" />
+
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Mensagem</label>
+              <textarea class="w-full text-sm border border-slate-300 rounded px-3 py-2 h-24" placeholder="Escreva o aviso…">Pessoal, hoje (14/05) o treino das 14h não será no Iate — quadras bloqueadas. Vamos para a quadra do Vamo, mesmo horário.
+
+Caso precisemos dividir, complemento será no Golden Tulip — aviso mais tarde por aqui.</textarea>
+
+              <div class="grid grid-cols-2 gap-3 mt-3">
+                <label class="flex items-center gap-2 text-xs text-slate-700 border border-slate-200 rounded p-2"><input type="checkbox" checked class="rounded" /> 🔔 Push notification</label>
+                <label class="flex items-center gap-2 text-xs text-slate-700 border border-slate-200 rounded p-2"><input type="checkbox" checked class="rounded" /> 📋 Alerta no app</label>
+                <label class="flex items-center gap-2 text-xs text-slate-700 border border-slate-200 rounded p-2"><input type="checkbox" class="rounded" /> ✉️ Email de backup</label>
+                <label class="flex items-center gap-2 text-xs text-slate-700 border border-slate-200 rounded p-2"><input type="checkbox" checked class="rounded" /> ✅ Pedir confirmação de leitura</label>
+                <label class="flex items-center gap-2 text-xs text-slate-700 border border-slate-200 rounded p-2"><input type="checkbox" class="rounded" /> 📌 Fixar no topo</label>
+                <label class="flex items-center gap-2 text-xs text-slate-700 border border-slate-200 rounded p-2"><input type="checkbox" class="rounded" /> 💬 Permitir resposta no thread</label>
+              </div>
+
+              <div class="flex items-center justify-end gap-2 mt-3">
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">Salvar rascunho</button>
+                <button class="text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">⏰ Agendar envio</button>
+                <button class="bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold px-4 py-2 rounded">📤 Enviar agora</button>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-slate-200">
+                <div class="text-[11px] uppercase tracking-wide text-slate-500 mb-2 font-semibold">Templates rápidos</div>
+                <div class="text-xs text-slate-600 space-y-1">
+                  <div>• <em>"Aula de amanhã transferida da quadra X pra Y por reforma"</em></div>
+                  <div>• <em>"Lembramos que sexta-feira é feriado, sem aulas"</em></div>
+                  <div>• <em>"Profª Camila estará de licença na próxima semana — Bruno cobre as aulas"</em></div>
+                  <div>• <em>"Reunião de pais sábado às 10h — confirmar presença pelo app"</em></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stats / preview push -->
+            <div class="space-y-3">
+              <div class="bg-white border border-slate-200 rounded-xl p-4">
+                <h3 class="text-sm font-semibold text-slate-700 mb-2">📊 Cobertura de push</h3>
+                <div class="text-2xl font-bold text-emerald-700">38 / 42</div>
+                <div class="text-xs text-slate-500">famílias com app + push aceito (90%)</div>
+                <div class="text-xs text-amber-700 mt-2">⚠️ 4 famílias só recebem por email/SMS</div>
+              </div>
+
+              <div class="bg-slate-900 text-white rounded-xl p-4">
+                <div class="text-[10px] uppercase tracking-wide text-cyan-300 mb-2 font-semibold">Preview no celular</div>
+                <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
+                  <div class="flex items-start gap-2">
+                    <div class="w-7 h-7 rounded bg-cyan-500 flex items-center justify-center text-xs">🎾</div>
+                    <div class="min-w-0 flex-1">
+                      <div class="text-xs text-slate-400">Tennis Flow · agora</div>
+                      <div class="text-sm font-semibold mt-0.5">🌧️ Aulas de hoje suspensas</div>
+                      <div class="text-xs text-slate-300 mt-1">Devido à previsão de chuva forte para a tarde, todas as aulas de 14h às 19h…</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Histórico -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 mt-6">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-slate-700">📜 Avisos recentes</h3>
+              <div class="flex gap-2">
+                <select class="text-xs border border-slate-300 rounded px-2 py-1 bg-white"><option>Tipo · todos</option></select>
+                <select class="text-xs border border-slate-300 rounded px-2 py-1 bg-white"><option>Audiência · todas</option></select>
+              </div>
+            </div>
+            <div class="divide-y divide-slate-100">
+              ${[
+                { icon: '📍', titulo: 'Treino de amanhã na Assefaz — quadras Iate bloqueadas', audiencia: 'Alta perf · todas as turmas', quando: 'hoje, 09h12', leituras: '36/42', status: 'aguardando 6 leituras', responses: 4 },
+                { icon: '🚨', titulo: 'PENÚLTIMO DIA — inscrições da pré-temporada (16 vagas)', audiencia: 'Toda a escola', quando: 'ontem, 16h37', leituras: '40/42', status: '12 já confirmaram', responses: 9, fixed: true },
+                { icon: '👨‍🏫', titulo: 'Profª Camila de licença 12–15/05 — Bruno cobre as aulas', audiencia: 'Turmas Camila S.', quando: 'há 3 dias', leituras: '14/14', status: 'todos leram', responses: 3 },
+                { icon: '🏆', titulo: 'Próximo jogo Anna L. — quadra Louis Armstrong', audiencia: 'Família Anna · pais Iate', quando: 'há 4 dias', leituras: '8/8', status: 'enviado · 2 responderam', responses: 2 },
+                { icon: '🌧️', titulo: 'Aulas suspensas hoje — chuva forte na previsão', audiencia: 'Toda a escola', quando: 'há 6 dias', leituras: '40/42', status: 'enviado', responses: 0 },
+                { icon: '📢', titulo: 'Informativo de reunião — 24/04 às 20h, salão social', audiencia: 'Pais alta perf', quando: 'há 1 sem.', leituras: '20/22', status: '18 confirmaram presença', responses: 5 },
+                { icon: '🩺', titulo: 'Parceria Life Checkup — 65% desconto avaliações médicas', audiencia: 'Toda a escola', quando: 'há 2 sem.', leituras: '38/42', status: 'enviado · 12 agendaram', responses: 7 },
+                { icon: '💪', titulo: 'Parabéns à equipe pelo G2 Cuiabá — 4 finais!', audiencia: 'Toda a escola', quando: 'há 2 sem.', leituras: '42/42', status: 'enviado · 28 reações ❤️', responses: 14 },
+              ].map(a => `
+                <div class="py-2.5 flex items-start gap-3 hover:bg-slate-50 -mx-4 px-4 cursor-pointer rounded">
+                  <span class="text-lg shrink-0">${a.icon}</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-semibold text-slate-900">
+                      ${a.fixed ? '<span class="text-amber-600 mr-1" title="Fixado">📌</span>' : ''}${a.titulo}
+                    </div>
+                    <div class="text-xs text-slate-500 mt-0.5">${a.audiencia} · ${a.quando}${a.responses ? ` · 💬 ${a.responses} respostas` : ''}</div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <div class="text-xs text-emerald-700 font-semibold">👁️ ${a.leituras}</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5 max-w-[140px]">${a.status}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Q&A 2-vias -->
+          <div class="bg-white border border-slate-200 rounded-xl p-4 mt-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-slate-700">💬 Perguntas dos pais (últimas 24h)</h3>
+              <span class="text-xs text-slate-500">Reposta rápida resolve 80% no chat — não vira ligação na recepção</span>
+            </div>
+            <div class="space-y-2.5">
+              <div class="border border-slate-200 rounded-lg p-3">
+                <div class="flex items-start gap-2">
+                  <div class="w-7 h-7 rounded-full bg-amber-100 text-amber-800 font-semibold text-xs flex items-center justify-center shrink-0">CR</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs text-slate-500"><b class="text-slate-700">Cláudia R. (mãe da Marina)</b> · há 12 min</div>
+                    <div class="text-sm text-slate-800 mt-0.5">"Aula de hoje vai ter mesmo? Está chovendo muito aqui no Lago Sul"</div>
+                  </div>
+                  <button class="text-xs text-cyan-700 hover:underline shrink-0">Responder</button>
+                </div>
+              </div>
+              <div class="border border-slate-200 rounded-lg p-3">
+                <div class="flex items-start gap-2">
+                  <div class="w-7 h-7 rounded-full bg-violet-100 text-violet-800 font-semibold text-xs flex items-center justify-center shrink-0">FA</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs text-slate-500"><b class="text-slate-700">Felipe A. (pai do Thiago)</b> · há 38 min</div>
+                    <div class="text-sm text-slate-800 mt-0.5">"O treino acaba que horas amanhã? Preciso ajustar a Uber"</div>
+                    <div class="mt-1.5 text-xs text-emerald-700 italic">✓ Respondido por você: "Acaba às 16h20, normal"</div>
+                  </div>
+                </div>
+              </div>
+              <div class="border border-slate-200 rounded-lg p-3">
+                <div class="flex items-start gap-2">
+                  <div class="w-7 h-7 rounded-full bg-cyan-100 text-cyan-800 font-semibold text-xs flex items-center justify-center shrink-0">PB</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs text-slate-500"><b class="text-slate-700">Patricia B. (mãe da Lara)</b> · há 1 h</div>
+                    <div class="text-sm text-slate-800 mt-0.5">"Vocês têm o calendário 2026 da CBT já consolidado? Pra programar férias"</div>
+                  </div>
+                  <button class="text-xs text-cyan-700 hover:underline shrink-0">Responder</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`,
+      config: () => `<div class="p-8 max-w-3xl mx-auto"><h2 class="text-lg font-semibold text-slate-800 mb-2">⚙️ Configurações</h2><p class="text-slate-500 text-sm">Dados da escola, tags, categorias, integrações. <em>Em construção neste mockup.</em></p></div>`,
+    };
+
+    // ===== Routing =====
+    function showView(name) {
+      document.querySelectorAll('.sidebar-link, .sidebar-sub').forEach(a => a.classList.remove('active'));
+      const link = document.querySelector(`[data-view="${name}"]`);
+      if (link) link.classList.add('active');
+      const fn = views[name] || (() => '<div class="p-8 text-slate-500 italic">Em construção…</div>');
+      document.getElementById('content').innerHTML = fn();
+      // Re-bindings (HTML innerHTML zera handlers)
+      bindViewLinks();
+    }
+
+    function bindViewLinks() {
+      document.querySelectorAll('[data-view]').forEach(a => {
+        a.onclick = (e) => { e.preventDefault(); showView(a.dataset.view); };
+      });
+    }
+
+    bindViewLinks();
+    showView('dashboard');
+  </script>
+</body>
+</html>
