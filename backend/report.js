@@ -2165,20 +2165,6 @@ function baseHtmlShell(athleteName, dateStr, body) {
     letter-spacing: -0.1px;
   }
   .chapter h3:first-of-type { margin-top: 8px; }
-
-  /* Marcador "CAPÍTULO X" inserido via JS antes de cada h3 em capítulos
-     longos. Dá ao leitor referência de qual capítulo está vendo, mesmo
-     em páginas continuadas (workaround pra cabeçalho dinâmico que Chrome
-     não suporta nativamente). */
-  .chapter-marker {
-    font-size: 9px; font-weight: 800;
-    letter-spacing: 1.6px;
-    color: ${COLORS.cyan};
-    text-transform: uppercase;
-    margin: 24px 0 -8px;
-    padding-top: 10px;
-    border-top: 1px dashed ${COLORS.borderLight};
-  }
   p { margin: 8px 0; }
   ul, ol { margin: 8px 0; padding-left: 22px; }
   li { margin-bottom: 4px; }
@@ -2498,31 +2484,6 @@ function baseHtmlShell(athleteName, dateStr, body) {
 <div class="no-print">📄 Use ⌘+P (Mac) ou Ctrl+P (Win) para salvar este relatório como PDF. O PDF preserva o layout e a identidade visual.</div>
 ${body}
 <script>
-  // Marcador "CAPÍTULO X" antes de cada h3 em capítulos longos (≥3 h3s).
-  // Quando o capítulo se estende por várias páginas A4, há boa chance
-  // do leitor ver um marcador no topo de cada página continuada — mesmo
-  // sem cabeçalho dinâmico CSS Paged Media (que Chrome não suporta).
-  // Visualmente aparece no PDF e na tela (cor cyan, pequeno, com regra).
-  (function() {
-    document.querySelectorAll('.chapter, .annex').forEach(function(ch) {
-      var numEl = ch.querySelector('.chapter-num');
-      if (!numEl) return;
-      var num = numEl.textContent.trim();
-      var h3s = ch.querySelectorAll(':scope > h3, :scope > .keep-together > h3, :scope > .keep-together-start > h3');
-      if (h3s.length < 3) return;
-      h3s.forEach(function(h3, i) {
-        if (i === 0) return;
-        // Se o h3 está dentro de um keep-together, marcador vai antes do wrapper
-        var anchor = h3;
-        while (anchor.parentNode !== ch) anchor = anchor.parentNode;
-        var marker = document.createElement('div');
-        marker.className = 'chapter-marker';
-        marker.textContent = num;
-        anchor.parentNode.insertBefore(marker, anchor);
-      });
-    });
-  })();
-
   // Antes de imprimir, força <details> abertos pra garantir que o PDF
   // contenha o texto do manifesto inteiro (CSS @media print sozinho não
   // basta em todos browsers).
