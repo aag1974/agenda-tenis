@@ -164,25 +164,21 @@
   <div class="px-3">
     <div class="bg-white rounded-xl p-3 text-slate-900">
 
-      <!-- Toggle saque/recepção -->
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-full bg-cyan-100 text-cyan-800 font-bold text-sm flex items-center justify-center">AL</div>
-          <div>
-            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Marcando</div>
-            <div class="font-semibold text-slate-900 text-sm">Anna Luiza</div>
-          </div>
+      <!-- Header do painel -->
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-full bg-cyan-100 text-cyan-800 font-bold text-sm flex items-center justify-center">AL</div>
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Marcando</div>
+          <div class="font-semibold text-slate-900 text-sm">Anna Luiza</div>
         </div>
-        <button id="btnTrocaSaque" class="text-[11px] px-2.5 py-1 rounded border border-slate-300 hover:bg-slate-50 text-slate-600">
-          ⇄ Trocar saque
-        </button>
+        <div class="ml-auto text-[10px] text-slate-400">Saque controlado automático</div>
       </div>
 
-      <!-- Indicador grande de quem saca -->
+      <!-- Indicador grande de quem saca · automático pela regra do tênis -->
       <div id="modeBanner" class="rounded-lg px-3 py-2 mb-3 flex items-center gap-2 bg-cyan-50 border border-cyan-200">
         <span class="text-xl">🎾</span>
         <span class="text-sm font-bold text-cyan-800 uppercase tracking-wide" id="modeLabel">Anna sacando</span>
-        <span class="text-xs text-cyan-700/70 ml-auto" id="modeHint">marque o resultado de cada ponto</span>
+        <span class="text-xs text-cyan-700/70 ml-auto" id="modeHint">3º set · 2-1 · 30-15</span>
       </div>
 
       <!-- Grid de botões — modo SACANDO (default) -->
@@ -462,13 +458,12 @@
       bumpStat(last.stat, -1);
     });
 
-    // Toggle saque/recepção
-    let modo = 'saque';
-    const btnsSacando = document.getElementById('btnsSacando');
-    const btnsRecebendo = document.getElementById('btnsRecebendo');
-    const banner = document.getElementById('modeBanner');
-    const label = document.getElementById('modeLabel');
-    const hint = document.getElementById('modeHint');
+    // Saque controlado pela regra do tênis (game completo → troca servidor;
+    // tiebreak: 1 ponto inicial e depois alterna a cada 2). Configuração
+    // (quem inicia, formato, ad/no-ad, super-TB no 3º) é definida ANTES de
+    // abrir esta tela, no fluxo Scout ao Vivo. Backend processa cada ponto
+    // marcado e atualiza o banner sozinho. Aqui mostramos só estado fixo.
+
     // Modal compartilhar
     const modal = document.getElementById('modalCompartilhar');
     const abrirModal = () => {
@@ -486,25 +481,6 @@
       if (e.target === modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
-      }
-    });
-
-    document.getElementById('btnTrocaSaque').addEventListener('click', () => {
-      modo = (modo === 'saque') ? 'recepcao' : 'saque';
-      if (modo === 'saque') {
-        btnsSacando.classList.remove('hidden');
-        btnsRecebendo.classList.add('hidden');
-        banner.className = 'rounded-lg px-3 py-2 mb-3 flex items-center gap-2 bg-cyan-50 border border-cyan-200';
-        label.className = 'text-sm font-bold text-cyan-800 uppercase tracking-wide';
-        hint.className = 'text-xs text-cyan-700/70 ml-auto';
-        label.textContent = 'Anna sacando';
-      } else {
-        btnsSacando.classList.add('hidden');
-        btnsRecebendo.classList.remove('hidden');
-        banner.className = 'rounded-lg px-3 py-2 mb-3 flex items-center gap-2 bg-rose-50 border border-rose-200';
-        label.className = 'text-sm font-bold text-rose-800 uppercase tracking-wide';
-        hint.className = 'text-xs text-rose-700/70 ml-auto';
-        label.textContent = 'Anna recebendo';
       }
     });
   </script>
