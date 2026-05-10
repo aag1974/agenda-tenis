@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tennis Flow — Hub da família (mockup)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+    .brand-bg { background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 50%, #1f5b75 100%); }
+    .card-tile {
+      background: white;
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .card-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+    .card-add {
+      background: rgba(255,255,255,0.05);
+      border: 2px dashed rgba(255,255,255,0.25);
+      color: rgba(255,255,255,0.65);
+      border-radius: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .card-add:hover { background: rgba(255,255,255,0.1); border-color: rgba(6,182,212,0.6); color: white; }
+    .scroll-thin::-webkit-scrollbar { height: 8px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+  </style>
+</head>
+<body class="brand-bg min-h-screen text-white">
+
+  <!-- Header -->
+  <header class="px-6 py-3 flex items-center justify-between border-b border-white/10" style="height: 60px;">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🎾</span>
+      <div>
+        <div class="text-base font-semibold leading-tight">Tennis <span class="font-normal opacity-70">Flow</span></div>
+        <div class="text-[11px] text-cyan-200">Família Garcia</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button class="text-white/80 hover:text-white relative">🔔
+        <span class="absolute -top-1 -right-1 bg-red-500 text-[10px] rounded-full w-4 h-4 flex items-center justify-center">2</span>
+      </button>
+      <div class="w-9 h-9 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-sm font-semibold">AG</div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto px-6 py-8">
+
+    <!-- Saudação -->
+    <div class="mb-8">
+      <h1 class="text-2xl font-semibold">Olá, Alexandre 👋</h1>
+      <p class="text-sm text-cyan-100/80 mt-1">2 atletas vinculados · escolha por onde quer entrar</p>
+    </div>
+
+    <!-- Atletas -->
+    <section class="mb-10">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-cyan-200/80">Atletas</h2>
+        <span class="text-xs text-white/50">Clique pra abrir a agenda do atleta</span>
+      </div>
+      <div class="flex gap-3 flex-wrap">
+
+        <!-- Card Anna -->
+        <a class="card-tile flex items-center gap-3 text-slate-900" style="min-width: 240px;">
+          <div class="w-12 h-12 rounded-full bg-cyan-100 text-cyan-800 font-semibold text-lg flex items-center justify-center shrink-0">AL</div>
+          <div class="min-w-0">
+            <div class="font-semibold text-slate-900 truncate">Anna Luiza Garcia</div>
+            <div class="text-xs text-slate-500">12F · CBT 55º · DF 3º</div>
+            <div class="text-[11px] text-cyan-700 mt-0.5">📅 Próx. torneio: 26/05</div>
+          </div>
+        </a>
+
+        <!-- Card Henrique -->
+        <a class="card-tile flex items-center gap-3 text-slate-900" style="min-width: 240px;">
+          <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 font-semibold text-lg flex items-center justify-center shrink-0">HG</div>
+          <div class="min-w-0">
+            <div class="font-semibold text-slate-900 truncate">Henrique Garcia</div>
+            <div class="text-xs text-slate-500">14M · CBT 142º · DF 8º</div>
+            <div class="text-[11px] text-cyan-700 mt-0.5">📅 Próx. torneio: 02/06</div>
+          </div>
+        </a>
+
+        <!-- + Adicionar -->
+        <a class="card-add text-sm" style="min-width: 200px;">
+          <span class="text-xl">+</span> Adicionar atleta
+        </a>
+
+      </div>
+    </section>
+
+    <!-- Performance -->
+    <section class="mb-10">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-cyan-200/80">Performance</h2>
+        <span class="text-xs text-white/50">Análise estatística e relatórios assinados</span>
+      </div>
+      <div class="flex gap-3 flex-wrap">
+
+        <!-- Anna - perf -->
+        <a class="card-tile flex items-center gap-3 text-slate-900" style="min-width: 280px;">
+          <div class="w-10 h-10 rounded-lg bg-violet-100 text-violet-700 font-semibold flex items-center justify-center shrink-0">📊</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-slate-900 truncate">Anna Luiza Garcia</div>
+            <div class="text-xs text-emerald-700 mt-0.5">✓ 1ª edição entregue · 09/05</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">25 partidas analisadas · Glicko 1.842 ±112</div>
+          </div>
+        </a>
+
+        <!-- Henrique - perf -->
+        <a class="card-tile flex items-center gap-3 text-slate-900" style="min-width: 280px;">
+          <div class="w-10 h-10 rounded-lg bg-violet-100 text-violet-700 font-semibold flex items-center justify-center shrink-0">📊</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-slate-900 truncate">Henrique Garcia</div>
+            <div class="text-xs text-amber-700 mt-0.5">⏳ relatório ainda não solicitado</div>
+            <div class="text-[11px] text-cyan-700 mt-0.5 underline">Solicitar análise completa →</div>
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+    <!-- Scouting -->
+    <section class="mb-10">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-cyan-200/80">Scouting</h2>
+        <span class="text-xs text-white/50">Head-to-head e análise de adversários</span>
+      </div>
+      <div class="flex gap-3 flex-wrap">
+
+        <!-- Anna - scouting -->
+        <a class="card-tile flex items-center gap-3 text-slate-900" style="min-width: 280px;">
+          <div class="w-10 h-10 rounded-lg bg-cyan-100 text-cyan-700 font-semibold flex items-center justify-center shrink-0">🎯</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-slate-900 truncate">Anna Luiza Garcia</div>
+            <div class="text-xs text-slate-600 mt-0.5">12 oponentes mapeados · 25 jogos</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Próx. chave G1 Brasiliense · 4 já enfrentadas</div>
+          </div>
+        </a>
+
+        <!-- Henrique - scouting -->
+        <a class="card-tile flex items-center gap-3 text-slate-900" style="min-width: 280px;">
+          <div class="w-10 h-10 rounded-lg bg-cyan-100 text-cyan-700 font-semibold flex items-center justify-center shrink-0">🎯</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-slate-900 truncate">Henrique Garcia</div>
+            <div class="text-xs text-slate-600 mt-0.5">8 oponentes mapeados · 14 jogos</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Sem chave aberta no momento</div>
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+    <!-- Footer hint -->
+    <div class="mt-12 text-center text-xs text-white/40">
+      Tennis Flow · v0.9.47 · família com 2 atletas
+    </div>
+
+  </main>
+
+</body>
+</html>
