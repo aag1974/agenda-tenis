@@ -753,9 +753,15 @@ function renderScoreHistogram(analysis, ctx) {
   const maxCount = Math.max(...entries.map(e => e[1]));
   const total = entries.reduce((s, [, c]) => s + c, 0);
 
+  // Histograma é longo (até 22 placares) — pode quebrar página, mas o
+   // título + intro + primeiras 8 linhas devem ficar juntos pra evitar
+   // órfãos. Forçar break-before quando não couber, em vez de deixar
+   // 4 linhas órfãs no fim de uma página.
   return `
-    <h3>Distribuição de placares (todos os sets disputados)</h3>
-    <p>Em ${total} sets registrados, os placares mais frequentes foram:</p>
+    <div class="keep-together-start">
+      <h3>Distribuição de placares (todos os sets disputados)</h3>
+      <p>Em ${total} sets registrados, os placares mais frequentes foram:</p>
+    </div>
     <div class="score-hist">
       ${entries.map(([score, count]) => {
         const pct = (count / maxCount) * 100;
@@ -906,13 +912,21 @@ function renderHeadToHeadDeep(ctx) {
   // Stash dos restantes pro Anexo D (consumido em renderAnnexH2hRest)
   ctx._h2hRest = remaining;
 
+  // Renderiza primeiro card junto do título pra evitar h3 órfão. Demais
+  // cards podem quebrar entre páginas livremente.
+  const firstCard = main[0] ? renderCard(main[0]) : '';
+  const restCards = main.slice(1).map(renderCard).join('');
+
   return `
-    <h3>4.5 Confrontos recorrentes (head-to-head)</h3>
-    <p>${main.length === opps.length
-      ? `Análise individual ${G.gender === 'F' ? 'das' : 'dos'} ${opps.length} ${G.adversarios} ${G.enfrentadas} 2 ou mais vezes.`
-      : `Análise dos ${main.length} confrontos mais relevantes — recentes ou em aberto. Os outros ${remaining.length} estão listados no Anexo D.`}
-      Cada confronto repetido conta uma história — entender essa história é essencial pra preparação dos próximos encontros.</p>
-    ${main.map(renderCard).join('')}
+    <div class="keep-together">
+      <h3>4.5 Confrontos recorrentes (head-to-head)</h3>
+      <p>${main.length === opps.length
+        ? `Análise individual ${G.gender === 'F' ? 'das' : 'dos'} ${opps.length} ${G.adversarios} ${G.enfrentadas} 2 ou mais vezes.`
+        : `Análise dos ${main.length} confrontos mais relevantes — recentes ou em aberto. Os outros ${remaining.length} estão listados no Anexo D.`}
+        Cada confronto repetido conta uma história — entender essa história é essencial pra preparação dos próximos encontros.</p>
+      ${firstCard}
+    </div>
+    ${restCards}
 
     <h4>Síntese dos head-to-head</h4>
     ${(() => {
@@ -1338,7 +1352,7 @@ function renderAnnexB(ctx) {
 function renderAnnexC(ctx) {
   const G = ctx?.G || G_DEFAULT;
   return `
-    <section class="annex">
+    <section class="annex annex-secondary">
       <div class="chapter-num">ANEXO C</div>
       <h2 class="chapter-title">Notas técnicas</h2>
 
@@ -1383,7 +1397,7 @@ function renderAnnexH2hRest(ctx) {
   const rest = ctx._h2hRest || [];
   if (!rest.length) return '';
   return `
-    <section class="annex">
+    <section class="annex annex-secondary">
       <div class="chapter-num">ANEXO D</div>
       <h2 class="chapter-title">Demais confrontos recorrentes</h2>
       <p>Adversários enfrentados 2+ vezes que não entraram no corpo principal por serem menos recentes ou menos críticos pra preparação imediata. Histórico completo abaixo.</p>
@@ -1543,6 +1557,9 @@ function baseHtmlShell(athleteName, dateStr, body) {
        força break-before, e duas forças seguidas geram página em branco
        entre elas. */
     .chapter, .annex { page-break-before: always; break-before: page; }
+    /* Anexos secundários (C — notas técnicas; D — h2h restantes) fluem
+       após o anexo anterior em vez de cada um ocupar página própria. */
+    .annex.annex-secondary { page-break-before: auto; break-before: auto; }
     .cover { page-break-after: always; break-after: page; }
 
     /* Cabeçalho NUNCA fica órfão no fim da página — sempre acompanha o
@@ -1577,10 +1594,16 @@ function baseHtmlShell(athleteName, dateStr, body) {
        avoid mantém o conjunto unido — se não couber, vai inteiro pra
        próxima página. */
     .keep-together,
+    .keep-together-start,
     .calendar-heatmap-wrap,
     .player-card-body,
     .dna-radar-wrap {
       page-break-inside: avoid; break-inside: avoid;
+    }
+    /* keep-together-start: título sempre acompanhado de algum conteúdo.
+       Evita ficar isolado no fim da página antes do break. */
+    .keep-together-start + * {
+      page-break-before: avoid; break-before: avoid;
     }
 
     /* Heatmap não deve scrollar em print — força largura natural */
@@ -2426,6 +2449,8 @@ function baseHtmlShell(athleteName, dateStr, body) {
   /* SIGNATURE (final, no PDF) ─────────────────────────────── */
   .signature {
     margin: 36px 0 24px;
+    page-break-before: avoid; break-before: avoid;
+    page-break-inside: avoid; break-inside: avoid;
   }
   .signature-rule {
     height: 1px; background: ${COLORS.navy};
