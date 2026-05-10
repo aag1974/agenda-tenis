@@ -850,6 +850,71 @@ app.post('/api/admin/report-requests/:profileId/:requestId/deliver', requireAuth
 // detectado, fica "de" — soa neutro o suficiente.
 function G_GENDER_PARTICLE() { return 'de'; }
 
+// Entrega retroativa: cria um report-request sintético + entrega numa só
+// chamada. Caso de uso: cliente pediu o relatório por email/whatsapp ANTES
+// do fluxo "Solicitar análise completa" existir, então não há request
+// entry pré-existente. Esse endpoint registra o pedido fora-de-fluxo no
+// histórico do profile e entrega o HTML como qualquer outra entrega.
+app.post('/api/admin/profiles/:profileId/seed-deliver', requireAuth, requireAdmin, (req, res) => {
+  const { profileId } = req.params;
+  const html = typeof req.body === 'string' ? req.body : null;
+  if (!html || html.length < 500) {
+    return res.status(400).json({ error: 'HTML do relatório obrigatório (text/html no body)' });
+  }
+  const profile = getProfile(profileId);
+  if (!profile) return res.status(404).json({ error: 'Perfil não encontrado' });
+  const athleteName = profile.athleteName || 'atleta';
+
+  const targetEmail = String(req.query.as || '').trim().toLowerCase();
+  if (!targetEmail) {
+    return res.status(400).json({ error: 'Email do destinatário obrigatório (?as=email)' });
+  }
+  const targetUser = listUsers().find(u => u.email.toLowerCase() === targetEmail);
+  if (!targetUser) {
+    return res.status(400).json({ error: `Email não cadastrado no app: ${targetEmail}. Pra receber o push e ter acesso ao relatório, ele precisa criar conta antes.` });
+  }
+
+  // Cria pedido sintético — fica registrado como entrega retroativa, com
+  // marca clara no consentText pra auditoria. Status já vai pra delivered.
+  const reqEntry = addReportRequest(profileId, {
+    status: 'pending',
+    source: 'admin-seeded',
+    athleteName,
+    requesterUserId: targetUser.id,
+    requesterEmail: targetUser.email,
+    requesterFirstName: targetUser.firstName || null,
+    requesterLastName: targetUser.lastName || null,
+    consentText: '(Entrega retroativa pelo admin — solicitação original veio fora do app, antes do fluxo "Solicitar análise completa". Registrada aqui pra histórico e acesso do destinatário.)',
+  });
+
+  const reportId = reqEntry.id;
+  saveDeliveredReport(profileId, reportId, html);
+
+  const updated = updateReportRequest(profileId, reqEntry.id, {
+    status: 'delivered',
+    deliveredAt: new Date().toISOString(),
+    deliveredBy: req.userEmail,
+    reportId,
+    deliveredToUserId: targetUser.id,
+  });
+
+  addAlertEvents(profileId, [{
+    type: 'report_delivered',
+    message: `📊 Seu Relatório de Performance ${G_GENDER_PARTICLE(profile)} ${athleteName} está pronto!`,
+    reportId,
+    dedupeKey: `report-delivered-${reportId}`,
+  }]);
+
+  sendPushToUsers([targetUser.id], {
+    title: '✨ Seu Relatório de Performance está pronto',
+    body: `Análise completa de ${athleteName} disponível.`,
+    tag: `report-delivered-${reportId}`,
+    url: `/api/profiles/${profileId}/reports/${reportId}`,
+  }).catch(err => console.error('[seed-deliver push]', err.message || err));
+
+  res.json(updated);
+});
+
 // Cliente lista relatórios entregues do próprio perfil (acesso autenticado)
 app.get('/api/profiles/:id/reports', requireAuth, ensureOwnedProfile, (req, res) => {
   res.json(listDeliveredReports(req.params.id));
@@ -891,12 +956,19 @@ app.patch('/api/admin/report-requests/:profileId/:requestId', requireAuth, requi
 
 // Admin: lista todas as solicitações através de todos os perfis.
 // Visão pipeline: pending → in_progress → delivered.
+// Se o pedido foi gravado com athleteName placeholder ("a atleta",
+// "Atleta", null) por bug antigo do fallback do frontend, exibe o nome
+// real do profile — é display-only, não reescreve o JSON.
 app.get('/api/admin/report-requests', requireAuth, requireAdmin, (req, res) => {
+  const PLACEHOLDER = /^(a\s*atleta|atleta|sem nome)$/i;
   const all = [];
   for (const p of listProfiles({})) {
     const requests = getReportRequests(p.id);
     for (const r of requests) {
-      all.push({ ...r, profileId: p.id });
+      const display = (!r.athleteName || PLACEHOLDER.test(r.athleteName))
+        ? (p.athleteName || r.athleteName || null)
+        : r.athleteName;
+      all.push({ ...r, athleteName: display, profileId: p.id });
     }
   }
   all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));

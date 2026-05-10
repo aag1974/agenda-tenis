@@ -488,6 +488,15 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao entregar relatório');
     return r.json();
   },
+  async seedAndDeliverReport(profileId, html, asEmail) {
+    const r = await fetch(`/api/admin/profiles/${profileId}/seed-deliver?as=${encodeURIComponent(asEmail)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      body: html,
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro na entrega retroativa');
+    return r.json();
+  },
 };
 
 // ===== Init =====
@@ -3632,6 +3641,85 @@ function openAdminModal() {
     return wrap;
   }
 
+  // Entrega retroativa — caso de cliente que pediu por fora do app, antes
+  // do fluxo "Solicitar análise completa" existir. Cria um request entry
+  // sintético + entrega numa só ação. Único caso conhecido: Breiner pro
+  // Rafa, mas a UI fica pronta caso apareça outro.
+  function seedDeliverSection() {
+    const wrap = el('div', { class: 'border border-emerald-200 rounded-lg p-3 bg-emerald-50/40' });
+    wrap.appendChild(el('div', { class: 'text-sm font-semibold text-slate-700' }, '📤 Entregar relatório retroativo'));
+    wrap.appendChild(el('div', { class: 'text-xs text-slate-500 mt-0.5' },
+      'Pra cliente que pediu fora do app, antes do botão "Solicitar análise completa". Cria registro + dispara push/alerta.'));
+
+    const select = el('select', {
+      class: 'mt-2 w-full text-sm border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-900',
+    }, el('option', { value: '' }, 'Carregando perfis…'));
+    const emailInput = el('input', {
+      type: 'email',
+      placeholder: 'email do destinatário (ex: breinerq@gmail.com)',
+      class: 'mt-2 w-full text-sm border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-900',
+    });
+    const fileInput = el('input', { type: 'file', accept: 'text/html,.html', class: 'hidden' });
+    const fileLabel = el('div', { class: 'mt-2 text-xs text-slate-500 italic' }, 'Nenhum arquivo selecionado');
+    const pickBtn = el('button', {
+      class: 'mt-2 w-full text-xs px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold',
+      onClick: () => fileInput.click(),
+    }, '📎 Escolher HTML do relatório');
+    fileInput.onchange = () => {
+      const f = fileInput.files?.[0];
+      fileLabel.textContent = f ? `📄 ${f.name} (${Math.round(f.size / 1024)} KB)` : 'Nenhum arquivo selecionado';
+    };
+
+    const deliverBtn = el('button', {
+      class: 'mt-2 w-full text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold',
+    }, '📤 Entregar agora');
+    deliverBtn.onclick = async () => {
+      const profileId = select.value;
+      const email = emailInput.value.trim();
+      const file = fileInput.files?.[0];
+      if (!profileId) return alert('Escolha o atleta.');
+      if (!email) return alert('Informe o email do destinatário.');
+      if (!file) return alert('Selecione o HTML do relatório.');
+      const profileLabel = select.options[select.selectedIndex]?.textContent || profileId;
+      if (!confirm(`Entregar "${file.name}" pra ${email}?\n\nAtleta: ${profileLabel}\n\nIsso vai:\n1. Criar pedido retroativo no histórico\n2. Salvar HTML\n3. Disparar push pra ${email}\n4. Criar alerta no painel dele`)) return;
+      deliverBtn.disabled = true;
+      deliverBtn.textContent = '⏳ Enviando…';
+      try {
+        const html = await file.text();
+        await api.seedAndDeliverReport(profileId, html, email);
+        deliverBtn.textContent = '✅ Entregue!';
+        emailInput.value = '';
+        fileInput.value = '';
+        fileLabel.textContent = 'Nenhum arquivo selecionado';
+        setTimeout(() => {
+          deliverBtn.disabled = false;
+          deliverBtn.textContent = '📤 Entregar agora';
+        }, 2500);
+      } catch (err) {
+        alert('Erro: ' + err.message);
+        deliverBtn.disabled = false;
+        deliverBtn.textContent = '📤 Entregar agora';
+      }
+    };
+
+    api.listAdminProfiles().then(profiles => {
+      select.innerHTML = '';
+      select.appendChild(el('option', { value: '' }, '— escolha o atleta —'));
+      for (const p of profiles) {
+        const owner = p.ownerEmail || '(sem dono)';
+        select.appendChild(el('option', { value: p.id },
+          `${p.athleteName || '(sem nome)'} — ${owner}`,
+        ));
+      }
+    }).catch(err => {
+      select.innerHTML = '';
+      select.appendChild(el('option', { value: '' }, `Erro: ${err.message}`));
+    });
+
+    wrap.append(select, emailInput, pickBtn, fileLabel, fileInput, deliverBtn);
+    return wrap;
+  }
+
   const card = el('div', {
     class: 'bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col',
     onClick: e => e.stopPropagation(),
@@ -3661,6 +3749,7 @@ function openAdminModal() {
         true,
       ),
       pendingRequestsSection(),
+      seedDeliverSection(),
       crossHouseholdAccess(),
     ),
     state.version && el('div', {
@@ -4289,7 +4378,7 @@ function renderReportCta(profileId) {
     class: 'text-xs px-3 py-1.5 rounded bg-[#0e3a4d] text-white hover:bg-[#16526a]',
     onClick: () => {
       const profile = state.profiles.find(p => p.id === profileId);
-      const athleteName = profile?.athleteName || 'a atleta';
+      const athleteName = profile?.athleteName || profile?.tiEmail || 'Atleta';
       openCompleteReportRequestModal(athleteName);
     },
   }, 'Solicitar análise completa →'));
