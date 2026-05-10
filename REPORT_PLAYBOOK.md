@@ -249,6 +249,59 @@ tons (imperativo, observação, conselho de quadra, leitura tática).
 
 ---
 
+## 9.4. Cabeçalho dinâmico em páginas continuadas (decisão futura)
+
+Pedido recorrente: quando um capítulo se estende por várias páginas A4
+no PDF, gostaria-se de ter "Capítulo X" no topo de cada página continuada
+(running header).
+
+**Decisão atual: não implementar.** Chrome (que é o que usamos com Cmd+P)
+não suporta CSS Paged Media nativamente — `@page { @top-right { content:
+string(...) }}` não funciona. O leitor identifica o capítulo pela
+sequência natural do conteúdo, sem prejuízo grave.
+
+Quando retomar (mais clientes, ou se virar pedido frequente), 3 caminhos:
+
+1. **paged.js** (polyfill JS, ~250KB CDN) — implementa CSS Paged Media
+   completo. Trade-off: reescreve o DOM em paginação tipo livro,
+   precisa carregar só sob demanda (botão "Visualizar pra impressão")
+   pra não quebrar a interatividade do `<details>` do manifesto.
+2. **puppeteer server-side** — backend gera PDF via Chrome headless.
+   Solução robusta mas pesada (~150MB Chromium no servidor). Ganhamos
+   download direto via API e controle total de paged media.
+3. **Cálculo manual de quebras via JS** — frágil, zoom/dpi do user
+   muda. Não recomendado.
+
+Tentativa anterior (commit revertido `93cf36e`): inserir marker estático
+antes de cada h3 dentro de capítulos longos. Resultado poluiu o documento
+— marker aparecia ANTES DE CADA TABELA, não só no topo de página
+continuada. Lição: pra cabeçalho dinâmico real, ou faz com paged.js/
+puppeteer ou aceita não ter.
+
+## 9.5. Benchmarking comparativo de categoria (futuro, separado do produto)
+
+Hoje o Glicko só compara o atleta com ele mesmo no tempo (banda de incerteza
+em torno do próprio rating). Pra ter "Rafael 1828 vs mediana da 12M-DF",
+precisaríamos rodar Glicko-2 sobre **toda a rede de partidas da categoria**.
+
+**Decisão tomada**: NÃO está no produto principal. Quando for implementado,
+será como **scraper paralelo, admin-only**, separado do fluxo de cliente.
+Razões:
+
+- O scraper atual roda no perfil do cliente autenticado (login dele no TI).
+  Pra cobrir categoria inteira, precisa scrape público das chaves de torneios
+  — fluxo diferente, com risco de rate-limit e responsabilidade do admin.
+- O valor agregado só compensa quando há volume de torneios scrapeados;
+  enquanto isso, ranking CBT (pontos) serve como proxy ordinal aceitável.
+- Foco do MVP é fechar o ciclo de entrega + validação com cliente real, não
+  ampliar a profundidade analítica.
+
+Quando retomar:
+1. Estender o scraper pra ler chaves públicas de torneios CBT na categoria/UF.
+2. Storage agregado: `data/circuit-glicko/<categoria>-<uf>.json`.
+3. Pipeline de Glicko-2 rodando sobre essa rede, separado do per-atleta.
+4. Render no Cap 4 do relatório: linha de mediana da categoria + percentil.
+
 ## 10. Separação Relatório Coach × Anexo Técnico
 
 Avaliação 9.5 apontou que ainda há "vazamento acadêmico" no Anexo C
