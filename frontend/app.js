@@ -4660,13 +4660,13 @@ function scoutListItem(m, profileId, parentClose, isLive) {
   const statusBadge = isLive
     ? el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700' }, '● AO VIVO')
     : el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700' }, m.abandoned ? 'Abandonado' : 'Encerrado');
-  // Nota 0-10 inline (se tem pontos suficientes pra calcular)
+  // Nota 0-10 inline (cores fixas Anna cyan, adv rose)
   const cs = m.computedScore;
-  const noteBadge = cs && cs.score != null
-    ? (() => {
-        const color = cs.score < 4 ? 'text-rose-700 bg-rose-100' : cs.score < 7 ? 'text-amber-800 bg-amber-100' : 'text-emerald-700 bg-emerald-100';
-        return el('span', { class: `text-[10px] font-bold px-2 py-0.5 rounded-full ${color}` }, `Nota ${cs.score.toFixed(1)}`);
-      })()
+  const noteBadge = cs && (cs.a?.score != null || cs.o?.score != null)
+    ? el('div', { class: 'flex gap-1' },
+        cs.a?.score != null && el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full text-cyan-700 bg-cyan-100' }, `Anna ${cs.a.score.toFixed(1)}`),
+        cs.o?.score != null && el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full text-rose-700 bg-rose-100' }, `Adv ${cs.o.score.toFixed(1)}`),
+      )
     : null;
 
   const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 hover:bg-slate-50 mt-2' });
@@ -4927,6 +4927,17 @@ function renderScorePanel(m) {
   grid.appendChild(rowForSide('a', m.athleteName, m, cs, cg, sets));
   grid.appendChild(rowForSide('o', m.opponentName, m, cs, cg, sets));
   wrap.appendChild(grid);
+
+  // Banner TIEBREAK / SUPER-TB destacado
+  const mode = m.currentGame?.mode;
+  if ((mode === 'tiebreak' || mode === 'super_tiebreak') && !m.finished) {
+    const target = mode === 'super_tiebreak' ? 10 : 7;
+    const label = mode === 'super_tiebreak' ? 'SUPER TIEBREAK' : 'TIEBREAK';
+    wrap.appendChild(el('div', {
+      class: 'mt-2 rounded-lg px-3 py-2 text-center font-bold text-sm flex items-center justify-center gap-2',
+      style: 'background: rgba(252, 211, 77, 0.15); border: 1px solid rgba(252, 211, 77, 0.4); color: #fde68a;',
+    }, `🎾 ${label}`, el('span', { class: 'text-xs font-normal opacity-80' }, `· primeiro a ${target} pts (com 2 de vantagem)`)));
+  }
   return wrap;
 }
 
@@ -5041,14 +5052,15 @@ function renderStatsPanel(m) {
   head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-rose-300' }, 'Adv'));
   tbl.appendChild(head);
 
-  // 1ª linha: Nota técnica (destacada)
+  // 1ª linha: Nota técnica (destacada) — cores fixas (cyan Anna, rose adv)
   const cs = m.computedScore;
-  if (cs && cs.score != null) {
-    const color = cs.score < 4 ? '#fda4af' : cs.score < 7 ? '#fcd34d' : '#6ee7b7';
+  if (cs && (cs.a?.score != null || cs.o?.score != null)) {
     const noteRow = el('div', { class: 'grid grid-cols-3 text-xs border-b border-white/10', style: 'background: rgba(255,255,255,0.04)' });
-    noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center font-extrabold text-lg', style: `color:${color}` }, cs.score.toFixed(1)));
+    noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center font-extrabold text-lg', style: 'color:#67e8f9' },
+      cs.a?.score != null ? cs.a.score.toFixed(1) : '—'));
     noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center text-white/85 font-semibold uppercase tracking-wide text-[10px]' }, 'Nota técnica · 0-10'));
-    noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center text-white/40' }, '—'));
+    noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center font-extrabold text-lg', style: 'color:#fda4af' },
+      cs.o?.score != null ? cs.o.score.toFixed(1) : '—'));
     tbl.appendChild(noteRow);
   }
 
