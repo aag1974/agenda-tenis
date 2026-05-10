@@ -123,6 +123,14 @@ percepção de valor por solução.
 - Entrega de relatório passa a notificar via card de Performance no hub
   (badge "1 novo") em vez de só no sino?
 
+**Status atual** (2026-05-10): mockupado em `mockup-hub-pais.html`
+(standalone, raiz). User avaliou: *"too many clicks to nothing"* —
+adicionar uma tela hub antes do Kanban da Agenda gera fricção de
+navegação sem entregar valor proporcional. **Adiado**. Revisitar quando
+o portfólio de soluções (Performance, Scouting, Escola) ficar denso a
+ponto do hub justificar 1 clique extra. Mockup fica guardado pra essa
+hora.
+
 ## Tennis Flow Escola — visão de longo prazo
 
 Discutido em 2026-05-10. O app já tem 80% da arquitetura pra suportar o
