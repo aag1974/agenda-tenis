@@ -488,6 +488,62 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao entregar relatório');
     return r.json();
   },
+  async listLiveMatches(profileId) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao listar matches');
+    return r.json();
+  },
+  async createLiveMatch(profileId, body) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao criar match');
+    return r.json();
+  },
+  async getLiveMatch(profileId, matchId) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao buscar match');
+    return r.json();
+  },
+  async addLivePoint(profileId, matchId, winner, stat) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}/points`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ winner, stat }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao registrar ponto');
+    return r.json();
+  },
+  async undoLivePoint(profileId, matchId) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}/points/last`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao desfazer');
+    return r.json();
+  },
+  async addLiveNote(profileId, matchId, text, tag) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, tag }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao adicionar nota');
+    return r.json();
+  },
+  async abandonLiveMatch(profileId, matchId) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'abandon' }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao encerrar');
+    return r.json();
+  },
+  async deleteLiveMatch(profileId, matchId) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao deletar');
+    return r.json();
+  },
   async seedAndDeliverReport(profileId, html, asEmail) {
     const r = await fetch(`/api/admin/profiles/${profileId}/seed-deliver?as=${encodeURIComponent(asEmail)}`, {
       method: 'POST',
@@ -3331,6 +3387,7 @@ function toggleGearMenu() {
   const athleteFirstName = (profile?.athleteName || profile?.tiEmail || 'Atleta').split(/\s+/)[0];
   const athleteActions = profile ? [
     { label: 'Performance do Atleta', onClick: () => openAthleteCard() },
+    { label: '🎾 Scout ao Vivo', onClick: () => openScoutListModal() },
     { label: 'Credenciais TI', onClick: () => openProfileForm(profile) },
   ] : [];
   // Mobile: "Convidar membro" no menu (não tem o "+" do member stack que
@@ -4494,6 +4551,439 @@ async function openDeliveredReportsModal(profileId) {
     list.appendChild(item);
   });
   body.appendChild(list);
+}
+
+// ===== Scout ao Vivo (live match tracking) =====
+
+// Modal lista: matches em curso + form pra criar novo
+function openScoutListModal() {
+  const profileId = state.activeProfileId;
+  if (!profileId) return alert('Selecione um perfil');
+  const profile = state.profiles.find(p => p.id === profileId);
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-1rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    style: 'max-height: 92dvh;',
+  });
+  card.appendChild(el('div', { class: 'bg-gradient-to-br from-[#0e3a4d] to-[#1f5b75] text-white px-5 py-3 flex items-center justify-between' },
+    el('span', { class: 'font-medium' }, '🎾 Scout ao Vivo'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  ));
+  const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1 space-y-4' });
+  card.appendChild(body);
+  root.append(overlay, card);
+
+  body.appendChild(el('div', { class: 'text-xs text-slate-500 italic' }, 'Carregando…'));
+
+  api.listLiveMatches(profileId).then(matches => {
+    body.innerHTML = '';
+    const live = matches.filter(m => !m.finished);
+    const past = matches.filter(m => m.finished);
+
+    // Botão criar novo match
+    body.appendChild(el('button', {
+      class: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold px-4 py-3 rounded-lg',
+      onClick: () => { close(); openScoutCreateModal(profileId); },
+    }, '+ Iniciar novo scout'));
+
+    if (live.length) {
+      body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Em andamento'));
+      live.forEach(m => body.appendChild(scoutListItem(m, profileId, close, true)));
+    }
+    if (past.length) {
+      body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-3' }, 'Já marcados'));
+      past.forEach(m => body.appendChild(scoutListItem(m, profileId, close, false)));
+    }
+    if (!matches.length) {
+      body.appendChild(el('div', { class: 'text-sm text-slate-500 italic text-center py-6' },
+        'Nenhum scout ainda. Comece pelo botão acima.'));
+    }
+  }).catch(err => {
+    body.innerHTML = '';
+    body.appendChild(el('div', { class: 'text-sm text-red-600' }, `Erro: ${err.message}`));
+  });
+}
+
+function scoutListItem(m, profileId, parentClose, isLive) {
+  const score = renderScoreSummary(m);
+  const ctx = m.tournamentName ? `${m.tournamentName}${m.round ? ` · ${m.round}` : ''}` : (m.source === 'off-ti' ? 'fora do TI' : '');
+  const statusBadge = isLive
+    ? el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700' }, '● AO VIVO')
+    : el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700' }, m.abandoned ? 'Abandonado' : 'Encerrado');
+  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer mt-2' },
+    el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
+      el('div', { class: 'min-w-0 flex-1' },
+        el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${m.athleteName} vs ${m.opponentName}`),
+        ctx && el('div', { class: 'text-[11px] text-slate-500 truncate' }, ctx),
+      ),
+      statusBadge,
+    ),
+    el('div', { class: 'text-xs text-slate-700 font-medium' }, score),
+  );
+  wrap.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
+  return wrap;
+}
+
+function renderScoreSummary(m) {
+  if (!m.setsHistory || !m.currentSet) return '—';
+  const sets = m.setsHistory.map(s => `${s.a}-${s.o}`);
+  if (!m.finished) sets.push(`${m.currentSet.a}-${m.currentSet.o}*`);
+  return sets.join(' · ');
+}
+
+// Modal criar: form simples (atleta · adversária · contexto · config)
+function openScoutCreateModal(profileId) {
+  const profile = state.profiles.find(p => p.id === profileId);
+  const athleteName = profile?.athleteName || 'Atleta';
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-50', onClick: close });
+  const card = el('div', {
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-1rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    style: 'max-height: 92dvh;',
+  });
+  card.appendChild(el('div', { class: 'bg-gradient-to-br from-[#0e3a4d] to-[#1f5b75] text-white px-5 py-3 flex items-center justify-between' },
+    el('span', { class: 'font-medium' }, '🎾 Novo scout'),
+    el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
+  ));
+  const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1 space-y-3' });
+  card.appendChild(body);
+  root.append(overlay, card);
+
+  // Atleta
+  body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold' }, 'Atleta'));
+  body.appendChild(el('div', { class: 'text-sm font-semibold' }, athleteName));
+
+  // Adversária
+  const opponentInput = el('input', {
+    type: 'text',
+    placeholder: 'Nome da adversária',
+    class: 'w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-300',
+  });
+  body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Adversária'));
+  body.appendChild(opponentInput);
+
+  // Contexto
+  const contextInput = el('input', {
+    type: 'text',
+    placeholder: 'Ex: G1 Brasiliense · R2 · ou amistoso, treino…',
+    class: 'w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-300',
+  });
+  body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Contexto (opcional)'));
+  body.appendChild(contextInput);
+
+  // Quem saca
+  let firstServer = 'a';
+  const btnA = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold' }, `🎾 ${athleteName.split(/\s+/)[0]}`);
+  const btnO = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700' }, '🎾 Adversária');
+  btnA.onclick = () => {
+    firstServer = 'a';
+    btnA.className = 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
+    btnO.className = 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700';
+  };
+  btnO.onclick = () => {
+    firstServer = 'o';
+    btnO.className = 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
+    btnA.className = 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700';
+  };
+  body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Quem começa sacando?'));
+  body.appendChild(el('div', { class: 'flex gap-2' }, btnA, btnO));
+
+  // Formato
+  let format = 'best_of_3';
+  const formats = [
+    ['best_of_3', 'Melhor de 3'],
+    ['best_of_3_stb', 'Melhor de 3 + super-TB'],
+    ['one_set_match_tb', '1 set + match TB'],
+    ['pro_set_8', 'Pro-set 8 games'],
+  ];
+  const fmtBtns = formats.map(([key, label]) => {
+    const b = el('button', { class: 'text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-700' }, label);
+    b.dataset.key = key;
+    b.onclick = () => {
+      format = key;
+      fmtBtns.forEach(x => x.className = 'text-xs px-3 py-2 rounded-lg border border-slate-300 text-slate-700');
+      b.className = 'text-xs px-3 py-2 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
+    };
+    return b;
+  });
+  fmtBtns[0].className = 'text-xs px-3 py-2 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
+  body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Formato'));
+  body.appendChild(el('div', { class: 'grid grid-cols-2 gap-2' }, ...fmtBtns));
+
+  // Ad
+  const adCheck = el('input', { type: 'checkbox', class: 'rounded' });
+  adCheck.checked = true;
+  body.appendChild(el('label', { class: 'flex items-center gap-2 text-sm text-slate-700 mt-2' },
+    adCheck, el('span', null, 'Com vantagem (ad). Sem ad = ponto decide.')));
+
+  // Botão criar
+  const errBox = el('div', { class: 'text-xs text-red-600 hidden' });
+  body.appendChild(errBox);
+  const submitBtn = el('button', {
+    class: 'w-full bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-bold px-4 py-3 rounded-lg mt-3',
+  }, '▶ Iniciar tracking');
+  submitBtn.onclick = async () => {
+    const opponent = opponentInput.value.trim();
+    if (!opponent) {
+      errBox.textContent = 'Informe o nome da adversária';
+      errBox.classList.remove('hidden');
+      return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Criando…';
+    try {
+      const m = await api.createLiveMatch(profileId, {
+        opponentName: opponent,
+        athleteName,
+        tournamentName: contextInput.value.trim() || null,
+        config: { format, ad: adCheck.checked, firstServer },
+      });
+      close();
+      openScoutTrackModal(profileId, m.id);
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove('hidden');
+      submitBtn.disabled = false;
+      submitBtn.textContent = '▶ Iniciar tracking';
+    }
+  };
+  body.appendChild(submitBtn);
+  setTimeout(() => opponentInput.focus(), 50);
+}
+
+// Modal de tracking — coração do Scout ao Vivo
+async function openScoutTrackModal(profileId, matchId) {
+  const root = $('modal-root');
+  root.innerHTML = '';
+  const close = () => { root.innerHTML = ''; };
+
+  const overlay = el('div', { class: 'fixed inset-0 bg-slate-900 z-50', style: 'background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%);' });
+  const container = el('div', { class: 'relative z-50 max-w-md mx-auto text-white min-h-[100dvh] flex flex-col' });
+  overlay.appendChild(container);
+  root.appendChild(overlay);
+
+  // Carrega state
+  let m;
+  try {
+    m = await api.getLiveMatch(profileId, matchId);
+  } catch (err) {
+    container.appendChild(el('div', { class: 'p-6 text-red-300' }, `Erro: ${err.message}`));
+    container.appendChild(el('button', { class: 'm-4 px-4 py-2 rounded bg-white/10', onClick: close }, 'Fechar'));
+    return;
+  }
+
+  const render = () => {
+    container.innerHTML = '';
+
+    // Header
+    const isLive = !m.finished;
+    container.appendChild(el('div', { class: 'px-4 py-3 border-b border-white/10 flex items-center gap-3' },
+      el('button', { class: 'text-white/70 hover:text-white text-xl', onClick: close }, '←'),
+      el('div', { class: 'flex-1 min-w-0' },
+        el('div', { class: 'flex items-center gap-2' },
+          isLive ? el('span', { class: 'inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse' }) : null,
+          el('span', { class: `text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-red-400' : 'text-slate-400'}` },
+            isLive ? 'Ao vivo' : (m.abandoned ? 'Abandonado' : 'Encerrado')),
+        ),
+        el('div', { class: 'text-sm font-semibold truncate' }, `${m.athleteName} vs ${m.opponentName}`),
+        m.tournamentName && el('div', { class: 'text-[11px] text-cyan-200 truncate' }, m.tournamentName),
+      ),
+    ));
+
+    // Placar
+    container.appendChild(renderScorePanel(m));
+
+    // Botões de stat (se não terminou)
+    if (isLive) container.appendChild(renderStatButtons(m, profileId, async (winner, stat) => {
+      try {
+        m = await api.addLivePoint(profileId, m.id, winner, stat);
+        render();
+      } catch (err) { alert(err.message); }
+    }));
+
+    // Ações (undo / abandonar)
+    if (isLive) container.appendChild(renderActions(m, profileId, async (action) => {
+      try {
+        if (action === 'undo') m = await api.undoLivePoint(profileId, m.id);
+        else if (action === 'abandon') {
+          if (!confirm('Encerrar este match? Você não poderá adicionar mais pontos.')) return;
+          m = await api.abandonLiveMatch(profileId, m.id);
+        }
+        render();
+      } catch (err) { alert(err.message); }
+    }));
+
+    // Stats consolidados
+    container.appendChild(renderStatsPanel(m));
+  };
+
+  render();
+}
+
+function renderScorePanel(m) {
+  const cs = m.currentSet;
+  const cg = formatGameLabel(m.currentGame, m.config?.ad);
+  const sets = m.setsHistory || [];
+  const wrap = el('div', { class: 'px-4 py-4' });
+  const grid = el('div', { class: 'bg-white/5 rounded-xl border border-white/10 overflow-hidden' });
+  const header = el('div', { class: 'grid', style: 'grid-template-columns: 1fr 32px 32px 32px 50px;' });
+  header.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-white/40 px-3 py-1.5 font-bold' }, 'Atleta'));
+  for (let i = 0; i < 3; i++) header.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-white/40 px-1 py-1.5 text-center font-bold' }, String(i + 1)));
+  header.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-white/40 px-2 py-1.5 text-center font-bold' }, 'Pts'));
+  grid.appendChild(header);
+
+  // Anna (a)
+  grid.appendChild(rowForSide('a', m.athleteName, m, cs, cg, sets));
+  grid.appendChild(rowForSide('o', m.opponentName, m, cs, cg, sets));
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function rowForSide(side, name, m, cs, cg, sets) {
+  const isServer = m.server === side && !m.finished;
+  const row = el('div', { class: 'grid items-center', style: 'grid-template-columns: 1fr 32px 32px 32px 50px;' });
+  row.appendChild(el('div', { class: 'px-3 py-2 text-sm font-semibold flex items-center gap-2' },
+    el('span', { class: 'inline-block w-2.5 h-2.5 rounded-full', style: `background: ${side === 'a' ? '#0891b2' : '#e11d48'}` }),
+    el('span', { class: 'truncate' }, name + (isServer ? ' 🎾' : '')),
+  ));
+  for (let i = 0; i < 3; i++) {
+    const s = sets[i];
+    const isCurrent = !s && i === sets.length;
+    const v = s ? s[side] : (isCurrent ? cs[side] : '');
+    row.appendChild(el('div', {
+      class: 'px-1 py-2 text-center text-base font-bold' + (isCurrent ? ' text-yellow-300' : (s ? '' : ' opacity-40')),
+    }, String(v)));
+  }
+  // Pts atuais
+  const ptsLabel = m.finished ? '' : (cg.split('-')[side === 'a' ? 0 : 1] || '0');
+  row.appendChild(el('div', { class: 'px-2 py-2 text-center text-xl font-extrabold text-yellow-300' }, ptsLabel));
+  return row;
+}
+
+function formatGameLabel(cg, ad) {
+  if (!cg) return '0-0';
+  if (cg.mode === 'tiebreak' || cg.mode === 'super_tiebreak') return `${cg.a}-${cg.o}`;
+  const labels = ['0', '15', '30', '40'];
+  if (cg.a < 4 && cg.o < 4) return `${labels[cg.a]}-${labels[cg.o]}`;
+  if (cg.a >= 3 && cg.o >= 3) {
+    if (cg.a === cg.o) return '40-40';
+    if (cg.a === cg.o + 1) return 'AD-40';
+    if (cg.o === cg.a + 1) return '40-AD';
+  }
+  return `${cg.a}-${cg.o}`;
+}
+
+function renderStatButtons(m, profileId, onPoint) {
+  const sacando = m.server === 'a';
+  const wrap = el('div', { class: 'mx-3 bg-white text-slate-900 rounded-xl p-3' });
+  // Botões dependem se Anna saca ou recebe
+  const btns = sacando ? [
+    { stat: 'ace',       label: 'Ace',                winner: 'a', cls: 'anna' },
+    { stat: 'winner',    label: 'Serve Winner',       winner: 'a', cls: 'anna' },
+    { stat: 'serveerr',  label: '1º Saque Erro',      winner: 'a', cls: 'anna', noWin: true }, // não fecha ponto, só registra
+    { stat: 'df',        label: 'Dupla Falta',        winner: 'o', cls: 'anna' },
+    { stat: 'ue',        label: 'Erro não forçado',   winner: 'o', cls: 'anna' },
+    { stat: 'fe',        label: 'Erro forçado',       winner: 'o', cls: 'anna' },
+    { stat: 'returnwin', label: 'Return Winner adv.', winner: 'o', cls: 'adv' },
+    { stat: 'oppwinner', label: 'Winner adv.',        winner: 'o', cls: 'adv' },
+  ] : [
+    { stat: 'returnwin_a', label: 'Return Winner',      winner: 'a', cls: 'anna' },
+    { stat: 'oppdf',       label: 'Dupla Falta adv.',   winner: 'a', cls: 'anna' },
+    { stat: 'winner',      label: 'Winner Anna',        winner: 'a', cls: 'anna' },
+    { stat: 'ue',          label: 'Erro não forçado',   winner: 'o', cls: 'anna' },
+    { stat: 'fe',          label: 'Erro forçado',       winner: 'o', cls: 'anna' },
+    { stat: 'oppace',      label: 'Ace adv.',           winner: 'o', cls: 'adv' },
+    { stat: 'oppwinner',   label: 'Serve Winner adv.',  winner: 'o', cls: 'adv' },
+  ];
+  // Filtra "1º saque erro" (não fecha ponto na engine — só log futuro). Removendo por ora pra evitar confusão.
+  const real = btns.filter(b => !b.noWin);
+  const grid = el('div', { class: 'grid grid-cols-2 gap-2' });
+  for (const b of real) {
+    const bg = b.cls === 'anna' ? '#0891b2' : '#e11d48';
+    const bgHover = b.cls === 'anna' ? '#0e7490' : '#be123c';
+    const btn = el('button', {
+      class: 'rounded-xl py-3 px-2 text-white font-bold text-sm shadow active:scale-95 transition',
+      style: `background:${bg};`,
+    }, b.label);
+    btn.onmouseover = () => btn.style.background = bgHover;
+    btn.onmouseout = () => btn.style.background = bg;
+    btn.onclick = () => onPoint(b.winner, b.stat);
+    grid.appendChild(btn);
+  }
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function renderActions(m, profileId, onAction) {
+  const wrap = el('div', { class: 'px-3 mt-3 grid grid-cols-2 gap-2' });
+  const undoBtn = el('button', {
+    class: 'text-xs px-3 py-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold disabled:opacity-50',
+    onClick: () => onAction('undo'),
+  }, '↶ Desfazer último');
+  if (!m.points || m.points.length === 0) undoBtn.disabled = true;
+  wrap.appendChild(undoBtn);
+  wrap.appendChild(el('button', {
+    class: 'text-xs px-3 py-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 font-semibold',
+    onClick: () => onAction('abandon'),
+  }, '⏹ Encerrar match'));
+  return wrap;
+}
+
+function renderStatsPanel(m) {
+  const wrap = el('div', { class: 'px-4 py-4' });
+  wrap.appendChild(el('h3', { class: 'text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2' }, 'Stats'));
+  const stats = computeStats(m);
+  const tbl = el('div', { class: 'bg-white/5 rounded-lg border border-white/10 overflow-hidden' });
+  const rows = [
+    ['Aces', stats.aces.a, stats.aces.o],
+    ['Duplas faltas', stats.df.a, stats.df.o],
+    ['Winners', stats.winners.a, stats.winners.o],
+    ['Erros não forçados', stats.ue.a, stats.ue.o],
+    ['Erros forçados', stats.fe.a, stats.fe.o],
+    ['Pts ganhos', stats.points.a, stats.points.o],
+  ];
+  const head = el('div', { class: 'grid grid-cols-3 text-[10px] uppercase tracking-wide text-white/50 border-b border-white/10' });
+  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-cyan-300' }, 'Anna'));
+  head.appendChild(el('div', { class: 'px-3 py-2 text-center' }, ''));
+  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-rose-300' }, 'Adv'));
+  tbl.appendChild(head);
+  rows.forEach(([label, a, o]) => {
+    const r = el('div', { class: 'grid grid-cols-3 text-xs border-b border-white/5' });
+    r.appendChild(el('div', { class: 'px-3 py-1.5 text-center font-semibold' }, String(a)));
+    r.appendChild(el('div', { class: 'px-3 py-1.5 text-center text-white/70' }, label));
+    r.appendChild(el('div', { class: 'px-3 py-1.5 text-center font-semibold' }, String(o)));
+    tbl.appendChild(r);
+  });
+  wrap.appendChild(tbl);
+  return wrap;
+}
+
+function computeStats(m) {
+  const s = {
+    aces: { a: 0, o: 0 }, df: { a: 0, o: 0 },
+    winners: { a: 0, o: 0 }, ue: { a: 0, o: 0 }, fe: { a: 0, o: 0 },
+    points: { a: 0, o: 0 },
+  };
+  for (const p of (m.points || [])) {
+    s.points[p.winner]++;
+    const stat = p.stat;
+    if (!stat) continue;
+    // Stats da Anna (lado a) — derivados do label do botão
+    if (stat === 'ace') s.aces.a++;
+    else if (stat === 'oppace') s.aces.o++;
+    else if (stat === 'df') s.df.a++;
+    else if (stat === 'oppdf') s.df.o++;
+    else if (stat === 'winner' || stat === 'returnwin_a') s.winners.a++;
+    else if (stat === 'oppwinner' || stat === 'returnwin') s.winners.o++;
+    else if (stat === 'ue') s.ue.a++;
+    else if (stat === 'fe') s.fe.a++;
+  }
+  return s;
 }
 
 function openCompleteReportRequestModal(athleteName) {
