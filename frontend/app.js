@@ -5122,23 +5122,35 @@ function copyButton(text) {
   return btn;
 }
 
-// Página pública via token — bypass total do login.
+// Página pública via token — bypass total do login. Usa inline styles
+// nos containers raiz pra não depender de Tailwind processar pós-mount.
 async function openPublicLiveMatch(kind, token) {
-  // Limpa o body — não vai ter header/sidebar do app normal
-  document.body.innerHTML = '<div id="public-root"></div>';
-  document.body.className = 'min-h-screen text-white';
-  document.body.style.background = 'linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%)';
-  const root = document.getElementById('public-root');
+  // Esconde tudo do app normal e cria overlay fullscreen
+  document.body.innerHTML = '';
+  document.body.style.cssText = 'margin:0; padding:0; min-height:100vh; color:white; background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
 
-  const renderError = (msg) => {
-    root.innerHTML = `
-      <div class="max-w-md mx-auto p-6 text-center">
-        <div class="text-4xl mb-3">🎾</div>
-        <div class="text-lg font-semibold mb-1">Tennis Flow</div>
-        <div class="text-sm text-red-300 mt-4">${msg}</div>
-        <div class="text-xs text-white/50 mt-2">O link pode ter expirado ou estar incorreto.</div>
-      </div>`;
-  };
+  const root = document.createElement('div');
+  root.style.cssText = 'max-width: 28rem; margin: 0 auto; min-height: 100vh; padding-bottom: 2rem;';
+  document.body.appendChild(root);
+
+  const setMsg = (html) => { root.innerHTML = html; };
+
+  // Spinner enquanto carrega
+  setMsg(`
+    <div style="padding: 4rem 1.5rem; text-align: center;">
+      <div style="font-size: 2.5rem; margin-bottom: 1rem;">🎾</div>
+      <div style="font-weight: 600; opacity: 0.85;">Tennis Flow</div>
+      <div style="font-size: 0.875rem; opacity: 0.5; margin-top: 0.5rem;">Carregando match…</div>
+    </div>
+  `);
+
+  const renderError = (msg) => setMsg(`
+    <div style="padding: 4rem 1.5rem; text-align: center;">
+      <div style="font-size: 2.5rem; margin-bottom: 1rem;">🎾</div>
+      <div style="font-weight: 600;">Tennis Flow</div>
+      <div style="color: #fca5a5; font-size: 0.875rem; margin-top: 1rem;">${msg}</div>
+      <div style="color: rgba(255,255,255,0.5); font-size: 0.75rem; margin-top: 0.5rem;">O link pode ter expirado ou estar incorreto.</div>
+    </div>`);
 
   let m;
   try {
@@ -5147,55 +5159,74 @@ async function openPublicLiveMatch(kind, token) {
     return renderError(err.message);
   }
 
-  // Container compartilhado (max-w-md, full height)
-  const container = document.createElement('div');
-  container.className = 'max-w-md mx-auto min-h-screen flex flex-col';
-  root.appendChild(container);
-
   const isScout = kind === 'scout';
-  const renderHeader = () => {
-    return `
-      <div class="px-4 py-3 border-b border-white/10 flex items-center gap-3" style="height:60px;">
-        <div class="text-2xl">🎾</div>
-        <div class="flex-1 min-w-0">
-          <div class="text-[10px] uppercase tracking-wider ${m.finished ? 'text-slate-400' : 'text-red-400'} font-bold flex items-center gap-1.5">
-            ${m.finished ? '' : '<span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>'}
-            ${m.finished ? (m.abandoned ? 'Encerrado' : 'Final') : (isScout ? 'Você está marcando' : 'Acompanhando')}
-          </div>
-          <div class="text-sm font-semibold truncate">${m.athleteName} vs ${m.opponentName}</div>
-          ${m.tournamentName ? `<div class="text-[11px] text-cyan-200 truncate">${m.tournamentName}</div>` : ''}
-        </div>
-        <div class="text-[10px] text-white/50">Tennis Flow</div>
-      </div>`;
-  };
 
   const render = () => {
-    container.innerHTML = renderHeader();
-    container.appendChild(renderScorePanel(m));
-    if (isScout && !m.finished) {
-      container.appendChild(renderStatButtons(m, null, async (winner, stat) => {
-        try { m = await api.publicAddPoint(token, winner, stat); render(); }
-        catch (err) { alert(err.message); }
-      }));
-      container.appendChild(renderActions(m, null, async (action) => {
-        if (action === 'undo') {
-          try { m = await api.publicUndoPoint(token); render(); }
+    try {
+      root.innerHTML = '';
+
+      // Header com inline styles
+      const header = document.createElement('div');
+      header.style.cssText = 'padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 0.75rem; height: 60px;';
+      const liveBadge = m.finished
+        ? `<div style="font-size:10px; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em; color:#cbd5e1;">${m.abandoned ? 'Encerrado' : 'Final'}</div>`
+        : `<div style="font-size:10px; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em; color:#f87171; display:flex; align-items:center; gap:0.375rem;">
+             <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444; animation: pulse 1.5s ease-in-out infinite;"></span>
+             ${isScout ? 'Você está marcando' : 'Acompanhando'}
+           </div>`;
+      header.innerHTML = `
+        <div style="font-size:1.5rem;">🎾</div>
+        <div style="flex:1; min-width:0;">
+          ${liveBadge}
+          <div style="font-size:0.875rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${m.athleteName} vs ${m.opponentName}</div>
+          ${m.tournamentName ? `<div style="font-size:11px; color:#a5f3fc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${m.tournamentName}</div>` : ''}
+        </div>
+        <div style="font-size:10px; color:rgba(255,255,255,0.5);">Tennis Flow</div>
+      `;
+      root.appendChild(header);
+
+      // Reuso das helpers (já usam el() com Tailwind — funciona pq Tailwind
+      // CDN tem MutationObserver e processa dinamicamente)
+      root.appendChild(renderScorePanel(m));
+
+      if (isScout && !m.finished) {
+        root.appendChild(renderStatButtons(m, null, async (winner, stat) => {
+          try { m = await api.publicAddPoint(token, winner, stat); render(); }
           catch (err) { alert(err.message); }
-        }
-      }));
-    }
-    container.appendChild(renderStatsPanel(m));
-    if (!isScout && !m.finished) {
-      const tip = document.createElement('div');
-      tip.className = 'px-4 py-2 text-[11px] text-white/50 text-center';
-      tip.textContent = 'Atualizando automaticamente a cada 5 segundos.';
-      container.appendChild(tip);
+        }));
+        root.appendChild(renderActions(m, null, async (action) => {
+          if (action === 'undo') {
+            try { m = await api.publicUndoPoint(token); render(); }
+            catch (err) { alert(err.message); }
+          }
+        }));
+      }
+
+      root.appendChild(renderStatsPanel(m));
+
+      if (!isScout && !m.finished) {
+        const tip = document.createElement('div');
+        tip.style.cssText = 'padding: 0.5rem 1rem; font-size: 11px; color: rgba(255,255,255,0.5); text-align: center;';
+        tip.textContent = 'Atualizando a cada 5 segundos…';
+        root.appendChild(tip);
+      }
+    } catch (err) {
+      console.error('render error:', err);
+      renderError('Erro ao renderizar: ' + (err.message || err));
     }
   };
+
+  // Anima o pulse
+  if (!document.getElementById('public-anim-style')) {
+    const s = document.createElement('style');
+    s.id = 'public-anim-style';
+    s.textContent = '@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }';
+    document.head.appendChild(s);
+  }
 
   render();
 
-  // Espectador: polling pra atualizar o placar conforme o scouter marca
+  // Espectador: polling
   if (!isScout && !m.finished) {
     const id = setInterval(async () => {
       try {
