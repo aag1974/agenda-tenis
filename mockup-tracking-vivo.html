@@ -139,7 +139,7 @@
         <div class="text-[10px] uppercase tracking-wider text-white/40 px-3 py-1.5 text-center font-bold w-14">Pts</div>
         <!-- Anna -->
         <div class="px-3 py-2 text-base font-semibold flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <span class="w-2.5 h-2.5 rounded-full" style="background:#1d4ed8"></span>
           <span class="truncate">Anna L. <span class="text-yellow-400 ml-1" title="Sacando">🎾</span></span>
         </div>
         <div class="px-3 py-2 text-center text-lg font-bold">6</div>
@@ -148,7 +148,7 @@
         <div class="px-3 py-2 text-center text-2xl font-extrabold text-yellow-300">30</div>
         <!-- Maria -->
         <div class="px-3 py-2 text-base font-semibold flex items-center gap-2 border-t border-white/5">
-          <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+          <span class="w-2.5 h-2.5 rounded-full" style="background:#ea580c"></span>
           <span class="truncate">Maria S.</span>
         </div>
         <div class="px-3 py-2 text-center text-lg font-bold border-t border-white/5">4</div>
@@ -171,14 +171,7 @@
           <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Marcando</div>
           <div class="font-semibold text-slate-900 text-sm">Anna Luiza</div>
         </div>
-        <div class="ml-auto text-[10px] text-slate-400">Saque controlado automático</div>
-      </div>
-
-      <!-- Indicador grande de quem saca · automático pela regra do tênis -->
-      <div id="modeBanner" class="rounded-lg px-3 py-2 mb-3 flex items-center gap-2 bg-cyan-50 border border-cyan-200">
-        <span class="text-xl">🎾</span>
-        <span class="text-sm font-bold text-cyan-800 uppercase tracking-wide" id="modeLabel">Anna sacando</span>
-        <span class="text-xs text-cyan-700/70 ml-auto" id="modeHint">3º set · 2-1 · 30-15</span>
+        <div class="ml-auto text-[10px] text-slate-400">Saque automático</div>
       </div>
 
       <!-- Grid de botões — modo SACANDO (default) -->
@@ -260,124 +253,122 @@
     </button>
   </div>
 
-  <!-- Momentum horizontal com scroll — placar no X, ±pontos no Y -->
+  <!-- Momentum ponto-a-ponto · scroll horizontal -->
   <div class="px-4 mt-5">
     <div class="flex items-center justify-between mb-2">
       <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80">Momentum do match</h3>
-      <span class="text-[10px] text-white/50">→ deslize pra ver o histórico</span>
+      <span class="text-[10px] text-white/50">cada ponto · → deslize</span>
     </div>
     <div class="bg-white/5 rounded-lg border border-white/10 p-3">
-      <!-- Y labels fixos à esquerda -->
       <div class="flex">
+        <!-- Y labels fixos -->
         <div class="flex flex-col justify-between text-[9px] text-white/55 pr-2 py-1" style="height:140px;">
-          <span>+6</span>
-          <span>+3</span>
+          <span>+8</span>
+          <span>+4</span>
           <span class="text-white/80">0</span>
-          <span>-3</span>
-          <span>-6</span>
+          <span>-4</span>
+          <span>-8</span>
         </div>
         <!-- Container com scroll horizontal -->
         <div class="flex-1 overflow-x-auto scroll-thin">
-          <svg viewBox="0 0 900 140" preserveAspectRatio="xMinYMid meet" style="width:900px; height:140px; min-width:900px;">
+          <svg viewBox="0 0 1200 140" preserveAspectRatio="xMinYMid meet" style="width:1200px; height:140px; min-width:1200px;">
             <!-- Linha horizontal no zero -->
-            <line x1="0" y1="70" x2="900" y2="70" stroke="rgba(255,255,255,0.35)" stroke-width="1" />
-            <!-- Grids verticais leves (cada game) -->
-            <g stroke="rgba(255,255,255,0.08)" stroke-dasharray="2,2">
-              <line x1="100" y1="0" x2="100" y2="140" />
-              <line x1="200" y1="0" x2="200" y2="140" />
-              <line x1="300" y1="0" x2="300" y2="140" />
-              <line x1="400" y1="0" x2="400" y2="140" />
-              <line x1="500" y1="0" x2="500" y2="140" />
-              <line x1="600" y1="0" x2="600" y2="140" />
-              <line x1="700" y1="0" x2="700" y2="140" />
-              <line x1="800" y1="0" x2="800" y2="140" />
-            </g>
-            <!-- X labels (placar do game na base) -->
-            <g font-size="9" fill="rgba(255,255,255,0.55)" text-anchor="middle">
-              <text x="50" y="135">1-0</text>
-              <text x="150" y="135">2-0</text>
-              <text x="250" y="135">2-1</text>
-              <text x="350" y="135">3-1</text>
-              <text x="450" y="135">3-2</text>
-              <text x="550" y="135">4-2</text>
-              <text x="650" y="135">5-2</text>
-              <text x="750" y="135">6-3 (S1)</text>
-              <text x="850" y="135">3-1 (S3)</text>
-            </g>
-            <!-- Linha conectando os pontos do match -->
+            <line x1="0" y1="70" x2="1200" y2="70" stroke="rgba(255,255,255,0.35)" stroke-width="1" />
+            <!-- Linha do match (acumulado de pontos) -->
             <polyline
-              points="50,40 150,30 250,55 350,30 450,80 550,50 650,40 750,90 850,30"
-              fill="none" stroke="rgba(234,88,12,0.4)" stroke-width="2" />
-            <!-- Pontos do match -->
+              points="20,70 35,62 50,54 65,46 80,54 95,46 110,38 125,46 140,54 155,46 170,38 185,46 200,38 215,46 230,54 245,46 260,54 275,62 290,54 305,46 320,38 335,46 340,38 355,46 370,54 385,62 400,54 415,46 430,38 445,46 460,54 475,62 490,70 505,78 520,86 535,78 550,70 565,78 580,86 595,78 610,86 625,94 640,86 655,78 670,70 685,62 700,54 715,46 730,54 745,46 760,38 775,30 790,22 805,30 820,22 835,30 850,22 865,30 880,38 895,30 910,22 925,30 940,38 955,30 970,38 985,46 1000,38 1015,46 1030,38 1045,30 1060,22 1075,30 1090,22 1105,14 1120,22"
+              fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" />
+            <!-- Pontos individuais (cada um é 1 ponto do match · azul=Anna, laranja=adv) -->
             <g>
-              <circle cx="50" cy="40" r="5" fill="#1d4ed8" />
-              <circle cx="150" cy="30" r="5" fill="#1d4ed8" />
-              <circle cx="250" cy="55" r="5" fill="#ea580c" />
-              <circle cx="350" cy="30" r="5" fill="#1d4ed8" />
-              <circle cx="450" cy="80" r="5" fill="#ea580c" />
-              <circle cx="550" cy="50" r="5" fill="#1d4ed8" />
-              <circle cx="650" cy="40" r="5" fill="#1d4ed8" />
-              <circle cx="750" cy="90" r="5" fill="#ea580c" />
-              <circle cx="850" cy="30" r="5" fill="#1d4ed8" />
+              <!-- Game 1 Anna (4-0) -->
+              <circle cx="35" cy="62" r="3" fill="#1d4ed8" />
+              <circle cx="50" cy="54" r="3" fill="#1d4ed8" />
+              <circle cx="65" cy="46" r="3" fill="#1d4ed8" />
+              <circle cx="80" cy="54" r="3" fill="#ea580c" />
+              <circle cx="95" cy="46" r="3" fill="#1d4ed8" />
+              <!-- Game 2 -->
+              <circle cx="110" cy="38" r="3" fill="#1d4ed8" />
+              <circle cx="125" cy="46" r="3" fill="#ea580c" />
+              <circle cx="140" cy="54" r="3" fill="#ea580c" />
+              <circle cx="155" cy="46" r="3" fill="#1d4ed8" />
+              <circle cx="170" cy="38" r="3" fill="#1d4ed8" />
+              <circle cx="185" cy="46" r="3" fill="#ea580c" />
+              <circle cx="200" cy="38" r="3" fill="#1d4ed8" />
+              <!-- Game 3 -->
+              <circle cx="215" cy="46" r="3" fill="#ea580c" />
+              <circle cx="230" cy="54" r="3" fill="#ea580c" />
+              <circle cx="245" cy="46" r="3" fill="#1d4ed8" />
+              <circle cx="260" cy="54" r="3" fill="#ea580c" />
+              <!-- Game 4 -->
+              <circle cx="275" cy="62" r="3" fill="#ea580c" />
+              <circle cx="290" cy="54" r="3" fill="#1d4ed8" />
+              <circle cx="305" cy="46" r="3" fill="#1d4ed8" />
+              <circle cx="320" cy="38" r="3" fill="#1d4ed8" />
+              <circle cx="335" cy="46" r="3" fill="#ea580c" />
+              <circle cx="340" cy="38" r="3" fill="#1d4ed8" />
+              <!-- Set 1 fim -->
+              <circle cx="370" cy="54" r="3" fill="#ea580c" />
+              <circle cx="385" cy="62" r="3" fill="#ea580c" />
+              <circle cx="400" cy="54" r="3" fill="#1d4ed8" />
+              <circle cx="415" cy="46" r="3" fill="#1d4ed8" />
+              <circle cx="430" cy="38" r="3" fill="#1d4ed8" />
+              <!-- Set 2 começa (Anna afunda) -->
+              <circle cx="445" cy="46" r="3" fill="#ea580c" />
+              <circle cx="460" cy="54" r="3" fill="#ea580c" />
+              <circle cx="475" cy="62" r="3" fill="#ea580c" />
+              <circle cx="490" cy="70" r="3" fill="#ea580c" />
+              <circle cx="505" cy="78" r="3" fill="#ea580c" />
+              <circle cx="520" cy="86" r="3" fill="#ea580c" />
+              <circle cx="535" cy="78" r="3" fill="#1d4ed8" />
+              <circle cx="550" cy="70" r="3" fill="#1d4ed8" />
+              <!-- Set 2 fim (perdeu) -->
+              <circle cx="565" cy="78" r="3" fill="#ea580c" />
+              <circle cx="580" cy="86" r="3" fill="#ea580c" />
+              <circle cx="595" cy="78" r="3" fill="#1d4ed8" />
+              <circle cx="610" cy="86" r="3" fill="#ea580c" />
+              <circle cx="625" cy="94" r="3" fill="#ea580c" />
+              <!-- Set 3 (retomada) -->
+              <circle cx="640" cy="86" r="3" fill="#1d4ed8" />
+              <circle cx="655" cy="78" r="3" fill="#1d4ed8" />
+              <circle cx="670" cy="70" r="3" fill="#1d4ed8" />
+              <circle cx="685" cy="62" r="3" fill="#1d4ed8" />
+              <circle cx="700" cy="54" r="3" fill="#1d4ed8" />
+              <circle cx="715" cy="46" r="3" fill="#1d4ed8" />
+              <circle cx="730" cy="54" r="3" fill="#ea580c" />
+              <circle cx="745" cy="46" r="3" fill="#1d4ed8" />
+              <circle cx="760" cy="38" r="3" fill="#1d4ed8" />
+              <circle cx="775" cy="30" r="3" fill="#1d4ed8" />
+              <circle cx="790" cy="22" r="3" fill="#1d4ed8" />
             </g>
-            <!-- Badges GAME nos pontos altos/baixos -->
-            <g font-size="9" font-weight="bold" fill="white">
-              <rect x="135" y="14" width="32" height="14" rx="3" fill="#1d4ed8" />
-              <text x="151" y="24" text-anchor="middle">GAME</text>
-              <rect x="435" y="86" width="32" height="14" rx="3" fill="#ea580c" />
-              <text x="451" y="96" text-anchor="middle">GAME</text>
-              <rect x="635" y="24" width="32" height="14" rx="3" fill="#1d4ed8" />
-              <text x="651" y="34" text-anchor="middle">GAME</text>
-              <rect x="835" y="14" width="32" height="14" rx="3" fill="#1d4ed8" />
-              <text x="851" y="24" text-anchor="middle">GAME</text>
+            <!-- Marcadores GAME (linhas verticais finas em cada game completo) -->
+            <g stroke="rgba(255,255,255,0.15)" stroke-dasharray="2,3">
+              <line x1="95" y1="0" x2="95" y2="140" />
+              <line x1="200" y1="0" x2="200" y2="140" />
+              <line x1="260" y1="0" x2="260" y2="140" />
+              <line x1="340" y1="0" x2="340" y2="140" />
+              <line x1="430" y1="0" x2="430" y2="140" />
+              <line x1="550" y1="0" x2="550" y2="140" />
+              <line x1="625" y1="0" x2="625" y2="140" />
+              <line x1="790" y1="0" x2="790" y2="140" />
             </g>
-            <!-- Marcadores de set -->
-            <line x1="800" y1="0" x2="800" y2="140" stroke="rgba(255,255,255,0.3)" stroke-dasharray="4,2" stroke-width="1.5" />
-            <text x="780" y="12" text-anchor="end" font-size="9" font-weight="bold" fill="rgba(255,255,255,0.7)">SET 1 ✓</text>
+            <!-- Marcadores de set (linhas verticais grossas) -->
+            <line x1="430" y1="0" x2="430" y2="140" stroke="rgba(255,255,255,0.45)" stroke-dasharray="4,3" stroke-width="1.5" />
+            <line x1="625" y1="0" x2="625" y2="140" stroke="rgba(255,255,255,0.45)" stroke-dasharray="4,3" stroke-width="1.5" />
+            <text x="225" y="12" text-anchor="middle" font-size="9" font-weight="bold" fill="rgba(96,165,250,0.9)">SET 1 · Anna 6-4</text>
+            <text x="525" y="12" text-anchor="middle" font-size="9" font-weight="bold" fill="rgba(251,146,60,0.9)">SET 2 · Adv 6-3</text>
+            <text x="725" y="12" text-anchor="middle" font-size="9" font-weight="bold" fill="rgba(96,165,250,0.9)">SET 3 · em curso</text>
           </svg>
         </div>
       </div>
       <div class="text-[11px] text-white/60 mt-2 italic">
-        💡 Set 1 Anna 6-3 com pico +6. Set 3 começou bem, abriu 3-1 — está dominando agora.
+        💡 Set 1 dominado · queda no set 2 · retomada forte no 3º (sequência de 6 pontos seguidos).
       </div>
     </div>
   </div>
 
-  <!-- Stats consolidados — foco em Anna -->
+  <!-- Stats avançados — único quadro de stats, derivados dos cliques -->
   <div class="px-4 mt-4 mb-4">
-    <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2">Stats da Anna no match</h3>
-    <div class="grid grid-cols-2 gap-2">
-      <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
-        <div class="text-[10px] uppercase tracking-wide text-emerald-300 font-bold mb-1">Pontos ofensivos</div>
-        <div class="flex justify-between text-sm">
-          <span class="text-white/70">Aces</span><span class="font-bold text-emerald-200">3</span>
-        </div>
-        <div class="flex justify-between text-sm">
-          <span class="text-white/70">Winners</span><span class="font-bold text-emerald-200">12</span>
-        </div>
-        <div class="flex justify-between text-sm pt-1 border-t border-emerald-500/20 mt-1">
-          <span class="text-white/90 font-semibold">Total</span><span class="font-bold text-emerald-200">15</span>
-        </div>
-      </div>
-      <div class="bg-rose-500/10 border border-rose-500/30 rounded-lg p-3">
-        <div class="text-[10px] uppercase tracking-wide text-rose-300 font-bold mb-1">Erros</div>
-        <div class="flex justify-between text-sm">
-          <span class="text-white/70">Não forçados</span><span class="font-bold text-rose-200">9</span>
-        </div>
-        <div class="flex justify-between text-sm">
-          <span class="text-white/70">Forçados</span><span class="font-bold text-rose-200">4</span>
-        </div>
-        <div class="flex justify-between text-sm">
-          <span class="text-white/70">Duplas faltas</span><span class="font-bold text-rose-200">1</span>
-        </div>
-        <div class="flex justify-between text-sm pt-1 border-t border-rose-500/20 mt-1">
-          <span class="text-white/90 font-semibold">Total</span><span class="font-bold text-rose-200">14</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats avançados — derivados automaticamente dos cliques -->
-    <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80 mt-4 mb-2">Saque & retorno</h3>
+    <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2">Saque & retorno</h3>
     <div class="bg-white/5 rounded-lg border border-white/10 overflow-hidden">
       <table class="w-full text-xs">
         <thead>
@@ -401,7 +392,55 @@
     </div>
 
     <div class="mt-2 text-[11px] text-cyan-200/70 italic">
-      💡 Anna ganha quando saca bem (78% no 1º · 75% no 2º) e converte 67% dos BPs. Adv. perde pontos em erros não forçados — saldo dela está em −7.
+      💡 Anna ganha quando saca bem (78% no 1º · 75% no 2º) e converte 67% dos BPs.
+    </div>
+  </div>
+
+  <!-- Notas de performance — observação qualitativa do scouter/coach -->
+  <div class="px-4 mt-2 mb-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-200/80">📝 Notas de performance</h3>
+      <span class="text-[10px] text-white/50">o que os números não contam</span>
+    </div>
+
+    <!-- Composer rápido -->
+    <div class="bg-white rounded-xl p-3 text-slate-900 mb-3">
+      <textarea
+        placeholder="Observação rápida — ex: 'saque externo na deuce funcionando' · 'errou as voleias quando subiu'..."
+        class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 h-16 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"></textarea>
+      <div class="flex items-center justify-between mt-2">
+        <div class="text-[10px] text-slate-500">marcado em <b>3º set · 2-1 · 30-15</b></div>
+        <button class="text-xs px-3 py-1.5 rounded bg-blue-700 hover:bg-blue-800 text-white font-semibold">+ Adicionar nota</button>
+      </div>
+    </div>
+
+    <!-- Notas existentes -->
+    <div class="space-y-2">
+      <div class="bg-white/5 border border-white/10 rounded-lg p-3">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-blue-300">3º set · 1-1 · 0-30</span>
+          <span class="text-[10px] text-white/40">há 4 min</span>
+        </div>
+        <div class="text-sm text-white/90">Voltou a slicar o backhand — adversária não tá conseguindo subir a bola, vantagem nossa.</div>
+      </div>
+      <div class="bg-white/5 border border-white/10 rounded-lg p-3">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-orange-300">2º set · 4-3 · 30-30</span>
+          <span class="text-[10px] text-white/40">há 22 min</span>
+        </div>
+        <div class="text-sm text-white/90">Está afobada nas devoluções — perdendo o pé. Precisa relaxar entre pontos.</div>
+      </div>
+      <div class="bg-white/5 border border-white/10 rounded-lg p-3">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-blue-300">1º set · 5-3 · 40-15</span>
+          <span class="text-[10px] text-white/40">há 38 min</span>
+        </div>
+        <div class="text-sm text-white/90">Saque externo na deuce funcionando — abriu 4 ângulos seguidos.</div>
+      </div>
+    </div>
+
+    <div class="mt-2 text-[11px] text-cyan-200/70 italic">
+      💡 As notas + stats viram capítulo no relatório de Performance da Anna após o match.
     </div>
   </div>
 
