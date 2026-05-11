@@ -173,22 +173,40 @@ function renderMomentum(m) {
   // Cada ponto fechado vira barra ±1 (azul cima = Anna, rosa baixo = adv)
   const closed = (m.points || []).filter(p => p.winner != null);
   if (closed.length === 0) return '';
-  const w = Math.max(600, closed.length * 14);
+  const total = closed.length;
+  const annaWon = closed.filter(p => p.winner === 'a').length;
+  const oppWon  = total - annaWon;
+
+  // Escala adaptativa: usa viewBox interno de 1000 unidades e ajusta o
+  // espaçamento + grossura da barra pra caber sem scroll horizontal.
+  const VB_W = 1000;
+  const padding = 12;
+  const usable = VB_W - 2 * padding;
+  const spacing = usable / total;
+  const stroke = spacing >= 6 ? 3 : spacing >= 4 ? 2.2 : spacing >= 2.5 ? 1.5 : 1;
+
   const bars = closed.map((p, i) => {
-    const x = 10 + i * 14;
+    const x = padding + spacing * (i + 0.5);
     const top = p.winner === 'a' ? 15 : 65;
     const color = p.winner === 'a' ? '#0891b2' : '#e11d48';
-    return `<line x1="${x}" y1="40" x2="${x}" y2="${top}" stroke="${color}" stroke-width="3" />`;
+    return `<line x1="${x.toFixed(2)}" y1="40" x2="${x.toFixed(2)}" y2="${top}" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" />`;
   }).join('');
+
   return `
     <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; margin:16px 0;">
-      <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:rgba(165,243,252,0.8); font-weight:bold; margin-bottom:8px;">Momentum · cada barra = 1 ponto</div>
-      <div class="scroll-x">
-        <svg viewBox="0 0 ${w} 80" style="width:${w}px; height:80px; display:block;" preserveAspectRatio="xMinYMid meet">
-          <line x1="0" y1="40" x2="${w}" y2="40" stroke="rgba(255,255,255,0.35)" stroke-width="1" />
-          ${bars}
-        </svg>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px; flex-wrap:wrap;">
+        <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:rgba(165,243,252,0.8); font-weight:bold;">Momentum · cada barra = 1 ponto</div>
+        <div style="font-size:11px; color:rgba(255,255,255,0.7);">
+          <span style="color:#67e8f9; font-weight:bold;">${annaWon}</span>
+          <span style="opacity:0.5;"> · </span>
+          <span style="color:#fda4af; font-weight:bold;">${oppWon}</span>
+          <span style="opacity:0.5;"> · total ${total}</span>
+        </div>
       </div>
+      <svg viewBox="0 0 ${VB_W} 80" style="width:100%; height:80px; display:block;" preserveAspectRatio="none">
+        <line x1="0" y1="40" x2="${VB_W}" y2="40" stroke="rgba(255,255,255,0.35)" stroke-width="1" vector-effect="non-scaling-stroke" />
+        ${bars}
+      </svg>
     </div>`;
 }
 
