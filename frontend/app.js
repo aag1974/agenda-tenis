@@ -4709,14 +4709,16 @@ function scoutListItem(m, profileId, parentClose, isLive) {
   head.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
   wrap.appendChild(head);
 
-  // Matches encerrados ganham botão "Enviar relatório" inline
+  // Matches encerrados ganham botão "Compartilhar link" inline. O mesmo
+  // link viewer mandado durante o jogo vira o relatório do match
+  // (não há link separado pra "relatório").
   if (!isLive) {
     const sendBtn = el('button', {
       class: 'mt-2 w-full text-[11px] px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold',
-    }, '📧 Enviar relatório');
+    }, '🔗 Compartilhar link do match');
     sendBtn.onclick = (e) => {
       e.stopPropagation();
-      openMatchReportShareModal(profileId, m);
+      openScoutShareModal(profileId, m);
     };
     wrap.appendChild(sendBtn);
   }
@@ -5525,7 +5527,10 @@ async function openMatchReportShareModal(profileId, match) {
   ));
 }
 
-// Modal "compartilhar" — gera links pra scouter (marcar) e espectador (ver)
+// Modal compartilhar — adapta ao estado do match.
+// Match ao vivo: mostra link de scouter (marcar) + viewer (acompanhar).
+// Match encerrado: mostra só o viewer (mesmo link, agora serve como
+// relatório do match — placar final, stats, nota, notas qualitativas).
 async function openScoutShareModal(profileId, match) {
   const root = $('modal-root');
   root.innerHTML = '';
@@ -5535,8 +5540,9 @@ async function openScoutShareModal(profileId, match) {
     class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-1rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
     style: 'max-height: 92dvh;',
   });
+  const finished = match.finished;
   card.appendChild(el('div', { class: 'bg-gradient-to-br from-[#0e3a4d] to-[#1f5b75] text-white px-5 py-3 flex items-center justify-between' },
-    el('span', { class: 'font-medium' }, '🔗 Compartilhar tracking'),
+    el('span', { class: 'font-medium' }, finished ? '🔗 Compartilhar relatório' : '🔗 Compartilhar tracking'),
     el('button', { class: 'text-white/70 hover:text-white text-xl leading-none', onClick: close }, '×'),
   ));
   const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1 space-y-4' });
@@ -5561,40 +5567,47 @@ async function openScoutShareModal(profileId, match) {
   const matchLabel = `${match.athleteName} vs ${match.opponentName}`;
   const wppText = (label, url) => encodeURIComponent(`${label} — ${matchLabel}\n${url}`);
 
-  // Scouter
-  body.appendChild(el('div', { class: 'border-2 border-amber-300 bg-amber-50/50 rounded-xl p-3' },
-    el('div', { class: 'flex items-center gap-2 mb-2' },
-      el('span', { class: 'text-lg' }, '📝'),
-      el('div', null,
-        el('div', { class: 'text-sm font-bold text-amber-900' }, 'Link pra quem vai marcar'),
-        el('div', { class: 'text-[11px] text-amber-700' }, 'Sem app, sem login. Quem tem o link pode editar pontos.'),
+  // Scouter — só se match ao vivo
+  if (!finished) {
+    body.appendChild(el('div', { class: 'border-2 border-amber-300 bg-amber-50/50 rounded-xl p-3' },
+      el('div', { class: 'flex items-center gap-2 mb-2' },
+        el('span', { class: 'text-lg' }, '📝'),
+        el('div', null,
+          el('div', { class: 'text-sm font-bold text-amber-900' }, 'Link pra quem vai marcar'),
+          el('div', { class: 'text-[11px] text-amber-700' }, 'Sem app, sem login. Quem tem o link pode editar pontos.'),
+        ),
       ),
-    ),
-    el('div', { class: 'bg-white border border-amber-200 rounded p-2 mb-2 text-[11px] text-slate-700 font-mono break-all' }, scoutUrl),
-    el('div', { class: 'grid grid-cols-2 gap-2' },
-      el('a', {
-        class: 'text-xs px-3 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-center no-underline',
-        href: `https://wa.me/?text=${wppText('Vai marcar pra mim?', scoutUrl)}`,
-        target: '_blank', rel: 'noopener',
-      }, '📱 WhatsApp'),
-      copyButton(scoutUrl),
-    ),
-  ));
+      el('div', { class: 'bg-white border border-amber-200 rounded p-2 mb-2 text-[11px] text-slate-700 font-mono break-all' }, scoutUrl),
+      el('div', { class: 'grid grid-cols-2 gap-2' },
+        el('a', {
+          class: 'text-xs px-3 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-center no-underline',
+          href: `https://wa.me/?text=${wppText('Vai marcar pra mim?', scoutUrl)}`,
+          target: '_blank', rel: 'noopener',
+        }, '📱 WhatsApp'),
+        copyButton(scoutUrl),
+      ),
+    ));
+  }
 
-  // Viewer
+  // Viewer — sempre. Vira "relatório" quando match encerra (mesmo link,
+  // não expira, mostra placar final + stats + nota + notas).
   body.appendChild(el('div', { class: 'border border-cyan-200 bg-cyan-50/50 rounded-xl p-3' },
     el('div', { class: 'flex items-center gap-2 mb-2' },
-      el('span', { class: 'text-lg' }, '👁️'),
+      el('span', { class: 'text-lg' }, finished ? '📊' : '👁️'),
       el('div', null,
-        el('div', { class: 'text-sm font-bold text-cyan-900' }, 'Link pra acompanhar'),
-        el('div', { class: 'text-[11px] text-cyan-700' }, 'Família, escola, amigos — vê em tempo real.'),
+        el('div', { class: 'text-sm font-bold text-cyan-900' },
+          finished ? 'Relatório do match' : 'Link pra acompanhar'),
+        el('div', { class: 'text-[11px] text-cyan-700' },
+          finished
+            ? 'Snapshot do match · placar, stats, nota técnica, notas. Vive pra sempre.'
+            : 'Família, escola, amigos — vê em tempo real. O mesmo link vira o relatório quando o match terminar.'),
       ),
     ),
     el('div', { class: 'bg-white border border-cyan-200 rounded p-2 mb-2 text-[11px] text-slate-700 font-mono break-all' }, viewUrl),
     el('div', { class: 'grid grid-cols-2 gap-2' },
       el('a', {
         class: 'text-xs px-3 py-2 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-center no-underline',
-        href: `https://wa.me/?text=${wppText('Acompanha o jogo', viewUrl)}`,
+        href: `https://wa.me/?text=${wppText(finished ? 'Relatório do match' : 'Acompanha o jogo', viewUrl)}`,
         target: '_blank', rel: 'noopener',
       }, '📱 WhatsApp'),
       copyButton(viewUrl),

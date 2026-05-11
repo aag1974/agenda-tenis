@@ -27,16 +27,12 @@ import { generateMatchReportHtml } from './match-report.js';
 
 // Expiração de tokens públicos do Scout ao Vivo:
 // - scout: expira assim que match.finished (não pode marcar mais)
-// - viewer: vale por 7 dias após match.finished
-const VIEWER_TOKEN_TTL_DAYS = 7;
+// - viewer: NUNCA expira. O mesmo link mandado pro coach durante o jogo
+//   serve depois como relatório do match (placar final, stats, nota,
+//   notas qualitativas, momentum). Coach abre meses depois e vê tudo.
 function tokenExpired(info, match) {
   if (!match) return true;
   if (info.kind === 'scout' && match.finished) return true;
-  if (info.kind === 'viewer' && match.finished && match.endedAt) {
-    const ageMs = Date.now() - new Date(match.endedAt).getTime();
-    const ttlMs = VIEWER_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
-    return ageMs > ttlMs;
-  }
   return false;
 }
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed, getRegistrationWindowState } from './board.js';
