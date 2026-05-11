@@ -19,9 +19,26 @@ import {
   getMatchesData, upsertYearMatches,
   listLiveMatches, getLiveMatch, saveLiveMatch, deleteLiveMatch, newMatchId,
   createLiveMatchTokens, resolveLiveMatchToken, getLiveMatchTokens, deleteLiveMatchTokens,
+  newMatchReportId, saveMatchReport, getMatchReportHtml, listMatchReportsByMatch,
 } from './storage.js';
 import { createMatch as createMatchState, applyPoint, undoLastPoint, snapshotScore } from './tennis-score.js';
 import { attachScore } from './match-score.js';
+import { generateMatchReportHtml } from './match-report.js';
+
+// Expiração de tokens públicos do Scout ao Vivo:
+// - scout: expira assim que match.finished (não pode marcar mais)
+// - viewer: vale por 7 dias após match.finished
+const VIEWER_TOKEN_TTL_DAYS = 7;
+function tokenExpired(info, match) {
+  if (!match) return true;
+  if (info.kind === 'scout' && match.finished) return true;
+  if (info.kind === 'viewer' && match.finished && match.endedAt) {
+    const ageMs = Date.now() - new Date(match.endedAt).getTime();
+    const ttlMs = VIEWER_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
+    return ageMs > ttlMs;
+  }
+  return false;
+}
 import { COLUMNS, COLUMN_IDS, computeAutoColumn, effectiveColumn, isRegistrationOpen, isRegistrationClosed, getRegistrationWindowState } from './board.js';
 import {
   listReceipts, addReceipt, getReceiptFile, updateReceiptCategory, deleteReceipt,
@@ -1961,6 +1978,11 @@ function publicMatchByToken(token, requireKind = null) {
   if (requireKind && info.kind !== requireKind) return { error: 'Token não autoriza esta operação' };
   const m = getLiveMatch(info.profileId, info.matchId);
   if (!m) return { error: 'Match não encontrado' };
+  if (tokenExpired(info, m)) {
+    return { error: info.kind === 'scout'
+      ? 'Match já encerrado — link de marcação inválido.'
+      : 'Link expirou (vale 7 dias após o match encerrar). Peça um novo ao Tennis Flow.' };
+  }
   return { match: m, info };
 }
 
@@ -2030,6 +2052,30 @@ app.get('/api/live/:token', (req, res) => {
 // apropriada sem login). Tem que vir ANTES do express.static catch-all.
 app.get(['/scout/:token', '/live/:token'], (req, res) => {
   res.sendFile(join(__dirname, '..', 'frontend', 'index.html'));
+});
+
+// Gera relatório HTML estático do match. Dono autenticado bate aqui e
+// recebe { reportId, url } pra mandar via WhatsApp / email.
+app.post('/api/profiles/:id/live-matches/:matchId/generate-report', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  const reportId = newMatchReportId();
+  const html = generateMatchReportHtml(m);
+  saveMatchReport(req.params.id, req.params.matchId, reportId, html);
+  res.json({ reportId, url: `/match-report/${reportId}` });
+});
+
+// Lista relatórios já gerados pra um match (pra reusar URL existente)
+app.get('/api/profiles/:id/live-matches/:matchId/reports', requireAuth, ensureOwnedProfile, (req, res) => {
+  res.json(listMatchReportsByMatch(req.params.id, req.params.matchId));
+});
+
+// Serve o HTML estático do relatório — público, sem auth, sem expiração.
+app.get('/match-report/:reportId', (req, res) => {
+  const html = getMatchReportHtml(req.params.reportId);
+  if (!html) return res.status(404).send('Relatório não encontrado');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
 });
 
 app.post('/api/shutdown', (req, res) => {

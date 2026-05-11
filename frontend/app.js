@@ -549,6 +549,11 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao buscar tokens');
     return r.json();
   },
+  async generateMatchReport(profileId, matchId) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}/generate-report`, { method: 'POST' });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao gerar relatório');
+    return r.json();
+  },
   // Endpoints públicos via token (sem login)
   async publicGetMatch(kind, token) {
     const r = await fetch(`/api/${kind}/${token}`);
@@ -5439,7 +5444,9 @@ function computeStats(m) {
   return s;
 }
 
-// Modal de envio do relatório do match — só pra match encerrado
+// Modal de envio do relatório do match — gera HTML estático permanente
+// no servidor e oferece o link pra WhatsApp/email. Link NÃO expira
+// (diferente do link viewer, que expira em 7 dias após o match encerrar).
 async function openMatchReportShareModal(profileId, match) {
   const root = $('modal-root');
   root.innerHTML = '';
@@ -5457,11 +5464,11 @@ async function openMatchReportShareModal(profileId, match) {
   card.appendChild(body);
   root.append(overlay, card);
 
-  body.appendChild(el('div', { class: 'text-xs text-slate-500 italic' }, 'Carregando…'));
+  body.appendChild(el('div', { class: 'text-xs text-slate-500 italic' }, 'Gerando relatório…'));
 
-  let tokens;
+  let report;
   try {
-    tokens = await api.getLiveMatchTokens(profileId, match.id);
+    report = await api.generateMatchReport(profileId, match.id);
   } catch (err) {
     body.innerHTML = '';
     body.appendChild(el('div', { class: 'text-sm text-red-600' }, `Erro: ${err.message}`));
@@ -5470,11 +5477,11 @@ async function openMatchReportShareModal(profileId, match) {
   body.innerHTML = '';
 
   const origin = window.location.origin;
-  const reportUrl = `${origin}/live/${tokens.viewerToken}`;
+  const reportUrl = `${origin}${report.url}`;
   const matchLabel = `${match.athleteName} vs ${match.opponentName}`;
   const placar = renderScoreSummary(match);
   const cs = match.computedScore;
-  const notaText = cs && cs.score != null ? `Nota técnica: ${cs.score.toFixed(1)}/10` : '';
+  const notaText = cs?.a?.score != null ? `Nota técnica: ${cs.a.score.toFixed(1)}/10` : '';
 
   // Resumo
   body.appendChild(el('div', { class: 'rounded-lg border border-slate-200 bg-slate-50 p-3' },
@@ -5488,21 +5495,26 @@ async function openMatchReportShareModal(profileId, match) {
   // Link permanente
   body.appendChild(el('div', { class: 'rounded-lg border border-cyan-200 bg-cyan-50/50 p-3' },
     el('div', { class: 'text-sm font-bold text-cyan-900 mb-1' }, '🔗 Link permanente'),
-    el('div', { class: 'text-[11px] text-cyan-700 mb-2' }, 'Coach/família abre direto no navegador — sem app, sem login.'),
+    el('div', { class: 'text-[11px] text-cyan-700 mb-2' }, 'Snapshot do match congelado · vive pra sempre · abre direto no navegador.'),
     el('div', { class: 'bg-white border border-cyan-200 rounded p-2 mb-2 text-[11px] text-slate-700 font-mono break-all' }, reportUrl),
-    el('div', { class: 'grid grid-cols-2 gap-2' },
+    el('div', { class: 'grid grid-cols-3 gap-2' },
       el('a', {
         class: 'text-xs px-3 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-center no-underline',
         href: `https://wa.me/?text=${encodeURIComponent(`Relatório do match ${matchLabel}\n${placar}${notaText ? ' · ' + notaText : ''}\n\n${reportUrl}`)}`,
         target: '_blank', rel: 'noopener',
       }, '📱 WhatsApp'),
+      el('a', {
+        class: 'text-xs px-3 py-2 rounded border border-slate-300 hover:bg-slate-50 font-semibold text-center text-slate-700 no-underline',
+        href: reportUrl,
+        target: '_blank', rel: 'noopener',
+      }, '👁️ Abrir'),
       copyButton(reportUrl),
     ),
   ));
 
   // Email (mailto)
   const subject = `Relatório do match — ${matchLabel}`;
-  const bodyText = `Segue o relatório do match:\n\n${matchLabel}\n${match.tournamentName || ''}\n${placar}${notaText ? ' · ' + notaText : ''}\n\nLink completo (placar, stats, nota técnica):\n${reportUrl}\n\n—\nEnviado pelo Tennis Flow.`;
+  const bodyText = `Segue o relatório do match:\n\n${matchLabel}\n${match.tournamentName || ''}\n${placar}${notaText ? ' · ' + notaText : ''}\n\nLink (placar, stats, nota técnica):\n${reportUrl}\n\n—\nEnviado pelo Tennis Flow.`;
   body.appendChild(el('div', { class: 'rounded-lg border border-slate-200 p-3' },
     el('div', { class: 'text-sm font-bold text-slate-900 mb-1' }, '✉️ Enviar por email'),
     el('div', { class: 'text-[11px] text-slate-600 mb-2' }, 'Abre seu cliente de email padrão com assunto e corpo preenchidos.'),

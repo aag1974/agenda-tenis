@@ -645,3 +645,43 @@ export function deleteLiveMatchTokens(profileId, matchId) {
   }
   if (changed) writeJson(LIVE_TOKENS_FILE, all);
 }
+
+// ===== Match Reports (HTML estático permanente) =====
+// Snapshot do match no momento do envio. Não expira. Cada relatório
+// ganha um reportId próprio + URL pública /match-report/<reportId>.
+const MATCH_REPORTS_INDEX = join(DATA_DIR, 'match-reports-index.json');
+
+function matchReportsDir(profileId) {
+  return join(profileDir(profileId), 'match-reports');
+}
+
+export function newMatchReportId() {
+  return 'mr-' + randomBytes(8).toString('hex');
+}
+
+export function saveMatchReport(profileId, matchId, reportId, html) {
+  const dir = matchReportsDir(profileId);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${reportId}.html`), html, 'utf8');
+  const index = readJson(MATCH_REPORTS_INDEX, {});
+  index[reportId] = { profileId, matchId, createdAt: new Date().toISOString() };
+  writeJson(MATCH_REPORTS_INDEX, index);
+  return reportId;
+}
+
+export function getMatchReportHtml(reportId) {
+  const index = readJson(MATCH_REPORTS_INDEX, {});
+  const info = index[reportId];
+  if (!info) return null;
+  const path = join(matchReportsDir(info.profileId), `${reportId}.html`);
+  if (!existsSync(path)) return null;
+  return readFileSync(path, 'utf8');
+}
+
+export function listMatchReportsByMatch(profileId, matchId) {
+  const index = readJson(MATCH_REPORTS_INDEX, {});
+  return Object.entries(index)
+    .filter(([_, info]) => info.profileId === profileId && info.matchId === matchId)
+    .map(([reportId, info]) => ({ reportId, ...info }))
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+}
