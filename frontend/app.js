@@ -4709,19 +4709,9 @@ function scoutListItem(m, profileId, parentClose, isLive) {
   head.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
   wrap.appendChild(head);
 
-  // Matches encerrados ganham botão "Compartilhar link" inline. O mesmo
-  // link viewer mandado durante o jogo vira o relatório do match
-  // (não há link separado pra "relatório").
-  if (!isLive) {
-    const sendBtn = el('button', {
-      class: 'mt-2 w-full text-[11px] px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold',
-    }, '🔗 Compartilhar link do match');
-    sendBtn.onclick = (e) => {
-      e.stopPropagation();
-      openScoutShareModal(profileId, m);
-    };
-    wrap.appendChild(sendBtn);
-  }
+  // Card inteiro é clicável — abre o tracking modal. Pra compartilhar
+  // o link, o user clica no card e usa o botão "🔗 Compartilhar" que
+  // aparece dentro do modal.
   return wrap;
 }
 
@@ -4911,7 +4901,8 @@ async function openScoutTrackModal(profileId, matchId) {
       ));
     }
 
-    // Ações (undo / abandonar)
+    // Ações: undo/encerrar só ao vivo. Compartilhar SEMPRE (encerrado
+    // serve como relatório do match).
     if (isLive) container.appendChild(renderActions(m, profileId, async (action) => {
       try {
         if (action === 'undo') m = await api.undoLivePoint(profileId, m.id);
@@ -4923,6 +4914,15 @@ async function openScoutTrackModal(profileId, matchId) {
         render();
       } catch (err) { alert(err.message); }
     }));
+    else {
+      // Match encerrado — botão compartilhar standalone
+      container.appendChild(el('div', { class: 'px-3 mt-3' },
+        el('button', {
+          class: 'w-full text-xs px-3 py-2.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 font-semibold',
+          onClick: () => openScoutShareModal(profileId, m),
+        }, '🔗 Compartilhar relatório do match'),
+      ));
+    }
 
     // Stats consolidados
     container.appendChild(renderStatsPanel(m));
