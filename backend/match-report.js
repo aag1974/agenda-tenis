@@ -181,12 +181,14 @@ function renderMomentum(m) {
     return `<line x1="${x}" y1="40" x2="${x}" y2="${top}" stroke="${color}" stroke-width="3" />`;
   }).join('');
   return `
-    <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; margin:16px 0; overflow-x:auto;">
+    <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; margin:16px 0;">
       <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:rgba(165,243,252,0.8); font-weight:bold; margin-bottom:8px;">Momentum · cada barra = 1 ponto</div>
-      <svg viewBox="0 0 ${w} 80" style="width:${w}px; height:80px; display:block;" preserveAspectRatio="xMinYMid meet">
-        <line x1="0" y1="40" x2="${w}" y2="40" stroke="rgba(255,255,255,0.35)" stroke-width="1" />
-        ${bars}
-      </svg>
+      <div class="scroll-x">
+        <svg viewBox="0 0 ${w} 80" style="width:${w}px; height:80px; display:block;" preserveAspectRatio="xMinYMid meet">
+          <line x1="0" y1="40" x2="${w}" y2="40" stroke="rgba(255,255,255,0.35)" stroke-width="1" />
+          ${bars}
+        </svg>
+      </div>
     </div>`;
 }
 
@@ -240,17 +242,22 @@ export function generateMatchReportHtml(m) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Relatório do match — ${escapeHtml(m.athleteName)} vs ${escapeHtml(m.opponentName)}</title>
   <style>
-    html { background: #0a2530; }
-    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%); color: white; overflow-x: hidden; min-height: 100vh; }
-    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px; box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    html { background: #0e3a4d; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: white; }
+    .page-wrap { background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%); padding: 24px 0; }
+    .container { max-width: 720px; margin: 0 auto; padding: 0 16px; }
     .header { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding-bottom:16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
     h1 { font-size: 18px; margin: 0; }
     .subtitle { font-size: 12px; color: rgba(165,243,252,0.8); margin-top: 4px; }
     .footer { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; }
-    table { table-layout: auto; }
+    .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; }
   </style>
 </head>
 <body>
+  <div class="page-wrap">
   <div class="container">
     <div class="header">
       <div style="font-size:28px;">🎾</div>
@@ -269,6 +276,7 @@ export function generateMatchReportHtml(m) {
     <div class="footer">
       Gerado em ${generatedAt} pelo Tennis Flow · Snapshot permanente do match.
     </div>
+  </div>
   </div>
 </body>
 </html>`;
