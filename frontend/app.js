@@ -4881,6 +4881,13 @@ async function openScoutTrackModal(profileId, matchId) {
         el('div', { class: 'text-sm font-semibold truncate' }, `${m.athleteName} vs ${m.opponentName}`),
         m.tournamentName && el('div', { class: 'text-[11px] text-cyan-200 truncate' }, m.tournamentName),
       ),
+      // Match encerrado: ícone discreto de compartilhar no header (relatório).
+      // Ao vivo, share fica nas ações junto com undo/encerrar.
+      !isLive ? el('button', {
+        class: 'text-white/70 hover:text-white text-xl',
+        title: 'Compartilhar relatório',
+        onClick: () => openScoutShareModal(profileId, m),
+      }, '🔗') : null,
     ));
 
     // Placar
@@ -4901,8 +4908,7 @@ async function openScoutTrackModal(profileId, matchId) {
       ));
     }
 
-    // Ações: undo/encerrar só ao vivo. Compartilhar SEMPRE (encerrado
-    // serve como relatório do match).
+    // Ações: undo/encerrar/share só ao vivo. Encerrado: share fica no header.
     if (isLive) container.appendChild(renderActions(m, profileId, async (action) => {
       try {
         if (action === 'undo') m = await api.undoLivePoint(profileId, m.id);
@@ -4914,15 +4920,6 @@ async function openScoutTrackModal(profileId, matchId) {
         render();
       } catch (err) { alert(err.message); }
     }));
-    else {
-      // Match encerrado — botão compartilhar standalone
-      container.appendChild(el('div', { class: 'px-3 mt-3' },
-        el('button', {
-          class: 'w-full text-xs px-3 py-2.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 font-semibold',
-          onClick: () => openScoutShareModal(profileId, m),
-        }, '🔗 Compartilhar relatório do match'),
-      ));
-    }
 
     // Stats consolidados
     container.appendChild(renderStatsPanel(m));
