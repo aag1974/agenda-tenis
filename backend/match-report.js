@@ -240,12 +240,14 @@ export function generateMatchReportHtml(m) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Relatório do match — ${escapeHtml(m.athleteName)} vs ${escapeHtml(m.opponentName)}</title>
   <style>
-    body { margin: 0; padding: 0; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%); color: white; }
-    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+    html { background: #0a2530; }
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%); color: white; overflow-x: hidden; min-height: 100vh; }
+    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px; box-sizing: border-box; }
     .header { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding-bottom:16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
     h1 { font-size: 18px; margin: 0; }
     .subtitle { font-size: 12px; color: rgba(165,243,252,0.8); margin-top: 4px; }
     .footer { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; }
+    table { table-layout: auto; }
   </style>
 </head>
 <body>
