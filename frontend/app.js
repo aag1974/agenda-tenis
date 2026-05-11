@@ -4692,8 +4692,8 @@ function scoutListItem(m, profileId, parentClose, isLive) {
       )
     : null;
 
-  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 hover:bg-slate-50 mt-2' });
-  const head = el('div', { class: 'cursor-pointer' },
+  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 mt-2' });
+  const head = el('div', isLive ? { class: 'cursor-pointer' } : {},
     el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
       el('div', { class: 'min-w-0 flex-1' },
         el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${m.athleteName} vs ${m.opponentName}`),
@@ -4706,12 +4706,31 @@ function scoutListItem(m, profileId, parentClose, isLive) {
       noteBadge,
     ),
   );
-  head.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
+  // Ao vivo: card clicável (abre tracking pra continuar marcando).
+  // Encerrado: card não-clicável + botão "Copiar link" embaixo.
+  if (isLive) {
+    wrap.classList.add('hover:bg-slate-50');
+    head.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
+  }
   wrap.appendChild(head);
 
-  // Card inteiro é clicável — abre o tracking modal. Pra compartilhar
-  // o link, o user clica no card e usa o botão "🔗 Compartilhar" que
-  // aparece dentro do modal.
+  if (!isLive) {
+    const copyBtn = el('button', {
+      class: 'mt-2 w-full text-[11px] px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold',
+    }, '📋 Copiar link do match');
+    copyBtn.onclick = async () => {
+      try {
+        const tokens = await api.getLiveMatchTokens(profileId, m.id);
+        const url = `${window.location.origin}/live/${tokens.viewerToken}`;
+        await navigator.clipboard.writeText(url);
+        copyBtn.textContent = '✓ Link copiado';
+        setTimeout(() => { copyBtn.textContent = '📋 Copiar link do match'; }, 1800);
+      } catch (err) {
+        alert('Erro ao copiar: ' + err.message);
+      }
+    };
+    wrap.appendChild(copyBtn);
+  }
   return wrap;
 }
 
@@ -4923,6 +4942,7 @@ async function openScoutTrackModal(profileId, matchId) {
 
     // Stats consolidados
     container.appendChild(renderStatsPanel(m));
+    container.appendChild(renderMomentumPanel(m));
 
     // Notas qualitativas (composer + lista) — dono pode adicionar e deletar
     container.appendChild(renderNotesPanel(m, {
@@ -5363,6 +5383,44 @@ function renderScoreBadge(cs) {
 // Calcula stats consolidados a partir do log. Cada ponto pertence a um
 // "rally" que começa no saque e termina em winner != null. Markers
 // (serve_fault, return_in_play) atualizam o estado do rally em curso.
+// Momentum ±1 por ponto — escala adaptativa pra caber em qualquer largura
+function renderMomentumPanel(m) {
+  const closed = (m.points || []).filter(p => p.winner != null);
+  if (closed.length === 0) return el('div');
+  const total = closed.length;
+  const annaWon = closed.filter(p => p.winner === 'a').length;
+  const oppWon = total - annaWon;
+  const VB_W = 1000;
+  const padding = 12;
+  const usable = VB_W - 2 * padding;
+  const spacing = usable / total;
+  const stroke = spacing >= 6 ? 3 : spacing >= 4 ? 2.2 : spacing >= 2.5 ? 1.5 : 1;
+  const bars = closed.map((p, i) => {
+    const x = padding + spacing * (i + 0.5);
+    const top = p.winner === 'a' ? 15 : 65;
+    const color = p.winner === 'a' ? '#0891b2' : '#e11d48';
+    return `<line x1="${x.toFixed(2)}" y1="40" x2="${x.toFixed(2)}" y2="${top}" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" />`;
+  }).join('');
+  const wrap = el('div', { class: 'px-4 py-4' });
+  wrap.appendChild(el('h3', { class: 'text-xs font-bold uppercase tracking-wider text-cyan-200/80 mb-2 flex items-center justify-between' },
+    el('span', null, 'Momentum · cada barra = 1 ponto'),
+    el('span', { class: 'font-normal text-[11px] text-white/70' },
+      el('span', { style: 'color:#67e8f9; font-weight:bold;' }, String(annaWon)),
+      ' · ',
+      el('span', { style: 'color:#fda4af; font-weight:bold;' }, String(oppWon)),
+      el('span', { style: 'opacity:0.5;' }, ` · total ${total}`),
+    ),
+  ));
+  const chart = document.createElement('div');
+  chart.style.cssText = 'background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px;';
+  chart.innerHTML = `<svg viewBox="0 0 ${VB_W} 80" style="width:100%; height:80px; display:block;" preserveAspectRatio="none">
+    <line x1="0" y1="40" x2="${VB_W}" y2="40" stroke="rgba(255,255,255,0.35)" stroke-width="1" vector-effect="non-scaling-stroke" />
+    ${bars}
+  </svg>`;
+  wrap.appendChild(chart);
+  return wrap;
+}
+
 function computeStats(m) {
   const init = () => ({
     aces: 0, doubleFaults: 0, serviceWinners: 0,
@@ -5717,9 +5775,10 @@ async function openPublicLiveMatch(kind, token) {
       }
 
       root.appendChild(renderStatsPanel(m));
+      root.appendChild(renderMomentumPanel(m));
 
-      // Notas — scouter público pode adicionar e ver; viewer NÃO vê notas
-      // (privacidade: link viewer pode ser compartilhado largamente)
+      // Notas — scouter público pode adicionar; viewer vê read-only.
+      // Link viewer é o "relatório" — coach precisa ver as notas.
       if (isScout) {
         root.appendChild(renderNotesPanel(m, {
           onAdd: async (text, tag) => {
@@ -5727,6 +5786,8 @@ async function openPublicLiveMatch(kind, token) {
             render();
           },
         }));
+      } else {
+        root.appendChild(renderNotesPanel(m, { readOnly: true }));
       }
 
       if (!isScout && !m.finished) {

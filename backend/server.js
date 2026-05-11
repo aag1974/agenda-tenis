@@ -2035,13 +2035,13 @@ app.post('/api/scout/:token/notes', (req, res) => {
 });
 
 
-// Viewer: read-only. Notas qualitativas removidas da resposta — link
-// viewer pode ser compartilhado amplamente, notas são sensíveis.
+// Viewer: read-only. Retorna match completo com notas — link viewer é
+// o único link que o dono compartilha (ao vivo + relatório). Coach precisa
+// ver tudo: placar, stats, nota técnica, momentum, notas qualitativas.
 app.get('/api/live/:token', (req, res) => {
   const r = publicMatchByToken(req.params.token, 'viewer');
   if (r.error) return res.status(404).json({ error: r.error });
-  const { notes, ...publicView } = attachScore(r.match);
-  res.json(publicView);
+  res.json(attachScore(r.match));
 });
 
 // Páginas públicas: serve o index.html (SPA detecta o path e abre tela
