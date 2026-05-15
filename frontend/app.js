@@ -2233,34 +2233,33 @@ function wireKanbanSortable(container) {
   // via desktop. Detecção é dinâmica (atualiza em resize).
   if (window.matchMedia('(max-width: 640px)').matches) return;
 
-  // Edge-scroll horizontal: monitora posição X durante drag e scrolla
-  // #kanban-col-row quando cursor está perto da borda esquerda/direita.
-  let edgeScrollTimer = null;
-  let edgeScrollDir = 0;
+  // Edge-scroll horizontal durante drag: usa window capture (antes do SortableJS
+  // poder bloquear eventos) + rAF pra scroll contínuo independente de eventos.
+  let edgeRafId = null;
+  let edgePointerX = -1;
   let dragMoveHandler = null;
-  function stopEdgeScroll() {
-    clearInterval(edgeScrollTimer); edgeScrollTimer = null; edgeScrollDir = 0;
-  }
   function attachEdgeScroll() {
     const colRow = document.getElementById('kanban-col-row');
     if (!colRow) return;
-    dragMoveHandler = (e) => {
-      const x = e.touches ? e.touches[0].clientX : e.clientX;
-      const ZONE = 80, SPEED = 14;
-      const rect = colRow.getBoundingClientRect();
-      const newDir = x < rect.left + ZONE ? -SPEED : x > rect.right - ZONE ? SPEED : 0;
-      if (newDir === edgeScrollDir) return; // direção não mudou — não reinicia o interval
-      edgeScrollDir = newDir;
-      clearInterval(edgeScrollTimer);
-      edgeScrollTimer = newDir !== 0
-        ? setInterval(() => { colRow.scrollLeft += edgeScrollDir; }, 16)
-        : null;
-    };
-    document.addEventListener('pointermove', dragMoveHandler);
+    edgePointerX = -1;
+    dragMoveHandler = (e) => { edgePointerX = e.clientX ?? -1; };
+    // capture: true no window intercepta antes do SortableJS poder chamar stopPropagation
+    window.addEventListener('pointermove', dragMoveHandler, { capture: true, passive: true });
+    const ZONE = 80, SPEED = 14;
+    function tick() {
+      if (edgePointerX >= 0) {
+        const rect = colRow.getBoundingClientRect();
+        if (edgePointerX < rect.left + ZONE) colRow.scrollLeft -= SPEED;
+        else if (edgePointerX > rect.right - ZONE) colRow.scrollLeft += SPEED;
+      }
+      edgeRafId = requestAnimationFrame(tick);
+    }
+    edgeRafId = requestAnimationFrame(tick);
   }
   function detachEdgeScroll() {
-    stopEdgeScroll();
-    if (dragMoveHandler) { document.removeEventListener('pointermove', dragMoveHandler); dragMoveHandler = null; }
+    if (edgeRafId) { cancelAnimationFrame(edgeRafId); edgeRafId = null; }
+    edgePointerX = -1;
+    if (dragMoveHandler) { window.removeEventListener('pointermove', dragMoveHandler, { capture: true }); dragMoveHandler = null; }
   }
 
   // SortableJS pra cards (drag entre colunas)
