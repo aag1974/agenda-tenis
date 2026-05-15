@@ -2240,28 +2240,106 @@ function wireKanbanSortable(container) {
   // onMove não serve pra isso — só dispara ao cruzar limites de elementos visíveis,
   // então congela quando o ghost fica dentro da última coluna visível.
   let edgeScrollTimer = null;
-  let dragX = -1;
+  let dragX = -1, dragY = -1;
+  let edgeScrollDelta = 0;
+  let _diagTick = 0;
   function trackDragX(e) {
-    dragX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+    const t = e.touches && e.touches.length > 0 ? e.touches[0] : null;
+    dragX = t ? t.clientX : e.clientX;
+    dragY = t ? t.clientY : e.clientY;
+  }
+  function diagEdgeScroll(evt) {
+    if (!colRowEl) { console.warn('[diag] colRowEl não encontrado'); return; }
+    const row = colRowEl.getBoundingClientRect();
+    const maxScroll = colRowEl.scrollWidth - colRowEl.clientWidth;
+    const isMobile = colRowEl.clientWidth < 640;
+    const ZONE_L = isMobile ? 60 : 80;
+    const ZONE_R = isMobile ? 60 : 250;
+    console.group('[edgeScroll diag] drag start');
+    console.log('janela      ', `innerWidth=${window.innerWidth} innerHeight=${window.innerHeight}`);
+    console.log('colRowEl    ', `left=${Math.round(row.left)} right=${Math.round(row.right)} width=${Math.round(row.width)}`);
+    console.log('scroll      ', `scrollLeft=${Math.round(colRowEl.scrollLeft)} max=${Math.round(maxScroll)} scrollWidth=${colRowEl.scrollWidth}`);
+    console.log('zonas       ', `esq < ${Math.round(row.left + ZONE_L)}  dir > ${Math.round(row.right - ZONE_R)}  L=${ZONE_L} R=${ZONE_R}  isMobile=${isMobile}`);
+    console.log('item drag   ', evt?.item?.dataset?.tid || evt?.item?.dataset?.columnId || '?');
+    const cols = Array.from(colRowEl.querySelectorAll('.kanban-col'));
+    const colData = cols.map((col, i) => {
+      const r = col.getBoundingClientRect();
+      const visLeft  = Math.max(r.left, row.left);
+      const visRight = Math.min(r.right, row.right);
+      const visible  = visRight > visLeft ? Math.round(visRight - visLeft) : 0;
+      const pct      = Math.round(visible / r.width * 100);
+      return { i, id: col.dataset.columnId || i, left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width), visible, pct: pct + '%' };
+    });
+    console.table(colData);
+    console.groupEnd();
   }
   function startEdgeScroll() {
     stopEdgeScroll();
-    dragX = -1;
-    document.addEventListener('mousemove', trackDragX, { capture: true, passive: true });
+    dragX = -1; dragY = -1;
+    edgeScrollDelta = 0;
+    _diagTick = 0;
+    // 'important' vence o scroll-snap-type: x mandatory !important do @media mobile
+    if (colRowEl) colRowEl.style.setProperty('scroll-snap-type', 'none', 'important');
+    document.addEventListener('pointermove', trackDragX, { capture: true, passive: true });
     document.addEventListener('touchmove', trackDragX, { capture: true, passive: true });
     edgeScrollTimer = setInterval(() => {
       if (dragX < 0 || !colRowEl) return;
       const rect = colRowEl.getBoundingClientRect();
-      const ZONE = 80, SPEED = 14;
-      if (dragX < rect.left + ZONE) colRowEl.scrollLeft -= SPEED;
-      else if (dragX > rect.right - ZONE) colRowEl.scrollLeft += SPEED;
+      const isMobile = colRowEl.clientWidth < 640;
+      // Zonas assimétricas: esquerda pequena (DevTools fica na direita, não na esquerda)
+      // Zona esquerda pequena evita scroll acidental ao pegar card próximo à borda esquerda
+      const ZONE_L = isMobile ? 60 : 80;
+      const ZONE_R = isMobile ? 60 : 250;
+      const SPEED = 18;
+      const inL = dragX < rect.left + ZONE_L;
+      const inR = dragX > rect.right - ZONE_R;
+      if (++_diagTick % 10 === 0)
+        console.log(`[tick] dragX=${Math.round(dragX)} scrollLeft=${Math.round(colRowEl.scrollLeft)} inL=${inL} inR=${inR} threshR=${Math.round(rect.right - ZONE_R)}`);
+      if (inL) {
+        colRowEl.scrollBy({ left: -SPEED, behavior: 'instant' });
+        edgeScrollDelta -= SPEED;
+      } else if (inR) {
+        colRowEl.scrollBy({ left: SPEED, behavior: 'instant' });
+        edgeScrollDelta += SPEED;
+      }
+      // Notifica SortableJS da nova coluna sob o cursor após scroll
+      // (SortableJS só reavalia alvo quando pointermove dispara — cursor parado não dispara)
+      if ((inL || inR) && dragY >= 0) {
+        document.dispatchEvent(new PointerEvent('pointermove', {
+          bubbles: true, cancelable: true,
+          clientX: dragX, clientY: dragY,
+          pointerType: 'mouse', pointerId: 1,
+          movementX: 0, movementY: 0,
+        }));
+      }
     }, 16);
   }
   function stopEdgeScroll() {
     clearInterval(edgeScrollTimer);
     edgeScrollTimer = null;
-    dragX = -1;
-    document.removeEventListener('mousemove', trackDragX, { capture: true });
+    dragX = -1; dragY = -1;
+    if (colRowEl) {
+      if (edgeScrollDelta !== 0) {
+        const isMobile = colRowEl.clientWidth < 640;
+        // Mobile: cada coluna ocupa 100% do container; desktop: w-80 + gap-3 = 332px
+        const COL_STEP = isMobile ? colRowEl.clientWidth : 332;
+        const cur = colRowEl.scrollLeft;
+        const maxScroll = colRowEl.scrollWidth - colRowEl.clientWidth;
+        const target = edgeScrollDelta > 0
+          ? Math.ceil(cur / COL_STEP) * COL_STEP
+          : Math.floor(cur / COL_STEP) * COL_STEP;
+        colRowEl.scrollLeft = Math.max(0, Math.min(target, maxScroll));
+      }
+      if (colRowEl.clientWidth >= 640) {
+        // Desktop: restaura proximity inline
+        colRowEl.style.setProperty('scroll-snap-type', 'x proximity');
+      } else {
+        // Mobile: remove inline — @media !important volta a mandar
+        colRowEl.style.removeProperty('scroll-snap-type');
+      }
+    }
+    edgeScrollDelta = 0;
+    document.removeEventListener('pointermove', trackDragX, { capture: true });
     document.removeEventListener('touchmove', trackDragX, { capture: true });
   }
 
@@ -2279,7 +2357,7 @@ function wireKanbanSortable(container) {
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
       scroll: false,
-      onStart: startEdgeScroll,
+      onStart: (evt) => { diagEdgeScroll(evt); startEdgeScroll(); },
       onEnd: async (evt) => {
         stopEdgeScroll();
         const tid = evt.item.dataset.tid;
@@ -2332,7 +2410,7 @@ function wireKanbanSortable(container) {
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
       scroll: false,
-      onStart: startEdgeScroll,
+      onStart: (evt) => { diagEdgeScroll(evt); startEdgeScroll(); },
       onEnd: async () => {
         stopEdgeScroll();
         const ids = [...colRowEl.querySelectorAll('.kanban-col')].map(c => c.dataset.columnId).filter(Boolean);
