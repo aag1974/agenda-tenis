@@ -269,6 +269,13 @@ async function runAutoSyncTick() {
   const profiles = listProfiles();
   for (const p of profiles) {
     if (!profileNeedsAutoSync(p.id)) continue;
+    // Pula se sincronizou há menos de metade do intervalo (3h) —
+    // evita que deploys do Render disparem sync desnecessário.
+    const lastSynced = getSyncedData(p.id)?.syncedAt;
+    if (lastSynced && Date.now() - new Date(lastSynced).getTime() < SYNC_INTERVAL_MS / 2) {
+      console.log(`[auto-sync] skip ${p.athleteName || p.id}: sincronizado há menos de ${SYNC_INTERVAL_MS / 7200000}h`);
+      continue;
+    }
     try {
       await syncProfile(p.id);
       console.log(`[auto-sync] ok: ${p.athleteName || p.id}`);
