@@ -4700,8 +4700,8 @@ function scoutListItem(m, profileId, parentClose, isLive) {
       )
     : null;
 
-  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 mt-2' });
-  const head = el('div', isLive ? { class: 'cursor-pointer' } : {},
+  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 mt-2 cursor-pointer hover:bg-slate-50' });
+  const head = el('div', {},
     el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
       el('div', { class: 'min-w-0 flex-1' },
         el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${m.athleteName} vs ${m.opponentName}`),
@@ -4714,31 +4714,10 @@ function scoutListItem(m, profileId, parentClose, isLive) {
       noteBadge,
     ),
   );
-  // Ao vivo: card clicável (abre tracking pra continuar marcando).
-  // Encerrado: card não-clicável + botão "Copiar link" embaixo.
-  if (isLive) {
-    wrap.classList.add('hover:bg-slate-50');
-    head.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
-  }
+  // Ao vivo: abre tracking pra continuar marcando.
+  // Encerrado: abre tracking em modo leitura — 🔗 no header pra compartilhar.
+  wrap.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
   wrap.appendChild(head);
-
-  if (!isLive) {
-    const copyBtn = el('button', {
-      class: 'mt-2 w-full text-[11px] px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white font-semibold',
-    }, '📋 Copiar link do match');
-    copyBtn.onclick = async () => {
-      try {
-        const tokens = await api.getLiveMatchTokens(profileId, m.id);
-        const url = `${window.location.origin}/live/${tokens.viewerToken}`;
-        await navigator.clipboard.writeText(url);
-        copyBtn.textContent = '✓ Link copiado';
-        setTimeout(() => { copyBtn.textContent = '📋 Copiar link do match'; }, 1800);
-      } catch (err) {
-        alert('Erro ao copiar: ' + err.message);
-      }
-    };
-    wrap.appendChild(copyBtn);
-  }
   return wrap;
 }
 
