@@ -7231,7 +7231,7 @@ function showAnnouncementBanner(ann) {
   }, '×'));
   const banner = el('div', {
     id: 'announcement-banner',
-    class: 'fixed inset-x-0 bottom-0 z-[79] bg-cyan-700 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-2xl',
+    class: 'fixed inset-x-0 bottom-0 z-[79] bg-amber-500 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-2xl',
     style: 'padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))',
   },
     el('span', { class: 'text-sm font-medium' }, ann.message),
