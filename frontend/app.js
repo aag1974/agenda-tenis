@@ -3897,19 +3897,19 @@ function openAdminModal() {
 
     const msgArea = el('textarea', {
       placeholder: 'Ex: Pais 12F, treino às 14h no Golden Tulip.',
-      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 resize-none',
+      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 resize-none',
       rows: '2',
     });
     const ctaInp = el('input', {
       type: 'text',
       placeholder: 'Rótulo do botão (opcional, ex: Ver detalhes)',
-      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400',
+      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400',
     });
     const urlInp = el('input', {
       type: 'text',
       placeholder: 'URL do botão (opcional, ex: /)',
       value: '/',
-      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400',
+      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400',
     });
 
     const status = el('div', { class: 'text-xs text-slate-500 italic' });
