@@ -24,6 +24,9 @@
     }
     [x-cloak] { display: none !important; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    /* iOS Safari faz zoom automático em inputs com font-size < 16px e não desfaz.
+       Forçar 16px em todos os campos elimina o comportamento. */
+    input, textarea, select { font-size: 16px !important; }
     /* Kanban-mode body bg overrides default — board area mais claro que o header */
     body.kanban-mode {
       background: var(--ti-board-bg) !important;
