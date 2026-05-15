@@ -4905,8 +4905,8 @@ async function openScoutTrackModal(profileId, matchId) {
           el('span', { class: `text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-red-400' : 'text-slate-400'}` },
             isLive ? 'Ao vivo' : (m.abandoned ? 'Abandonado' : 'Encerrado')),
         ),
-        el('div', { class: 'text-sm font-semibold truncate' }, `${m.athleteName} vs ${m.opponentName}`),
-        m.tournamentName && el('div', { class: 'text-[11px] text-cyan-200 truncate' }, m.tournamentName),
+        el('div', { class: 'text-sm font-semibold truncate' }, `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}`),
+        m.tournamentName && m.tournamentName.length >= 4 && el('div', { class: 'text-[11px] text-cyan-200 truncate' }, m.tournamentName),
       ),
       // Match encerrado: ícone discreto de compartilhar no header (relatório).
       // Ao vivo, share fica nas ações junto com undo/encerrar.
