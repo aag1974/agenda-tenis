@@ -7221,7 +7221,7 @@ function showAnnouncementBanner(ann) {
   if (ann.cta && ann.url) {
     actions.appendChild(el('a', {
       href: ann.url,
-      class: 'text-sm px-3 py-1.5 rounded bg-white text-cyan-700 font-semibold hover:bg-slate-100',
+      class: 'text-sm px-3 py-1.5 rounded bg-white text-amber-600 font-semibold hover:bg-amber-50',
     }, ann.cta));
   }
   actions.appendChild(el('button', {
