@@ -6473,6 +6473,7 @@ function renderReceiptsGallery(container, t, data) {
           if (!confirm('Excluir este comprovante?')) return;
           try {
             await api.deleteReceipt(profileId, t.id, r.id);
+            patchCardReceiptsCount(t.id, -1);
             const fresh = await api.listReceipts(profileId, t.id);
             renderReceiptsGallery(container, t, fresh);
           } catch (err) {
@@ -6487,6 +6488,17 @@ function renderReceiptsGallery(container, t, data) {
       grid,
     ));
   }
+}
+
+function patchCardReceiptsCount(tid, delta) {
+  const t = state.data?.tournaments?.find(x => x.id === tid);
+  if (!t) return;
+  t.receiptsCount = Math.max(0, (t.receiptsCount || 0) + delta);
+  const card = document.querySelector(`[data-tid="${tid}"]`);
+  if (!card) return;
+  const metaDiv = card.lastElementChild;
+  if (!metaDiv) return;
+  metaDiv.replaceChild(cardMetaRow(t) || el('span'), metaDiv.firstChild);
 }
 
 function pickCategory() {
@@ -6573,6 +6585,7 @@ function openReceiptViewer(t, current, all) {
         el('button', { class: 'text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded', onClick: async () => {
           if (!confirm('Excluir este comprovante?')) return;
           await api.deleteReceipt(profileId, t.id, r.id);
+          patchCardReceiptsCount(t.id, -1);
           all.splice(idx, 1);
           if (all.length === 0) { close(); reloadGallery(); return; }
           if (idx >= all.length) idx = all.length - 1;
