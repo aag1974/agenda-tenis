@@ -320,6 +320,7 @@ app.post('/api/admin/announcement', requireAuth, requireAdmin, async (req, res) 
     body: ann.message,
     tag: 'announcement',
     url: ann.url,
+    badge: 1,
   }).catch(() => 0);
   res.json({ ok: true, ann, pushSent: sent });
 });

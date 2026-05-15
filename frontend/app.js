@@ -7221,6 +7221,7 @@ function showAnnouncementBanner(ann) {
   const dismiss = () => {
     localStorage.setItem(`ann-dismissed-${ann.id}`, '1');
     banner.remove();
+    updateAppBadge(0);
   };
   const actions = el('div', { class: 'flex gap-2 shrink-0' });
   if (ann.cta && ann.url) {
