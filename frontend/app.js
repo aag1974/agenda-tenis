@@ -2233,19 +2233,26 @@ function wireKanbanSortable(container) {
   // via desktop. Detecção é dinâmica (atualiza em resize).
   if (window.matchMedia('(max-width: 640px)').matches) return;
 
-  // Edge-scroll horizontal durante drag: usa window capture (antes do SortableJS
-  // poder bloquear eventos) + rAF pra scroll contínuo independente de eventos.
+  // Edge-scroll horizontal durante drag.
+  // Problema raiz: SortableJS usa touchmove (iOS/touch) OU pointermove (desktop),
+  // e o AutoScroll nativo scrollaria a .kanban-list (primeiro ancestral scrollável)
+  // em vez de #kanban-col-row. Por isso usamos implementação própria.
+  // Estratégia: escutar os 3 tipos de evento de movimento + usar onMove do
+  // SortableJS como fallback garantido; rAF mantém scroll contínuo no edge.
   let edgeRafId = null;
   let edgePointerX = -1;
   let dragMoveHandler = null;
+  const EDGE_EVENTS = ['pointermove', 'mousemove', 'touchmove'];
+  function edgeXFrom(e) {
+    return typeof e.clientX === 'number' ? e.clientX : (e.touches?.[0]?.clientX ?? -1);
+  }
   function attachEdgeScroll() {
     const colRow = document.getElementById('kanban-col-row');
     if (!colRow) return;
     edgePointerX = -1;
-    dragMoveHandler = (e) => { edgePointerX = e.clientX ?? -1; };
-    // capture: true no window intercepta antes do SortableJS poder chamar stopPropagation
-    window.addEventListener('pointermove', dragMoveHandler, { capture: true, passive: true });
-    const ZONE = 80, SPEED = 14;
+    dragMoveHandler = (e) => { const x = edgeXFrom(e); if (x >= 0) edgePointerX = x; };
+    for (const t of EDGE_EVENTS) window.addEventListener(t, dragMoveHandler, { capture: true, passive: true });
+    const ZONE = 80, SPEED = 10;
     function tick() {
       if (edgePointerX >= 0) {
         const rect = colRow.getBoundingClientRect();
@@ -2259,7 +2266,10 @@ function wireKanbanSortable(container) {
   function detachEdgeScroll() {
     if (edgeRafId) { cancelAnimationFrame(edgeRafId); edgeRafId = null; }
     edgePointerX = -1;
-    if (dragMoveHandler) { window.removeEventListener('pointermove', dragMoveHandler, { capture: true }); dragMoveHandler = null; }
+    if (dragMoveHandler) {
+      for (const t of EDGE_EVENTS) window.removeEventListener(t, dragMoveHandler, { capture: true });
+      dragMoveHandler = null;
+    }
   }
 
   // SortableJS pra cards (drag entre colunas)
@@ -2276,6 +2286,7 @@ function wireKanbanSortable(container) {
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
       onStart: attachEdgeScroll,
+      onMove: (evt, origEvt) => { const x = edgeXFrom(origEvt || {}); if (x >= 0) edgePointerX = x; },
       onEnd: async (evt) => {
         detachEdgeScroll();
         const tid = evt.item.dataset.tid;
@@ -2329,6 +2340,7 @@ function wireKanbanSortable(container) {
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
       onStart: attachEdgeScroll,
+      onMove: (evt, origEvt) => { const x = edgeXFrom(origEvt || {}); if (x >= 0) edgePointerX = x; },
       onEnd: async () => {
         detachEdgeScroll();
         const ids = [...colRow.querySelectorAll('.kanban-col')].map(c => c.dataset.columnId).filter(Boolean);
