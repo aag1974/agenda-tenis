@@ -2233,44 +2233,12 @@ function wireKanbanSortable(container) {
   // via desktop. Detecção é dinâmica (atualiza em resize).
   if (window.matchMedia('(max-width: 640px)').matches) return;
 
-  // Edge-scroll horizontal durante drag.
-  // Problema raiz: SortableJS usa touchmove (iOS/touch) OU pointermove (desktop),
-  // e o AutoScroll nativo scrollaria a .kanban-list (primeiro ancestral scrollável)
-  // em vez de #kanban-col-row. Por isso usamos implementação própria.
-  // Estratégia: escutar os 3 tipos de evento de movimento + usar onMove do
-  // SortableJS como fallback garantido; rAF mantém scroll contínuo no edge.
-  let edgeRafId = null;
-  let edgePointerX = -1;
-  let dragMoveHandler = null;
-  const EDGE_EVENTS = ['pointermove', 'mousemove', 'touchmove'];
-  function edgeXFrom(e) {
-    return typeof e.clientX === 'number' ? e.clientX : (e.touches?.[0]?.clientX ?? -1);
-  }
-  function attachEdgeScroll() {
-    const colRow = document.getElementById('kanban-col-row');
-    if (!colRow) return;
-    edgePointerX = -1;
-    dragMoveHandler = (e) => { const x = edgeXFrom(e); if (x >= 0) edgePointerX = x; };
-    for (const t of EDGE_EVENTS) window.addEventListener(t, dragMoveHandler, { capture: true, passive: true });
-    const ZONE = 80, SPEED = 10;
-    function tick() {
-      if (edgePointerX >= 0) {
-        const rect = colRow.getBoundingClientRect();
-        if (edgePointerX < rect.left + ZONE) colRow.scrollLeft -= SPEED;
-        else if (edgePointerX > rect.right - ZONE) colRow.scrollLeft += SPEED;
-      }
-      edgeRafId = requestAnimationFrame(tick);
-    }
-    edgeRafId = requestAnimationFrame(tick);
-  }
-  function detachEdgeScroll() {
-    if (edgeRafId) { cancelAnimationFrame(edgeRafId); edgeRafId = null; }
-    edgePointerX = -1;
-    if (dragMoveHandler) {
-      for (const t of EDGE_EVENTS) window.removeEventListener(t, dragMoveHandler, { capture: true });
-      dragMoveHandler = null;
-    }
-  }
+  // Auto-scroll horizontal durante drag: usa o AutoScroll plugin nativo do
+  // SortableJS (já incluso no Sortable.min.js) com scroll: colRowEl explícito.
+  // Abordagens anteriores com listeners externos falharam porque o SortableJS
+  // processa eventos internamente antes de propagá-los — o AutoScroll nativo
+  // roda DENTRO desse ciclo e tem acesso garantido às coordenadas do ghost.
+  const colRowEl = container.querySelector('#kanban-col-row');
 
   // SortableJS pra cards (drag entre colunas)
   const lists = container.querySelectorAll('.kanban-list');
@@ -2285,10 +2253,13 @@ function wireKanbanSortable(container) {
       delay: 300,
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
-      onStart: attachEdgeScroll,
-      onMove: (evt, origEvt) => { const x = edgeXFrom(origEvt || {}); if (x >= 0) edgePointerX = x; },
+      // Diz ao AutoScroll exatamente qual elemento scrollar horizontalmente.
+      // scrollSensitivity: zona em px perto do edge; scrollSpeed: px/tick.
+      scroll: colRowEl,
+      scrollSensitivity: 80,
+      scrollSpeed: 10,
+      forceAutoScrollFallback: true,
       onEnd: async (evt) => {
-        detachEdgeScroll();
         const tid = evt.item.dataset.tid;
         const newColumn = evt.to.dataset.column;
         const newIndex = evt.newIndex;
@@ -2327,9 +2298,8 @@ function wireKanbanSortable(container) {
   }
 
   // SortableJS pra colunas (drag pra reordenar) — group separado
-  const colRow = container.querySelector('#kanban-col-row');
-  if (colRow) {
-    Sortable.create(colRow, {
+  if (colRowEl) {
+    Sortable.create(colRowEl, {
       group: 'kanban-cols',
       animation: 150,
       handle: '.kanban-col-header',
@@ -2339,11 +2309,12 @@ function wireKanbanSortable(container) {
       delay: 300,
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
-      onStart: attachEdgeScroll,
-      onMove: (evt, origEvt) => { const x = edgeXFrom(origEvt || {}); if (x >= 0) edgePointerX = x; },
+      scroll: colRowEl,
+      scrollSensitivity: 80,
+      scrollSpeed: 10,
+      forceAutoScrollFallback: true,
       onEnd: async () => {
-        detachEdgeScroll();
-        const ids = [...colRow.querySelectorAll('.kanban-col')].map(c => c.dataset.columnId).filter(Boolean);
+        const ids = [...colRowEl.querySelectorAll('.kanban-col')].map(c => c.dataset.columnId).filter(Boolean);
         state.columnOrder = ids;
         try { await api.updateBoardConfig({ columnOrder: ids }); }
         catch (err) { alert('Erro ao salvar ordem: ' + err.message); }
