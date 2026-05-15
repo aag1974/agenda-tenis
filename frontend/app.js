@@ -1864,7 +1864,7 @@ function renderKanbanCard(t) {
 
     el('div', { class: 'text-xs text-slate-600 flex items-center justify-between gap-2' },
       el('span', { class: 'truncate' }, cityState || '—'),
-      el('span', { class: 'shrink-0 text-slate-500' }, formatCardDate(t)),
+      el('span', { class: `shrink-0 font-semibold ${cardDateColor(t)}` }, formatCardDate(t)),
     ),
 
     el('div', { class: 'mt-1.5 flex items-center justify-between gap-2' },
@@ -1906,6 +1906,15 @@ function daysUntilStart(t) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return Math.round((start - today) / 86400000);
+}
+
+function cardDateColor(t) {
+  if (t.finished || t.derivedStatus === 'past') return 'text-slate-400';
+  const days = daysUntilStart(t);
+  if (days === null) return 'text-slate-500';
+  if (days <= 0) return 'text-emerald-600';   // em andamento ou hoje
+  if (days <= 7) return 'text-amber-600';      // até 7 dias
+  return 'text-cyan-700';                      // futuro normal
 }
 
 // ===== Etiquetas: seção do modal + picker =====
