@@ -2236,8 +2236,11 @@ function wireKanbanSortable(container) {
   // Edge-scroll horizontal: monitora posição X durante drag e scrolla
   // #kanban-col-row quando cursor está perto da borda esquerda/direita.
   let edgeScrollTimer = null;
+  let edgeScrollDir = 0;
   let dragMoveHandler = null;
-  function stopEdgeScroll() { clearInterval(edgeScrollTimer); edgeScrollTimer = null; }
+  function stopEdgeScroll() {
+    clearInterval(edgeScrollTimer); edgeScrollTimer = null; edgeScrollDir = 0;
+  }
   function attachEdgeScroll() {
     const colRow = document.getElementById('kanban-col-row');
     if (!colRow) return;
@@ -2245,9 +2248,13 @@ function wireKanbanSortable(container) {
       const x = e.touches ? e.touches[0].clientX : e.clientX;
       const ZONE = 80, SPEED = 14;
       const rect = colRow.getBoundingClientRect();
-      stopEdgeScroll();
-      if (x < rect.left + ZONE)       edgeScrollTimer = setInterval(() => { colRow.scrollLeft -= SPEED; }, 16);
-      else if (x > rect.right - ZONE) edgeScrollTimer = setInterval(() => { colRow.scrollLeft += SPEED; }, 16);
+      const newDir = x < rect.left + ZONE ? -SPEED : x > rect.right - ZONE ? SPEED : 0;
+      if (newDir === edgeScrollDir) return; // direção não mudou — não reinicia o interval
+      edgeScrollDir = newDir;
+      clearInterval(edgeScrollTimer);
+      edgeScrollTimer = newDir !== 0
+        ? setInterval(() => { colRow.scrollLeft += edgeScrollDir; }, 16)
+        : null;
     };
     document.addEventListener('pointermove', dragMoveHandler);
   }
