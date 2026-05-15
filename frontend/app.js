@@ -2233,6 +2233,29 @@ function wireKanbanSortable(container) {
   // via desktop. Detecção é dinâmica (atualiza em resize).
   if (window.matchMedia('(max-width: 640px)').matches) return;
 
+  // Edge-scroll horizontal: monitora posição X durante drag e scrolla
+  // #kanban-col-row quando cursor está perto da borda esquerda/direita.
+  let edgeScrollTimer = null;
+  let dragMoveHandler = null;
+  function stopEdgeScroll() { clearInterval(edgeScrollTimer); edgeScrollTimer = null; }
+  function attachEdgeScroll() {
+    const colRow = document.getElementById('kanban-col-row');
+    if (!colRow) return;
+    dragMoveHandler = (e) => {
+      const x = e.touches ? e.touches[0].clientX : e.clientX;
+      const ZONE = 80, SPEED = 14;
+      const rect = colRow.getBoundingClientRect();
+      stopEdgeScroll();
+      if (x < rect.left + ZONE)       edgeScrollTimer = setInterval(() => { colRow.scrollLeft -= SPEED; }, 16);
+      else if (x > rect.right - ZONE) edgeScrollTimer = setInterval(() => { colRow.scrollLeft += SPEED; }, 16);
+    };
+    document.addEventListener('pointermove', dragMoveHandler);
+  }
+  function detachEdgeScroll() {
+    stopEdgeScroll();
+    if (dragMoveHandler) { document.removeEventListener('pointermove', dragMoveHandler); dragMoveHandler = null; }
+  }
+
   // SortableJS pra cards (drag entre colunas)
   const lists = container.querySelectorAll('.kanban-list');
   for (const list of lists) {
@@ -2246,7 +2269,9 @@ function wireKanbanSortable(container) {
       delay: 300,
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
+      onStart: attachEdgeScroll,
       onEnd: async (evt) => {
+        detachEdgeScroll();
         const tid = evt.item.dataset.tid;
         const newColumn = evt.to.dataset.column;
         const newIndex = evt.newIndex;
@@ -2297,7 +2322,9 @@ function wireKanbanSortable(container) {
       delay: 300,
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
+      onStart: attachEdgeScroll,
       onEnd: async () => {
+        detachEdgeScroll();
         const ids = [...colRow.querySelectorAll('.kanban-col')].map(c => c.dataset.columnId).filter(Boolean);
         state.columnOrder = ids;
         try { await api.updateBoardConfig({ columnOrder: ids }); }
