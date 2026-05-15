@@ -4689,7 +4689,7 @@ function scoutListItem(m, profileId, parentClose, isLive) {
   const score = renderScoreSummary(m);
   const ctx = m.tournamentName ? `${m.tournamentName}${m.round ? ` · ${m.round}` : ''}` : (m.source === 'off-ti' ? 'fora do TI' : '');
   const abandonLabel = m.abandoned
-    ? `W.O. · ${m.abandonedBy === 'a' ? shortName(m.athleteName) : m.abandonedBy === 'o' ? shortName(m.opponentName) : '—'}`
+    ? `Ret. · ${m.abandonedBy === 'a' ? shortName(m.athleteName) : m.abandonedBy === 'o' ? shortName(m.opponentName) : '—'}`
     : 'Encerrado';
   const statusBadge = isLive
     ? el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700' }, '● AO VIVO')
@@ -4915,7 +4915,7 @@ async function openScoutTrackModal(profileId, matchId) {
           isLive ? el('span', { class: 'inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse' }) : null,
           el('span', { class: `text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-red-400' : 'text-slate-400'}` },
             isLive ? 'Ao vivo' : (m.abandoned
-              ? `W.O. · ${m.abandonedBy === 'a' ? shortName(m.athleteName) : m.abandonedBy === 'o' ? shortName(m.opponentName) : '—'}`
+              ? `Ret. · ${m.abandonedBy === 'a' ? shortName(m.athleteName) : m.abandonedBy === 'o' ? shortName(m.opponentName) : '—'}`
               : 'Encerrado')),
         ),
         el('div', { class: 'text-sm font-semibold truncate' }, `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}`),
