@@ -289,8 +289,8 @@ app.delete('/api/push/subscribe', requireAuth, (req, res) => {
 // Botão "testar" no frontend — envia push de teste pro próprio user
 app.post('/api/push/test', requireAuth, async (req, res) => {
   const sent = await sendPushToUsers([req.userId], {
-    title: '🎾 Tennis Flow',
-    body: 'Notificações ativadas. Você vai receber alertas aqui quando algo importante acontecer.',
+    title: '✅ Notificações ativas',
+    body: 'Você vai receber alertas aqui quando algo importante acontecer.',
     tag: 'test',
     url: '/',
   });
@@ -316,7 +316,7 @@ app.post('/api/admin/announcement', requireAuth, requireAdmin, async (req, res) 
   };
   saveAnnouncement(ann);
   const sent = await sendPushToAll({
-    title: '🎾 Tennis Flow',
+    title: '📢 Aviso',
     body: ann.message,
     tag: 'announcement',
     url: ann.url,

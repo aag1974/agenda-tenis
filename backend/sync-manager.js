@@ -161,8 +161,8 @@ export async function syncProfile(profileId) {
           const first = triggeredAlerts[0];
           const more = triggeredAlerts.length - 1;
           const title = triggeredAlerts.length === 1
-            ? '🎾 Tennis Flow'
-            : `🎾 ${triggeredAlerts.length} novos alertas`;
+            ? '⚡ Novo alerta'
+            : `⚡ ${triggeredAlerts.length} novos alertas`;
           const body = more > 0
             ? `${first.message} (+${more} outro${more > 1 ? 's' : ''})`
             : first.message;

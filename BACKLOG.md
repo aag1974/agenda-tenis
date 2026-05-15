@@ -2,6 +2,48 @@
 
 Ideias e features pendentes, em ordem aproximada de prioridade.
 
+## Bugs pendentes (próximo deploy)
+
+### A. Auto-sync dispara em todo deploy
+`startAutoSync()` em `backend/sync-manager.js` agenda primeiro tick 5 min após
+boot sem verificar quando foi o último sync. Todo deploy no Render → sync
+desnecessário ~5 min depois.
+
+**Fix**: em `runAutoSyncTick()` (~L268), antes de chamar `syncProfile(p.id)`,
+verificar `getSyncedData(p.id)?.syncedAt` — pular se sincronizou há < 3h.
+```js
+const lastSynced = getSyncedData(p.id)?.syncedAt;
+if (lastSynced && Date.now() - new Date(lastSynced).getTime() < 3 * 3600 * 1000) continue;
+```
+
+### B. Scout ao Vivo: nome longo desalinha placar
+Nome completo (ex: "Anna Luiza Mesquita Garcia") empurra colunas de sets/PTS
+porque o flex container pai não tem `min-w-0`.
+
+**Fix**: em `rowForSide()` (`frontend/app.js` ~L5002), renderizar `shortName(name)`
+em vez de `name`. Adicionar helper antes de `rowForSide`:
+```js
+function shortName(name) { return name.split(' ').slice(0, 2).join(' '); }
+```
+Resultado: "Anna Luiza Mesquita Garcia" → "Anna Luiza". Sem truncate, sem `…`.
+
+### C. Scout ao Vivo: modal trava após "Encerrar"
+Após `abandon`, modal chama `render()` e exibe estado "Abandonado" estático
+sem call-to-action óbvio. `←` funciona mas não é evidente — parece travado.
+
+**Fix**: em `openScoutTrackModal()` (`frontend/app.js` ~L4935), substituir
+```js
+m = await api.abandonLiveMatch(profileId, m.id);
+// render() chamado depois do else if
+```
+por
+```js
+await api.abandonLiveMatch(profileId, m.id);
+close(); return; // fecha modal, volta pra lista
+```
+
+---
+
 ## Priorizadas
 
 ### 1. Arquivar cards (3 pontinhos)
