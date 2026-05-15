@@ -6420,6 +6420,7 @@ function renderReceiptsGallery(container, t, data) {
         dataUrl = await blobToDataUrl(blob);
       }
       await api.uploadReceipt(profileId, t.id, { category, dataUrl, originalName: file.name });
+      patchCardReceiptsCount(t.id, +1);
       // Reload
       const fresh = await api.listReceipts(profileId, t.id);
       renderReceiptsGallery(container, t, fresh);
