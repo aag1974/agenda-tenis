@@ -2709,6 +2709,11 @@ function refreshSyncProgressModal() {
     document.getElementById('modal-root').innerHTML = '';
   };
 
+  if (ss && ss.state !== 'running' && ss.state !== 'idle') {
+    // Sync terminou — para o timer de atualização do modal
+    if (syncProgressTickTimer) { clearInterval(syncProgressTickTimer); syncProgressTickTimer = null; }
+  }
+
   if (!ss || ss.state === 'running') {
     dot.className = 'inline-block w-3 h-3 rounded-full bg-amber-400 animate-pulse';
     const startedAt = ss?.startedAt ? new Date(ss.startedAt).getTime() : Date.now();
