@@ -2733,7 +2733,7 @@ function refreshSyncProgressModal() {
       el('li', { class: stepClass }, el('span', { class: 'text-slate-400 shrink-0' }, '·'), 'Recalculando estatísticas e indicadores'),
     ));
     body.appendChild(el('p', { class: 'text-xs text-slate-500 italic' },
-      'Costuma levar ~2 minutos. Pode esconder essa janela — quando terminar, mostro aqui o que mudou.'));
+      'Costuma levar ~4 minutos. Pode esconder essa janela — quando terminar, mostro aqui o que mudou.'));
     footer.appendChild(el('button', {
       type: 'button',
       class: 'px-3 py-1.5 text-sm rounded border border-slate-300 text-slate-600 hover:bg-slate-100',
@@ -3964,7 +3964,7 @@ function openAdminModal() {
       announcementSection(),
       action(
         '🔄 Re-avaliar regras de alerta',
-        'Roda regras contra todos os torneios atuais como se fossem novos. Útil quando regra/lógica mudou. Dedupe automático.',
+        'Roda regras de torneio (localidade, tier) como se fossem novos. Não detecta mudanças de ranking — essas só disparam na próxima sync quando o valor mudar.',
         reevaluateAlerts,
       ),
       action(
@@ -6209,7 +6209,7 @@ function renderEmptyState() {
 function renderNeedSync() {
   return el('div', { class: 'mt-12 text-center max-w-md mx-auto' },
     el('p', { class: 'text-slate-100 mb-4' }, 'Ainda não há torneios carregados. Toque no avatar → Sincronizar agora pra puxar a lista do Tênis Integrado.'),
-    el('p', { class: 'text-xs text-slate-300' }, 'A sincronização leva ~2 minutos.'),
+    el('p', { class: 'text-xs text-slate-300' }, 'A sincronização leva ~4 minutos.'),
   );
 }
 
