@@ -7252,7 +7252,12 @@ function showAnnouncementBanner(ann) {
     class: 'fixed inset-x-0 bottom-0 z-[79] bg-amber-500 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-2xl',
     style: 'padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))',
   },
-    el('span', { class: 'text-sm font-medium' }, ann.message),
+    el('div', { class: 'flex flex-col min-w-0' },
+      el('span', { class: 'text-sm font-medium' }, ann.message),
+      ann.createdAt && el('span', { class: 'text-xs text-white/70 mt-0.5' },
+        new Date(ann.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+      ),
+    ),
     actions,
   );
   document.body.appendChild(banner);
