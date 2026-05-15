@@ -65,8 +65,8 @@ function evaluateTierRule(rule, newTournaments) {
 function evaluateRankingRule(rule, prevAthlete, currAthlete) {
   if (!prevAthlete || !currAthlete) return [];
   const scope = rule.params?.scope || 'national';
-  const prevPos = scope === 'df' ? prevAthlete.rankingDF?.dfPosition : prevAthlete.rankingNational?.position;
-  const currPos = scope === 'df' ? currAthlete.rankingDF?.dfPosition : currAthlete.rankingNational?.position;
+  const prevPos = scope === 'df' ? prevAthlete.rankingRegional?.regionalPosition : prevAthlete.rankingNational?.position;
+  const currPos = scope === 'df' ? currAthlete.rankingRegional?.regionalPosition : currAthlete.rankingNational?.position;
   if (prevPos == null || currPos == null) return [];
   if (prevPos === currPos) return [];
   const direction = currPos < prevPos ? 'subiu' : 'caiu';
