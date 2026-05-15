@@ -4934,7 +4934,9 @@ async function openScoutTrackModal(profileId, matchId) {
         else if (action === 'share') return openScoutShareModal(profileId, m);
         else if (action === 'abandon') {
           if (!confirm('Encerrar este match? Você não poderá adicionar mais pontos.')) return;
-          m = await api.abandonLiveMatch(profileId, m.id);
+          await api.abandonLiveMatch(profileId, m.id);
+          close();
+          return;
         }
         render();
       } catch (err) { alert(err.message); }
@@ -4990,6 +4992,10 @@ function renderScorePanel(m) {
   return wrap;
 }
 
+function shortName(name) {
+  return (name || '').split(' ').slice(0, 2).join(' ');
+}
+
 function rowForSide(side, name, m, cs, cg, sets) {
   const isServer = m.server === side && !m.finished;
   const isWinner = m.finished && m.winner === side;
@@ -4999,7 +5005,7 @@ function rowForSide(side, name, m, cs, cg, sets) {
   const nameSuffix = isWinner ? ' 🏆' : (isServer ? ' 🎾' : '');
   row.appendChild(el('div', { class: `px-3 py-2 text-sm flex items-center gap-2 ${isWinner ? 'font-extrabold' : 'font-semibold'}` },
     el('span', { class: 'inline-block w-2.5 h-2.5 rounded-full', style: `background: ${side === 'a' ? '#0891b2' : '#e11d48'}` }),
-    el('span', { class: 'truncate' }, name + nameSuffix),
+    el('span', { class: 'truncate' }, shortName(name) + nameSuffix),
   ));
   for (let i = 0; i < 3; i++) {
     const s = sets[i];
