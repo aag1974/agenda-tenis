@@ -5593,12 +5593,14 @@ async function openMatchReportShareModal(profileId, match) {
 // Match encerrado: mostra só o viewer (mesmo link, agora serve como
 // relatório do match — placar final, stats, nota, notas qualitativas).
 async function openScoutShareModal(profileId, match) {
-  const root = $('modal-root');
-  root.innerHTML = '';
-  const close = () => { root.innerHTML = ''; };
-  const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-50', onClick: close });
+  // Usa container próprio appended ao body (não modal-root) pra não
+  // destruir o tracking modal que está abaixo.
+  const shareRoot = document.createElement('div');
+  document.body.appendChild(shareRoot);
+  const close = () => { shareRoot.remove(); };
+  const overlay = el('div', { class: 'fixed inset-0 bg-black/60 z-[60]', onClick: close });
   const card = el('div', {
-    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-1rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+    class: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-[calc(100%-1rem)] max-w-md bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
     style: 'max-height: 92dvh;',
   });
   const finished = match.finished;
@@ -5608,7 +5610,7 @@ async function openScoutShareModal(profileId, match) {
   ));
   const body = el('div', { class: 'px-5 py-4 overflow-y-auto flex-1 space-y-4' });
   card.appendChild(body);
-  root.append(overlay, card);
+  shareRoot.append(overlay, card);
 
   body.appendChild(el('div', { class: 'text-xs text-slate-500 italic' }, 'Carregando links…'));
 
