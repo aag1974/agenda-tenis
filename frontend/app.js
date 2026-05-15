@@ -2310,7 +2310,14 @@ function wireKanbanSortable(container) {
 
 function renderHeader() {
   const old = $('header-bar');
-  if (old) old.replaceWith(renderHeaderEl());
+  if (!old) return;
+  const searchHadFocus = document.activeElement?.id === 'header-search';
+  const searchCursor = searchHadFocus ? document.activeElement.selectionStart : null;
+  old.replaceWith(renderHeaderEl());
+  if (searchHadFocus) {
+    const newInput = document.getElementById('header-search');
+    if (newInput) { newInput.focus(); if (searchCursor != null) newInput.setSelectionRange(searchCursor, searchCursor); }
+  }
 }
 
 // Title Case pra nomes próprios. Lida com partículas que ficam em
