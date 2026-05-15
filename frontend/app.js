@@ -1878,7 +1878,12 @@ function renderKanbanCard(t) {
       );
     })(),
 
-    el('h3', { class: 'text-sm font-medium leading-snug mb-0.5 line-clamp-2 pr-12' }, t.name || '(sem nome)'),
+    el('div', { class: 'flex items-start gap-1.5 mb-0.5' },
+      el('h3', { class: 'text-sm font-medium leading-snug line-clamp-2 pr-12 flex-1' }, t.name || '(sem nome)'),
+      isNewlyAdded(t) && el('span', {
+        class: 'shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 leading-none mt-0.5',
+      }, 'NOVO'),
+    ),
 
     el('div', { class: 'text-xs text-slate-600 flex items-center justify-between gap-2' },
       el('span', { class: 'truncate' }, cityState || '—'),
