@@ -3890,6 +3890,65 @@ function openAdminModal() {
     return wrap;
   }
 
+  function announcementSection() {
+    const wrap = el('div', { class: 'border border-cyan-200 rounded-lg p-3 bg-cyan-50/40 space-y-2' });
+    wrap.appendChild(el('div', { class: 'text-sm font-semibold text-slate-700' }, '📢 Anúncio para todos os usuários'));
+    wrap.appendChild(el('div', { class: 'text-xs text-slate-500' }, 'Aparece como banner no rodapé quando o app carregar. Push enviado pra quem tem notificações ativas.'));
+
+    const msgArea = el('textarea', {
+      placeholder: 'Ex: Pais 12F, treino às 14h no Golden Tulip.',
+      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 resize-none',
+      rows: '2',
+    });
+    const ctaInp = el('input', {
+      type: 'text',
+      placeholder: 'Rótulo do botão (opcional, ex: Ver detalhes)',
+      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400',
+    });
+    const urlInp = el('input', {
+      type: 'text',
+      placeholder: 'URL do botão (opcional, ex: /)',
+      value: '/',
+      class: 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400',
+    });
+
+    const status = el('div', { class: 'text-xs text-slate-500 italic' });
+
+    const sendBtn = el('button', {
+      class: 'text-xs font-semibold px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white',
+    }, 'Enviar');
+    const clearBtn = el('button', {
+      class: 'text-xs font-semibold px-3 py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-700',
+    }, 'Limpar anúncio ativo');
+
+    sendBtn.onclick = async () => {
+      const msg = msgArea.value.trim();
+      if (!msg) return alert('Digite a mensagem.');
+      sendBtn.disabled = true;
+      sendBtn.textContent = '⏳ Enviando…';
+      try {
+        const r = await api.postAnnouncement(msg, urlInp.value.trim() || '/', ctaInp.value.trim() || null);
+        status.textContent = `✅ Enviado — ${r.pushSent} device(s) notificado(s).`;
+        msgArea.value = '';
+        ctaInp.value = '';
+        sendBtn.textContent = 'Enviar';
+        sendBtn.disabled = false;
+      } catch (e) {
+        alert('Erro: ' + e.message);
+        sendBtn.textContent = 'Enviar';
+        sendBtn.disabled = false;
+      }
+    };
+
+    clearBtn.onclick = async () => {
+      await api.deleteAnnouncement();
+      status.textContent = 'Anúncio removido.';
+    };
+
+    wrap.append(msgArea, ctaInp, urlInp, el('div', { class: 'flex gap-2' }, sendBtn, clearBtn), status);
+    return wrap;
+  }
+
   const card = el('div', {
     class: 'bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col',
     onClick: e => e.stopPropagation(),
@@ -3902,6 +3961,7 @@ function openAdminModal() {
       el('button', { class: 'text-slate-400 hover:text-slate-700 text-xl leading-none', onClick: () => modal.remove() }, '×'),
     ),
     el('div', { class: 'px-5 py-4 space-y-3 overflow-y-auto' },
+      announcementSection(),
       action(
         '🔄 Re-avaliar regras de alerta',
         'Roda regras contra todos os torneios atuais como se fossem novos. Útil quando regra/lógica mudou. Dedupe automático.',
