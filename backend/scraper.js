@@ -221,11 +221,12 @@ async function getRegionalPosition(client, athleteTiId, categoryCode = '12F') {
     // Regex estendida: captura também a UF (formato "ID. NUMBER, UF: XX")
     const nacText = await fetchList(null);
     let athleteUF = null;
+    let nationalPositionLive = null;
     for (const m of nacText.matchAll(/(\d+)º\s*-\s*[^I]+ID\.\s*(\d+)[^\n]*?UF:\s*([A-Z]{2})/g)) {
-      if (m[2] === athleteTiId) { athleteUF = m[3]; break; }
+      if (m[2] === athleteTiId) { athleteUF = m[3]; nationalPositionLive = parseInt(m[1]); break; }
     }
     if (!athleteUF || !ufMap[athleteUF]) {
-      return { uf: athleteUF, regionalPosition: null, totalRegional: 0, cutoffDate: latestCorteDate };
+      return { uf: athleteUF, regionalPosition: null, totalRegional: 0, cutoffDate: latestCorteDate, nationalPositionLive };
     }
 
     // 3rd request — POST com a UF da atleta pra ranquear no recorte regional
@@ -240,6 +241,7 @@ async function getRegionalPosition(client, athleteTiId, categoryCode = '12F') {
       regionalPosition: idx >= 0 ? idx + 1 : null,
       totalRegional: entries.length,
       cutoffDate: latestCorteDate,
+      nationalPositionLive,
     };
   } catch (err) {
     return null;
@@ -897,7 +899,9 @@ export async function syncAthlete({ email, password, starredIds = [], yearsToScr
       wtn: athlete.wtn || null,
       about: athlete.about || null,
       hand: athlete.hand || null,
-      rankingNational: nationalRanking12F,           // { year, category, points, position }
+      rankingNational: nationalRanking12F && regionalRanking?.nationalPositionLive != null
+        ? { ...nationalRanking12F, position: regionalRanking.nationalPositionLive }
+        : nationalRanking12F,
       rankingRegional: regionalRanking,              // { uf, regionalPosition, totalRegional, cutoffDate } | null
       rankingsAll: athlete.rankings || [],           // all rankings on profile
       desempenho,                                     // { byYear: [...], total: {...} } | null
