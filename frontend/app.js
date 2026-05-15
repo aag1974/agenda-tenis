@@ -2233,12 +2233,37 @@ function wireKanbanSortable(container) {
   // via desktop. Detecção é dinâmica (atualiza em resize).
   if (window.matchMedia('(max-width: 640px)').matches) return;
 
-  // Auto-scroll horizontal durante drag: usa o AutoScroll plugin nativo do
-  // SortableJS (já incluso no Sortable.min.js) com scroll: colRowEl explícito.
-  // Abordagens anteriores com listeners externos falharam porque o SortableJS
-  // processa eventos internamente antes de propagá-los — o AutoScroll nativo
-  // roda DENTRO desse ciclo e tem acesso garantido às coordenadas do ghost.
   const colRowEl = container.querySelector('#kanban-col-row');
+
+  // Edge-scroll: listeners nativos com capture:true (disparam antes do SortableJS)
+  // atualizam dragX continuamente. setInterval lê dragX e scrolla colRowEl.
+  // onMove não serve pra isso — só dispara ao cruzar limites de elementos visíveis,
+  // então congela quando o ghost fica dentro da última coluna visível.
+  let edgeScrollTimer = null;
+  let dragX = -1;
+  function trackDragX(e) {
+    dragX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+  }
+  function startEdgeScroll() {
+    stopEdgeScroll();
+    dragX = -1;
+    document.addEventListener('mousemove', trackDragX, { capture: true, passive: true });
+    document.addEventListener('touchmove', trackDragX, { capture: true, passive: true });
+    edgeScrollTimer = setInterval(() => {
+      if (dragX < 0 || !colRowEl) return;
+      const rect = colRowEl.getBoundingClientRect();
+      const ZONE = 80, SPEED = 14;
+      if (dragX < rect.left + ZONE) colRowEl.scrollLeft -= SPEED;
+      else if (dragX > rect.right - ZONE) colRowEl.scrollLeft += SPEED;
+    }, 16);
+  }
+  function stopEdgeScroll() {
+    clearInterval(edgeScrollTimer);
+    edgeScrollTimer = null;
+    dragX = -1;
+    document.removeEventListener('mousemove', trackDragX, { capture: true });
+    document.removeEventListener('touchmove', trackDragX, { capture: true });
+  }
 
   // SortableJS pra cards (drag entre colunas)
   const lists = container.querySelectorAll('.kanban-list');
@@ -2253,13 +2278,10 @@ function wireKanbanSortable(container) {
       delay: 300,
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
-      // Diz ao AutoScroll exatamente qual elemento scrollar horizontalmente.
-      // scrollSensitivity: zona em px perto do edge; scrollSpeed: px/tick.
-      scroll: colRowEl,
-      scrollSensitivity: 80,
-      scrollSpeed: 10,
-      forceAutoScrollFallback: true,
+      scroll: false,
+      onStart: startEdgeScroll,
       onEnd: async (evt) => {
+        stopEdgeScroll();
         const tid = evt.item.dataset.tid;
         const newColumn = evt.to.dataset.column;
         const newIndex = evt.newIndex;
@@ -2309,11 +2331,10 @@ function wireKanbanSortable(container) {
       delay: 300,
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
-      scroll: colRowEl,
-      scrollSensitivity: 80,
-      scrollSpeed: 10,
-      forceAutoScrollFallback: true,
+      scroll: false,
+      onStart: startEdgeScroll,
       onEnd: async () => {
+        stopEdgeScroll();
         const ids = [...colRowEl.querySelectorAll('.kanban-col')].map(c => c.dataset.columnId).filter(Boolean);
         state.columnOrder = ids;
         try { await api.updateBoardConfig({ columnOrder: ids }); }
