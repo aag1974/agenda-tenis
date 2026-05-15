@@ -7182,10 +7182,12 @@ if ('serviceWorker' in navigator) {
   // Mensagens vindas do SW — notificação clicada manda 'open-url'.
   navigator.serviceWorker.addEventListener('message', (e) => {
     if (e.data?.type === 'open-url') {
-      // Atualiza alertas e abre o modal se a URL pedir
       if ((e.data.url || '').includes('openAlerts')) {
         if (state.activeProfileId) openAlertsListModal({ onlyUnseen: true });
       }
+    }
+    if (e.data?.type === 'show-announcement') {
+      api.getAnnouncement().then(ann => { if (ann) showAnnouncementBanner(ann); }).catch(() => {});
     }
   });
 }

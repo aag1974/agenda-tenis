@@ -1,7 +1,7 @@
 // Service worker — network-first pra HTML e app.js (sempre serve a versão
 // nova quando online; cai pro cache só offline). Stale-while-revalidate
 // pra ícones / manifest / assets pesados que mudam pouco.
-const CACHE = 'tennis-flow-0.9.79';
+const CACHE = 'tennis-flow-0.9.80';
 const SHELL_OFFLINE = ['/', '/app.js', '/manifest.webmanifest', '/icon-192.svg', '/icon-512.svg'];
 
 self.addEventListener('install', (e) => {
@@ -85,6 +85,11 @@ self.addEventListener('push', (event) => {
         if (data.badge > 0) await self.navigator.setAppBadge(data.badge);
         else await self.navigator.clearAppBadge?.();
       } catch {}
+    }
+    // Se for anúncio e o app estiver aberto, avisa pra mostrar o banner
+    if (tag === 'announcement') {
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of clients) client.postMessage({ type: 'show-announcement' });
     }
   })());
 });
