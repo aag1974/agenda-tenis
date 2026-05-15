@@ -685,3 +685,18 @@ export function listMatchReportsByMatch(profileId, matchId) {
     .map(([reportId, info]) => ({ reportId, ...info }))
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
+
+// ===== Announcements (broadcast admin → todos os usuários) =====
+const ANNOUNCEMENT_FILE = join(DATA_DIR, 'announcement.json');
+
+export function getAnnouncement() {
+  return readJson(ANNOUNCEMENT_FILE, null);
+}
+
+export function saveAnnouncement(data) {
+  writeJson(ANNOUNCEMENT_FILE, data);
+}
+
+export function clearAnnouncement() {
+  if (existsSync(ANNOUNCEMENT_FILE)) unlinkSync(ANNOUNCEMENT_FILE);
+}

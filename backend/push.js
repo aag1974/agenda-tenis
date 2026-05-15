@@ -77,6 +77,12 @@ export function listSubscriptionsForUser(userId) {
 // Envia payload pra todas as subscriptions de uma lista de userIds.
 // Retorna nº de devices que receberam. Subscriptions inválidas (410/404)
 // são removidas automaticamente.
+export async function sendPushToAll(payload) {
+  const list = readSubs();
+  const userIds = [...new Set(list.map(s => s.userId))];
+  return sendPushToUsers(userIds, payload);
+}
+
 export async function sendPushToUsers(userIds, payload) {
   if (!configured) return 0;
   if (!userIds?.length) return 0;

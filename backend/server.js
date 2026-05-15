@@ -20,6 +20,7 @@ import {
   listLiveMatches, getLiveMatch, saveLiveMatch, deleteLiveMatch, newMatchId,
   createLiveMatchTokens, resolveLiveMatchToken, getLiveMatchTokens, deleteLiveMatchTokens,
   newMatchReportId, saveMatchReport, getMatchReportHtml, listMatchReportsByMatch,
+  getAnnouncement, saveAnnouncement, clearAnnouncement,
 } from './storage.js';
 import { createMatch as createMatchState, applyPoint, undoLastPoint, snapshotScore } from './tennis-score.js';
 import { attachScore } from './match-score.js';
@@ -64,7 +65,7 @@ import * as admin from './admin-cli.js';
 import {
   pushIsConfigured, getVapidPublicKey,
   saveSubscription, removeSubscription, listSubscriptionsForUser,
-  sendPushToUsers,
+  sendPushToUsers, sendPushToAll,
 } from './push.js';
 
 migrateHouseholdsOnBoot();
@@ -294,6 +295,39 @@ app.post('/api/push/test', requireAuth, async (req, res) => {
     url: '/',
   });
   res.json({ sent });
+});
+
+// ===== Announcements =====
+// GET público (autenticado) — app checa ao carregar
+app.get('/api/announcement', requireAuth, (req, res) => {
+  res.json(getAnnouncement());
+});
+
+// POST admin — define anúncio e dispara push pra todos os subscribers
+app.post('/api/admin/announcement', requireAuth, requireAdmin, async (req, res) => {
+  const { message, url = '/', cta } = req.body || {};
+  if (!message?.trim()) return res.status(400).json({ error: 'message é obrigatório' });
+  const ann = {
+    id: `ann-${Date.now()}`,
+    message: message.trim(),
+    url,
+    cta: cta?.trim() || null,
+    createdAt: new Date().toISOString(),
+  };
+  saveAnnouncement(ann);
+  const sent = await sendPushToAll({
+    title: '🎾 Tennis Flow',
+    body: ann.message,
+    tag: 'announcement',
+    url: ann.url,
+  }).catch(() => 0);
+  res.json({ ok: true, ann, pushSent: sent });
+});
+
+// DELETE admin — remove anúncio ativo
+app.delete('/api/admin/announcement', requireAuth, requireAdmin, (req, res) => {
+  clearAnnouncement();
+  res.status(204).end();
 });
 
 // Endpoint admin — protegido por env var ADMIN_TOKEN.

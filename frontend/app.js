@@ -432,6 +432,23 @@ const api = {
     if (!r.ok) throw new Error('Erro');
     return r.json();
   },
+  async getAnnouncement() {
+    const r = await fetch('/api/announcement');
+    if (!r.ok) return null;
+    return r.json();
+  },
+  async postAnnouncement(message, url, cta) {
+    const r = await fetch('/api/admin/announcement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, url, cta }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro');
+    return r.json();
+  },
+  async deleteAnnouncement() {
+    await fetch('/api/admin/announcement', { method: 'DELETE' });
+  },
   async createShareLink(profileId, tid) {
     const r = await fetch(`/api/profiles/${profileId}/tournaments/${tid}/share`, { method: 'POST' });
     if (!r.ok) throw new Error('Erro ao gerar link');
@@ -693,6 +710,7 @@ async function init() {
   if (state.user?.needsProfile) {
     openCompleteProfileModal();
   }
+  api.getAnnouncement().then(ann => { if (ann) showAnnouncementBanner(ann); }).catch(() => {});
 }
 
 function openCompleteProfileModal() {
@@ -7127,6 +7145,37 @@ function showUpdateBanner() {
         title: 'Ignorar',
       }, '×'),
     ),
+  );
+  document.body.appendChild(banner);
+}
+
+function showAnnouncementBanner(ann) {
+  if (!ann?.id || !ann?.message) return;
+  if (localStorage.getItem(`ann-dismissed-${ann.id}`)) return;
+  if (document.getElementById('announcement-banner')) return;
+  const dismiss = () => {
+    localStorage.setItem(`ann-dismissed-${ann.id}`, '1');
+    banner.remove();
+  };
+  const actions = el('div', { class: 'flex gap-2 shrink-0' });
+  if (ann.cta && ann.url) {
+    actions.appendChild(el('a', {
+      href: ann.url,
+      class: 'text-sm px-3 py-1.5 rounded bg-white text-cyan-700 font-semibold hover:bg-slate-100',
+    }, ann.cta));
+  }
+  actions.appendChild(el('button', {
+    class: 'text-white/80 hover:text-white text-xl leading-none px-1',
+    onClick: dismiss,
+    title: 'Fechar',
+  }, '×'));
+  const banner = el('div', {
+    id: 'announcement-banner',
+    class: 'fixed inset-x-0 bottom-0 z-[79] bg-cyan-700 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-2xl',
+    style: 'padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))',
+  },
+    el('span', { class: 'text-sm font-medium' }, ann.message),
+    actions,
   );
   document.body.appendChild(banner);
 }
