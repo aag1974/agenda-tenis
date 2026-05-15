@@ -1,7 +1,7 @@
 // Service worker — network-first pra HTML e app.js (sempre serve a versão
 // nova quando online; cai pro cache só offline). Stale-while-revalidate
 // pra ícones / manifest / assets pesados que mudam pouco.
-const CACHE = 'tennis-flow-0.9.81';
+const CACHE = 'tennis-flow-0.9.82';
 const SHELL_OFFLINE = ['/', '/app.js', '/manifest.webmanifest', '/icon-192.svg', '/icon-512.svg'];
 
 self.addEventListener('install', (e) => {
@@ -65,7 +65,7 @@ async function staleWhileRevalidate(request) {
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
-  const title = data.title || '📢 Aviso';
+  const title = data.title || '🎾 Tennis Flow';
   const body = data.body || 'Há um novo alerta no seu quadro.';
   const tag = data.tag || 'alerts';
   const url = data.url || '/';
