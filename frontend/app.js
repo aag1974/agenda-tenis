@@ -904,6 +904,14 @@ function renderAuth() {
           onClick: () => { mode = mode === 'signup' ? 'login' : 'signup'; draw(); },
         }, mode === 'signup' ? 'Entrar' : 'Criar conta'),
       ),
+
+      el('div', { class: 'text-center text-[11px] text-white/35' },
+        el('a', {
+          href: '/privacidade',
+          target: '_blank',
+          class: 'hover:text-white/60 underline-offset-2 hover:underline transition-colors',
+        }, 'Privacidade & Segurança · LGPD'),
+      ),
     );
 
     inputs.email.addEventListener('keydown', onEnter);

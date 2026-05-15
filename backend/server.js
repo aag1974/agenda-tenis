@@ -327,6 +327,7 @@ app.use(express.static(join(__dirname, '..', 'frontend')));
 // Alias amigável pro manual público (também acessível em /manual.html)
 app.get('/manual', (req, res) => res.sendFile(join(__dirname, '..', 'frontend', 'manual.html')));
 app.get('/upgrade', (req, res) => res.sendFile(join(__dirname, '..', 'frontend', 'upgrade.html')));
+app.get('/privacidade', (req, res) => res.sendFile(join(__dirname, '..', 'frontend', 'privacidade.html')));
 
 // ===== Card público compartilhado =====
 function escapeHtml(s) {

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacidade &amp; Segurança — Tennis Flow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    h2 { font-size: 1.1rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.5rem; color: #0e3a4d; }
+    h3 { font-size: 0.95rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.25rem; color: #1f5b75; }
+    p, li { font-size: 0.9rem; line-height: 1.65; color: #374151; }
+    ul { list-style: disc; padding-left: 1.25rem; margin-top: 0.25rem; }
+    li { margin-bottom: 0.25rem; }
+    .badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px; }
+    .badge-green { background: #d1fae5; color: #065f46; }
+    .badge-blue  { background: #dbeafe; color: #1e40af; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- Header -->
+  <div style="background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 60%, #1f5b75 100%);" class="px-5 py-5">
+    <div class="max-w-2xl mx-auto flex items-center gap-3">
+      <span class="text-3xl">🎾</span>
+      <div>
+        <div class="text-white font-bold text-lg leading-tight">Tennis Flow</div>
+        <div class="text-cyan-200 text-xs">Política de Privacidade e Segurança</div>
+      </div>
+      <a href="/" class="ml-auto text-white/60 hover:text-white text-sm">← Voltar</a>
+    </div>
+  </div>
+
+  <div class="max-w-2xl mx-auto px-5 py-8 pb-16">
+
+    <p class="text-xs text-slate-400 mb-6">Versão 1.0 · Vigente desde 14 de maio de 2026 · Em conformidade com a <strong>Lei nº 13.709/2018 (LGPD)</strong></p>
+
+    <!-- Resumo executivo -->
+    <div class="bg-cyan-50 border border-cyan-200 rounded-xl p-4 mb-6">
+      <div class="font-bold text-cyan-900 mb-2 text-sm">Resumo em linguagem simples</div>
+      <ul class="text-sm text-cyan-800 space-y-1">
+        <li>Você nos autoriza a sincronizar seus próprios dados públicos do Tênis Integrado.</li>
+        <li>Guardamos tudo criptografado. Não vendemos, não compartilhamos com terceiros.</li>
+        <li>Você pode pedir exclusão total da conta a qualquer momento.</li>
+        <li>Notas táticas e dados de scout ficam <em>só</em> na sua conta — nunca expostos sem sua ação.</li>
+        <li>Somos responsáveis pela segurança do armazenamento; você é responsável pelas credenciais que nos fornece.</li>
+      </ul>
+    </div>
+
+    <!-- 1. Quem somos -->
+    <h2>1. Quem somos (controlador de dados)</h2>
+    <p>
+      O Tennis Flow é um aplicativo independente desenvolvido e operado por
+      <strong>Alexandre Garcia</strong> (alexandre@opiniao.inf.br).
+      Para fins da LGPD, Alexandre Garcia é o <em>controlador</em> dos dados tratados neste aplicativo.
+    </p>
+    <p class="mt-2">
+      Não somos afiliados ao Tênis Integrado (TI) nem à Confederação Brasileira de Tênis. Acessamos o TI
+      em seu nome, com as credenciais que você nos fornece, da mesma forma que você faria manualmente
+      no navegador.
+    </p>
+
+    <!-- 2. Dados que coletamos -->
+    <h2>2. Dados que coletamos e por quê</h2>
+
+    <h3>2.1 Dados que você nos fornece diretamente</h3>
+    <ul>
+      <li><strong>Email e senha</strong> — usados para criar sua conta no Tennis Flow (armazenados com hash bcrypt; nunca em texto puro).</li>
+      <li><strong>Credenciais do Tênis Integrado</strong> — usadas exclusivamente para sincronizar seus dados. Armazenadas criptografadas com AES-256-GCM; nunca transmitidas a terceiros.</li>
+      <li><strong>Notas táticas e observações</strong> — escritas por você no Scout ao Vivo. Visíveis apenas à sua conta e membros da família que você convidou.</li>
+    </ul>
+
+    <h3>2.2 Dados que obtemos do Tênis Integrado com sua autorização</h3>
+    <ul>
+      <li>Perfil público do atleta (nome, clube, categoria, ranking).</li>
+      <li>Histórico de torneios, inscrições, resultados e chaves.</li>
+      <li>Dados de adversários que aparecem nos resultados do <em>seu</em> atleta (nomes e placares — dados públicos no TI).</li>
+    </ul>
+    <p class="text-xs text-slate-500 mt-1">
+      <span class="badge badge-blue">Base legal LGPD</span>&nbsp;
+      Art. 7º, I (consentimento) e Art. 7º, IX (legítimo interesse do titular em gerenciar sua própria carreira esportiva).
+      Os dados do TI são públicos e acessíveis sem login; coletamos apenas os do atleta da sua conta.
+    </p>
+
+    <h3>2.3 Dados técnicos</h3>
+    <ul>
+      <li>Logs de acesso à API (IP, horário, endpoint) — retidos por 30 dias para segurança.</li>
+      <li>Token de push notification, se você autorizar notificações.</li>
+    </ul>
+
+    <!-- 3. Como armazenamos -->
+    <h2>3. Como armazenamos e protegemos seus dados</h2>
+    <ul>
+      <li>Todos os dados do perfil (credenciais TI, synced data, notas) são cifrados em repouso com <strong>AES-256-GCM</strong> antes de tocar o disco.</li>
+      <li>A chave de criptografia é derivada de um segredo de servidor, não armazenado junto dos dados.</li>
+      <li>Comunicação cliente↔servidor exclusivamente via <strong>HTTPS/TLS 1.2+</strong>.</li>
+      <li>O servidor roda em infraestrutura gerenciada (<a href="https://render.com" class="text-cyan-700 underline" target="_blank">Render</a>) com isolamento de processo por conta.</li>
+      <li>Senhas de usuário armazenadas como hash <strong>bcrypt (custo 12)</strong> — irrecuperáveis até por nós.</li>
+    </ul>
+
+    <!-- 4. Com quem compartilhamos -->
+    <h2>4. Com quem compartilhamos seus dados</h2>
+    <div class="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm text-emerald-800">
+      <strong>Resposta direta: com ninguém.</strong> Não vendemos, não cedemos, não alugamos dados.
+    </div>
+    <p class="mt-3">As únicas exceções são:</p>
+    <ul>
+      <li><strong>Membros da sua família</strong> que você mesmo convidou (roles: Editor ou Leitor).</li>
+      <li><strong>Links públicos de Scout</strong> que <em>você</em> gerar e compartilhar — contêm apenas placar, stats e notas que você escolheu registrar. O link não expõe email, credenciais ou dados de conta.</li>
+      <li><strong>Render (infraestrutura)</strong> — hospeda os arquivos cifrados. Não tem acesso ao conteúdo (chave fica no processo da aplicação).</li>
+      <li><strong>Exigência legal</strong> — se formos legalmente obrigados a divulgar (ex.: ordem judicial), notificamos você com antecedência se a lei permitir.</li>
+    </ul>
+
+    <!-- 5. Links públicos de Scout -->
+    <h2>5. Links públicos do Scout ao Vivo</h2>
+    <p>
+      Quando você gera um link de Scout (para quem marcará os pontos) ou de Viewer (para quem acompanha),
+      qualquer pessoa com o link pode ver as informações do match. Entenda:
+    </p>
+    <ul>
+      <li>O link contém: nomes dos atletas, placar set a set, estatísticas do jogo e notas qualitativas que você adicionou.</li>
+      <li>O link <strong>não</strong> expõe: email, dados de conta, credenciais do TI, ou qualquer outro match que não aquele.</li>
+      <li>O link de Scout expira quando o match é encerrado. O link de Viewer permanece válido indefinidamente (funciona como relatório permanente).</li>
+      <li><strong>Você é responsável por quem recebe o link.</strong> Se compartilhou com pessoas erradas, basta encerrar o match para invalidar o link de edição.</li>
+    </ul>
+
+    <!-- 6. Responsabilidades do usuário -->
+    <h2>6. Responsabilidade do usuário</h2>
+    <p>Ao usar o Tennis Flow, você declara e assume que:</p>
+    <ul>
+      <li>As credenciais do Tênis Integrado que fornece são <strong>suas</strong> ou de um atleta sob sua tutela/responsabilidade legal (ex.: filho menor de idade).</li>
+      <li>Você tem autorização para sincronizar e armazenar os dados do atleta vinculado à conta.</li>
+      <li>Mantém sua senha do Tennis Flow em sigilo e não compartilha o acesso com pessoas não autorizadas.</li>
+      <li>Compreende que links públicos de Scout gerados por você expõem dados do jogo conforme descrito na seção 5.</li>
+      <li>Não usará o app para coletar dados de terceiros sem o consentimento deles.</li>
+    </ul>
+    <p class="text-xs text-slate-500 mt-2">
+      Dados de adversários que aparecem nos resultados do TI são públicos e derivam da participação deles em torneios oficiais.
+      Exibimos esses dados apenas no contexto de análise dos jogos <em>do seu atleta</em>.
+    </p>
+
+    <!-- 7. Responsabilidade do Tennis Flow -->
+    <h2>7. Responsabilidade do Tennis Flow</h2>
+    <p>Nos comprometemos a:</p>
+    <ul>
+      <li>Manter seus dados cifrados e protegidos conforme descrito na seção 3.</li>
+      <li>Não usar seus dados para fins diferentes dos declarados neste documento.</li>
+      <li>Não vender, alugar ou ceder dados a terceiros.</li>
+      <li>Notificá-lo em caso de incidente de segurança que afete seus dados, conforme prazo legal (72h após ciência).</li>
+      <li>Atender solicitações de acesso, correção ou exclusão de dados no prazo de 15 dias úteis.</li>
+    </ul>
+    <p class="mt-2"><strong>Limitações da nossa responsabilidade:</strong></p>
+    <ul>
+      <li>Não somos responsáveis pela exatidão dos dados originados no Tênis Integrado — refletimos o que está lá.</li>
+      <li>Não nos responsabilizamos por interrupções do TI que afetem a sincronização.</li>
+      <li>Não nos responsabilizamos por danos decorrentes de credenciais compartilhadas pelo próprio usuário.</li>
+    </ul>
+
+    <!-- 8. Direitos do titular (LGPD art. 18) -->
+    <h2>8. Seus direitos como titular (LGPD, art. 18)</h2>
+    <p>Você tem direito a:</p>
+    <ul>
+      <li><strong>Acesso</strong> — saber quais dados temos sobre você.</li>
+      <li><strong>Correção</strong> — corrigir dados incompletos ou desatualizados.</li>
+      <li><strong>Anonimização ou exclusão</strong> — eliminar dados desnecessários ou tratados em desconformidade.</li>
+      <li><strong>Portabilidade</strong> — receber seus dados em formato estruturado.</li>
+      <li><strong>Revogação do consentimento</strong> — retirar o consentimento a qualquer momento, com exclusão dos dados.</li>
+      <li><strong>Oposição</strong> — opor-se ao tratamento realizado com base em legítimo interesse.</li>
+    </ul>
+    <p class="mt-2">
+      Para exercer qualquer direito, entre em contato: <a href="mailto:alexandre@opiniao.inf.br" class="text-cyan-700 underline">alexandre@opiniao.inf.br</a>.
+      Ou use a função de exclusão de conta disponível no painel do app (em <em>Configurações → Excluir conta</em>).
+    </p>
+
+    <!-- 9. Retenção de dados -->
+    <h2>9. Retenção de dados</h2>
+    <ul>
+      <li><strong>Conta ativa</strong> — dados mantidos enquanto a conta existir.</li>
+      <li><strong>Exclusão de conta</strong> — todos os dados do perfil, histórico de torneios, notas e credenciais são excluídos permanentemente em até 7 dias.</li>
+      <li><strong>Logs técnicos</strong> — excluídos automaticamente após 30 dias.</li>
+      <li><strong>Links de Scout (viewer)</strong> — o snapshot do match permanece acessível pelo link até você excluir a conta ou solicitar remoção.</li>
+    </ul>
+
+    <!-- 10. Cookies e rastreamento -->
+    <h2>10. Cookies e rastreamento</h2>
+    <p>
+      Usamos apenas um cookie de sessão (<code>sid</code>) para manter você autenticado.
+      Não usamos cookies de rastreamento, analytics de terceiros, pixel de conversão ou qualquer mecanismo de perfilamento.
+    </p>
+
+    <!-- 11. Menores de idade -->
+    <h2>11. Menores de idade</h2>
+    <p>
+      O Tennis Flow é projetado para gestão de carreiras de atletas juniores. Os dados de um atleta menor de idade
+      devem ser gerenciados pelo responsável legal (pai, mãe ou tutor), que cria e mantém a conta.
+      O responsável legal assume as responsabilidades descritas na seção 6 em nome do menor.
+    </p>
+
+    <!-- 12. Alterações nesta política -->
+    <h2>12. Alterações nesta política</h2>
+    <p>
+      Qualquer alteração relevante será comunicada por email antes de entrar em vigor.
+      Alterações que ampliem o escopo do tratamento exigirão novo consentimento explícito.
+      O histórico de versões estará disponível nesta página.
+    </p>
+
+    <!-- 13. Contato e DPO -->
+    <h2>13. Contato</h2>
+    <p>
+      <strong>Controlador:</strong> Alexandre Garcia<br>
+      <strong>Email:</strong> <a href="mailto:alexandre@opiniao.inf.br" class="text-cyan-700 underline">alexandre@opiniao.inf.br</a><br>
+      <strong>Exercício de direitos LGPD:</strong> mesmo email, assunto "Dados pessoais"
+    </p>
+    <p class="text-xs text-slate-400 mt-1">
+      Por ser um app de pequeno porte (art. 41, §3º da LGPD), não somos obrigados a nomear um DPO formal,
+      mas tratamos todas as solicitações com o mesmo rigor.
+    </p>
+
+    <!-- Rodapé -->
+    <div class="mt-10 pt-6 border-t border-slate-200 text-xs text-slate-400 text-center">
+      Tennis Flow · Política de Privacidade v1.0 · 14 mai 2026<br>
+      <a href="/" class="text-cyan-600 hover:underline mt-1 inline-block">← Voltar ao app</a>
+    </div>
+
+  </div>
+</body>
+</html>
