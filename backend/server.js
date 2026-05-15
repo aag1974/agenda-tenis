@@ -1853,7 +1853,7 @@ app.get('/api/profiles/:id/live-matches/:matchId', requireAuth, ensureOwnedProfi
 // Marcador (não fecha ponto) — pra "1ª de saque errada" e "Devolução boa".
 // Registra evento no log mas não muda placar. Útil pra derivar stats
 // granulares (% 1º saque entrou, % returns made).
-const VALID_MARKERS = new Set(['serveerr', 'returnmade']);
+const VALID_MARKERS = new Set(['serve_fault', 'return_in_play']);
 
 function appendMarker(m, stat) {
   m.points = m.points || [];
