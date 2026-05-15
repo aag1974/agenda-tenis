@@ -6663,12 +6663,18 @@ function tournamentTiers(t) {
 
 async function toggleSelected(t) {
   const newVal = !t.notes?.selected;
-  t.notes = { ...(t.notes || {}), selected: newVal };
+  const currentNotes = t.notes || {};
+  // Quando estrela pela primeira vez sem coluna manual definida, grava a coluna
+  // atual pra evitar que mutações de dados (ex: modal de detalhes atualiza datas
+  // de inscrição) derivem o card pra outro auto-coluna no próximo render.
+  const extra = (newVal && !currentNotes.column) ? { column: effectiveColumnFor(t) } : {};
+  t.notes = { ...currentNotes, selected: newVal, ...extra };
   render();
   try {
-    await api.updateNotes(state.activeProfileId, t.id, { selected: newVal });
+    await api.updateNotes(state.activeProfileId, t.id, { selected: newVal, ...extra });
   } catch (err) {
     t.notes.selected = !newVal;
+    if (extra.column) delete t.notes.column;
     render();
     alert('Erro: ' + err.message);
   }
@@ -6751,13 +6757,16 @@ async function openTournament(tid) {
   updateStar();
   starBtn.onclick = async () => {
     const newVal = !t.notes?.selected;
-    t.notes = { ...(t.notes || {}), selected: newVal };
+    const currentNotes = t.notes || {};
+    const extra = (newVal && !currentNotes.column) ? { column: effectiveColumnFor(t) } : {};
+    t.notes = { ...currentNotes, selected: newVal, ...extra };
     updateStar();
     try {
-      await api.updateNotes(state.activeProfileId, t.id, { selected: newVal });
+      await api.updateNotes(state.activeProfileId, t.id, { selected: newVal, ...extra });
       render();
     } catch (err) {
       t.notes.selected = !newVal;
+      if (extra.column) delete t.notes.column;
       updateStar();
       alert('Erro: ' + err.message);
     }
