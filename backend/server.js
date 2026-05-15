@@ -1954,6 +1954,8 @@ app.patch('/api/profiles/:id/live-matches/:matchId', requireAuth, requireEditor,
     m.finished = true;
     m.abandoned = true;
     m.endedAt = new Date().toISOString();
+    const { abandonedBy } = req.body;
+    if (abandonedBy === 'a' || abandonedBy === 'o') m.abandonedBy = abandonedBy;
   }
   saveLiveMatch(req.params.id, m);
   res.json(attachScore(m));

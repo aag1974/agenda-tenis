@@ -530,11 +530,11 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao adicionar nota');
     return r.json();
   },
-  async abandonLiveMatch(profileId, matchId) {
+  async abandonLiveMatch(profileId, matchId, abandonedBy) {
     const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'abandon' }),
+      body: JSON.stringify({ action: 'abandon', abandonedBy }),
     });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao encerrar');
     return r.json();
@@ -4688,9 +4688,12 @@ function openScoutListModal() {
 function scoutListItem(m, profileId, parentClose, isLive) {
   const score = renderScoreSummary(m);
   const ctx = m.tournamentName ? `${m.tournamentName}${m.round ? ` · ${m.round}` : ''}` : (m.source === 'off-ti' ? 'fora do TI' : '');
+  const abandonLabel = m.abandoned
+    ? `W.O. · ${m.abandonedBy === 'a' ? shortName(m.athleteName) : m.abandonedBy === 'o' ? shortName(m.opponentName) : '—'}`
+    : 'Encerrado';
   const statusBadge = isLive
     ? el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700' }, '● AO VIVO')
-    : el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700' }, m.abandoned ? 'Abandonado' : 'Encerrado');
+    : el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700' }, abandonLabel);
   // Nota 0-10 inline (cores fixas Anna cyan, adv rose)
   const cs = m.computedScore;
   const noteBadge = cs && (cs.a?.score != null || cs.o?.score != null)
@@ -4704,7 +4707,7 @@ function scoutListItem(m, profileId, parentClose, isLive) {
   const head = el('div', {},
     el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
       el('div', { class: 'min-w-0 flex-1' },
-        el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${m.athleteName} vs ${m.opponentName}`),
+        el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}`),
         ctx && el('div', { class: 'text-[11px] text-slate-500 truncate' }, ctx),
       ),
       statusBadge,
@@ -4850,6 +4853,35 @@ function openScoutCreateModal(profileId) {
   setTimeout(() => opponentInput.focus(), 50);
 }
 
+// Bottom sheet: pergunta quem abandonou antes de confirmar encerramento.
+// Retorna 'a', 'o', ou null (cancelado).
+function pickAbandonSide(athleteName, opponentName) {
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    const done = (side) => { root.remove(); resolve(side); };
+    const btn = (label, color, side) => el('button', {
+      class: `w-full py-3 rounded-xl text-sm font-bold text-white transition-opacity active:opacity-70 ${color}`,
+      onClick: () => done(side),
+    }, label);
+    root.append(
+      el('div', { class: 'fixed inset-0 bg-black/50 z-[60]', onClick: () => done(null) }),
+      el('div', { class: 'fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-2xl px-5 pt-5 pb-10 max-w-md mx-auto' },
+        el('div', { class: 'text-sm font-bold text-slate-800 mb-1 text-center' }, 'Quem abandonou?'),
+        el('div', { class: 'text-xs text-slate-400 mb-5 text-center' }, 'O match será encerrado e não poderá ser editado.'),
+        el('div', { class: 'flex flex-col gap-2' },
+          btn(shortName(athleteName), 'bg-cyan-600 hover:bg-cyan-700', 'a'),
+          btn(shortName(opponentName), 'bg-rose-600 hover:bg-rose-700', 'o'),
+          el('button', {
+            class: 'w-full py-3 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200',
+            onClick: () => done(null),
+          }, 'Cancelar'),
+        ),
+      ),
+    );
+  });
+}
+
 // Modal de tracking — coração do Scout ao Vivo
 async function openScoutTrackModal(profileId, matchId) {
   const root = $('modal-root');
@@ -4882,7 +4914,9 @@ async function openScoutTrackModal(profileId, matchId) {
         el('div', { class: 'flex items-center gap-2' },
           isLive ? el('span', { class: 'inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse' }) : null,
           el('span', { class: `text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-red-400' : 'text-slate-400'}` },
-            isLive ? 'Ao vivo' : (m.abandoned ? 'Abandonado' : 'Encerrado')),
+            isLive ? 'Ao vivo' : (m.abandoned
+              ? `W.O. · ${m.abandonedBy === 'a' ? shortName(m.athleteName) : m.abandonedBy === 'o' ? shortName(m.opponentName) : '—'}`
+              : 'Encerrado')),
         ),
         el('div', { class: 'text-sm font-semibold truncate' }, `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}`),
         m.tournamentName && m.tournamentName.length >= 4 && el('div', { class: 'text-[11px] text-cyan-200 truncate' }, m.tournamentName),
@@ -4920,8 +4954,9 @@ async function openScoutTrackModal(profileId, matchId) {
         if (action === 'undo') m = await api.undoLivePoint(profileId, m.id);
         else if (action === 'share') return openScoutShareModal(profileId, m);
         else if (action === 'abandon') {
-          if (!confirm('Encerrar este match? Você não poderá adicionar mais pontos.')) return;
-          await api.abandonLiveMatch(profileId, m.id);
+          const side = await pickAbandonSide(m.athleteName, m.opponentName);
+          if (!side) return;
+          await api.abandonLiveMatch(profileId, m.id, side);
           close();
           return;
         }
