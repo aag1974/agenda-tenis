@@ -701,6 +701,19 @@ Coach login → /scouting/dashboard
                               Encerrar → relatório público
 ```
 
+### UX dos campos de atleta (decisão 2026-05-16)
+
+Tanto na T1 (coach selecionando atleta) quanto na T2 (scouter selecionando adversário),
+os campos de nome funcionam como **search incremental**:
+
+- Campo de digitação livre
+- Conforme usuário digita ("A" → "AB" → "ABC"), filtra a lista debaixo
+- Resultados aparecem **abaixo do campo** (não dropdown clássico)
+- Clique no resultado → seleciona e move foco pro próximo campo
+- Não-bloqueante: se atleta não existe, pode digitar nome livre e seguir
+
+Lista vem dos inscritos importados do TI (decisão #2 e #3 abaixo).
+
 ### Decisões fechadas (7)
 
 | # | Decisão | Escolha |
