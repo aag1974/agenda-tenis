@@ -3759,10 +3759,10 @@ function openAdminModal() {
   );
 
   const reevaluateAlerts = async () => {
-    if (!profile) return alert('Sem perfil ativo');
+    if (!profile) return alertDialog('Sem perfil ativo');
     try {
       const r = await api.reevaluateAlerts(profile.id);
-      alert(`Re-avaliação concluída:\n• ${r.evaluated} eventos avaliados\n• ${r.added} eventos novos (resto eram duplicados)`);
+      await alertDialog(`• ${r.evaluated} eventos avaliados\n• ${r.added} eventos novos (resto eram duplicados)`, { title: 'Re-avaliação concluída' });
       // Atualiza badge de alertas
       try {
         const events = await api.listAlerts(profile.id);
@@ -3770,29 +3770,36 @@ function openAdminModal() {
         updateAppBadge(unseen.length);
       } catch {}
     } catch (e) {
-      alert('Erro: ' + e.message);
+      alertDialog('Erro: ' + e.message);
     }
   };
 
   const resetBoard = async () => {
-    if (!profile) return alert('Sem perfil ativo');
-    if (!confirm(`Limpar overrides manuais de coluna/ordem em "${profileLabel}"?\n\nPreserva: comentários, etiquetas, anexos, alertas, pin.\nReverte: cards movidos manualmente voltam à regra automática.`)) return;
+    if (!profile) return alertDialog('Sem perfil ativo');
+    const ok = await confirmDialog(
+      `Limpar overrides manuais de coluna/ordem em "${profileLabel}"?\n\nPreserva: comentários, etiquetas, anexos, alertas, pin.\nReverte: cards movidos manualmente voltam à regra automática.`,
+      { okLabel: 'Limpar' },
+    );
+    if (!ok) return;
     try {
       const r = await api.resetBoardOverrides(profile.id);
-      alert(`OK. ${r.cleared || 0} overrides limpos.`);
+      await alertDialog(`${r.cleared || 0} overrides limpos.`, { title: 'OK' });
       window.location.reload();
-    } catch (e) { alert('Erro: ' + e.message); }
+    } catch (e) { alertDialog('Erro: ' + e.message); }
   };
 
   const resetAll = async () => {
-    if (!profile) return alert('Sem perfil ativo');
-    const txt = prompt(`⚠️ DESTRUTIVO: vai apagar synced + notes + alertas de "${profileLabel}".\nPerfil + credenciais TI são preservados. Próxima sync vira baseline novo.\n\nDigite RESET pra confirmar:`);
+    if (!profile) return alertDialog('Sem perfil ativo');
+    const txt = await promptDialog(
+      `⚠️ DESTRUTIVO: vai apagar synced + notes + alertas de "${profileLabel}".\nPerfil + credenciais TI são preservados. Próxima sync vira baseline novo.\n\nDigite RESET pra confirmar:`,
+      { title: 'Reset completo', placeholder: 'RESET', okLabel: 'Executar', danger: true },
+    );
     if (txt !== 'RESET') return;
     try {
       await api.resetAll(profile.id);
-      alert('Reset completo. Recarregando...');
+      await alertDialog('Reset completo. Recarregando...');
       window.location.reload();
-    } catch (e) { alert('Erro: ' + e.message); }
+    } catch (e) { alertDialog('Erro: ' + e.message); }
   };
 
   // Inbox de pedidos. Quando o cliente clica "Enviar solicitação" no modal
@@ -5169,6 +5176,72 @@ function pickAbandonSide(athleteName, opponentName) {
 }
 
 // Modal de tracking — coração do Scout ao Vivo
+// Modal de aviso estilizado — substitui o alert() nativo.
+// Uso: await alertDialog('Mensagem');
+function alertDialog(message, opts = {}) {
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    root.style.cssText = 'position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); padding:1rem;';
+    const card = el('div', { class: 'bg-white text-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden' });
+    if (opts.title) card.appendChild(el('div', { class: 'px-5 pt-4 pb-1 text-base font-semibold' }, opts.title));
+    card.appendChild(el('div', { class: 'px-5 py-3 text-sm text-slate-700 whitespace-pre-wrap' }, message));
+    const okBtn = el('button', { class: 'px-4 py-2 rounded-lg text-white text-sm font-semibold bg-cyan-600 hover:bg-cyan-700' }, opts.okLabel || 'OK');
+    card.appendChild(el('div', { class: 'flex justify-end px-5 pb-4' }, okBtn));
+    root.appendChild(card);
+    const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Enter') close(); };
+    const close = () => {
+      document.removeEventListener('keydown', onKey);
+      root.remove();
+      resolve();
+    };
+    okBtn.onclick = close;
+    root.onclick = (e) => { if (e.target === root) close(); };
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(root);
+    setTimeout(() => okBtn.focus(), 50);
+  });
+}
+
+// Modal de input estilizado — substitui o prompt() nativo.
+// Uso: const txt = await promptDialog('Digite X:', { placeholder: 'X' });
+// Retorna string ou null se cancelado.
+function promptDialog(message, opts = {}) {
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    root.style.cssText = 'position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); padding:1rem;';
+    const card = el('div', { class: 'bg-white text-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden' });
+    if (opts.title) card.appendChild(el('div', { class: 'px-5 pt-4 pb-1 text-base font-semibold' }, opts.title));
+    card.appendChild(el('div', { class: 'px-5 py-3 text-sm text-slate-700 whitespace-pre-wrap' }, message));
+    const input = el('input', {
+      type: 'text',
+      class: 'mx-5 mb-3 px-3 py-2 border border-slate-300 rounded-lg w-[calc(100%-2.5rem)] text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500',
+      placeholder: opts.placeholder || '',
+      value: opts.defaultValue || '',
+    });
+    card.appendChild(input);
+    const actions = el('div', { class: 'flex gap-2 justify-end px-5 pb-4' });
+    const cancelBtn = el('button', { class: 'px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium' }, opts.cancelLabel || 'Cancelar');
+    const okBtn = el('button', {
+      class: `px-4 py-2 rounded-lg text-white text-sm font-semibold ${opts.danger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-cyan-600 hover:bg-cyan-700'}`,
+    }, opts.okLabel || 'OK');
+    actions.append(cancelBtn, okBtn);
+    card.appendChild(actions);
+    root.appendChild(card);
+    const onKey = (e) => { if (e.key === 'Escape') close(null); else if (e.key === 'Enter') close(input.value); };
+    const close = (result) => {
+      document.removeEventListener('keydown', onKey);
+      root.remove();
+      resolve(result);
+    };
+    cancelBtn.onclick = () => close(null);
+    okBtn.onclick = () => close(input.value);
+    root.onclick = (e) => { if (e.target === root) close(null); };
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(root);
+    setTimeout(() => input.focus(), 50);
+  });
+}
+
 // Modal de confirmação estilizado — substitui o confirm() nativo.
 // Uso: const ok = await confirmDialog('Excluir?', { danger: true });
 function confirmDialog(message, opts = {}) {
