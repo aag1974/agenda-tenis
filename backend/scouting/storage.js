@@ -75,7 +75,11 @@ export function getInvite(token) {
   return all[token] || null;
 }
 
-export function createInvite({ atletaId, atletaNome, atletaCategoria, createdBy }) {
+export function createInvite({
+  atletaId, atletaNome, atletaCategoria,
+  opponentId, opponentNome, opponentCategoria,
+  createdBy,
+}) {
   const all = readJson(INVITES_FILE, {});
   const token = newInviteToken();
   const invite = {
@@ -84,6 +88,11 @@ export function createInvite({ atletaId, atletaNome, atletaCategoria, createdBy 
     atletaId: atletaId || null,
     atletaNome,
     atletaCategoria: atletaCategoria || null,
+    // Adversário pré-selecionado pelo coach (opcional). Se vazio,
+    // scouter completa na tela de config.
+    opponentId: opponentId || null,
+    opponentNome: opponentNome || null,
+    opponentCategoria: opponentCategoria || null,
     createdBy,
     createdAt: new Date().toISOString(),
     matchId: null,       // preenchido quando scouter completa

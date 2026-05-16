@@ -3,18 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#0e7490">
-  <title>Tennis Flow Scouting</title>
-  <link rel="icon" href="/icon-192.svg">
+  <meta name="theme-color" content="#0e3a4d">
+  <title>TennisFlow Scouting</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎾</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-    .scout-grad {
-      background: radial-gradient(at top, #0e7490 0%, #134e4a 50%, #0f172a 100%);
+    :root {
+      --ti-navy: #0e3a4d;
+      --ti-navy-dark: #0a2e3d;
+      --ti-board-bg: #1f5b75;
     }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    input, textarea, select { font-size: 16px !important; }
+    body.scout-bg {
+      background: linear-gradient(135deg, var(--ti-navy-dark) 0%, var(--ti-navy) 50%, var(--ti-board-bg) 100%);
+      color: #f1f5f9;
+      min-height: 100vh; min-height: 100dvh;
+    }
+    /* Bolas de tênis flutuando ao fundo (marca d'água) */
+    body.scout-bg::before, body.scout-bg::after {
+      content: '🎾';
+      position: fixed;
+      font-size: 12rem;
+      opacity: 0.05;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body.scout-bg::before { top: -2rem; left: -2rem; transform: rotate(-15deg); }
+    body.scout-bg::after  { bottom: -2rem; right: -2rem; transform: rotate(20deg); }
+    #root { position: relative; z-index: 1; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
+<body class="scout-bg">
   <div id="root" class="min-h-screen"></div>
   <script type="module" src="/scouting.js"></script>
 </body>

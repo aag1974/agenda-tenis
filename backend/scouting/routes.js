@@ -56,7 +56,8 @@ scoutingRouter.post('/roster', requireScoutingAuth, (req, res) => {
 
 // ===== Invites — coach gera links =====
 scoutingRouter.post('/invites', requireScoutingAuth, (req, res) => {
-  const { atletaId, atletaNome, atletaCategoria } = req.body || {};
+  const { atletaId, atletaNome, atletaCategoria,
+          opponentId, opponentNome, opponentCategoria } = req.body || {};
   if (!atletaNome || !atletaNome.trim()) {
     return res.status(400).json({ error: 'atletaNome obrigatório' });
   }
@@ -64,6 +65,9 @@ scoutingRouter.post('/invites', requireScoutingAuth, (req, res) => {
     atletaId,
     atletaNome: atletaNome.trim(),
     atletaCategoria,
+    opponentId,
+    opponentNome: opponentNome ? opponentNome.trim() : null,
+    opponentCategoria,
     createdBy: req.scoutingUser.email,
   });
   res.status(201).json(invite);
@@ -120,6 +124,9 @@ scoutingRouter.get('/start/:token', (req, res) => {
       atletaId: invite.atletaId,
       atletaNome: invite.atletaNome,
       atletaCategoria: invite.atletaCategoria,
+      opponentId: invite.opponentId,
+      opponentNome: invite.opponentNome,
+      opponentCategoria: invite.opponentCategoria,
     },
     roster: others,
   });

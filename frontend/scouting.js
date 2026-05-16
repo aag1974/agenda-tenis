@@ -97,15 +97,28 @@ function renderLogin() {
   };
   const card = el('div', { class: 'w-full max-w-sm bg-slate-900/40 backdrop-blur-md border border-white/15 rounded-2xl shadow-2xl p-7 space-y-5' },
     el('div', { class: 'space-y-1' },
-      el('h2', { class: 'text-xl font-semibold' }, '🎾 Tennis Flow Scouting'),
-      el('p', { class: 'text-xs text-white/60' }, 'Entrar pra criar links de scout.'),
+      el('h2', { class: 'text-xl font-semibold' }, 'Entrar'),
+      el('p', { class: 'text-xs text-white/60' }, 'Acesse pra criar links de scout.'),
     ),
     field('email', 'Email', 'email', 'voce@email.com', 'email'),
     field('password', 'Senha', 'password', '••••••••', 'current-password'),
     errBox,
     submitBtn,
   );
-  mount(el('div', { class: 'scout-grad min-h-screen flex items-center justify-center px-4' }, card));
+  mount(el('div', { class: 'min-h-screen flex flex-col items-center justify-center px-4 py-8' },
+    el('div', { class: 'mb-8 text-center select-none' },
+      el('div', { class: 'inline-flex items-center gap-3 mb-2' },
+        el('span', { class: 'text-4xl' }, '🎾'),
+        el('span', { class: 'text-3xl font-bold tracking-tight' },
+          el('span', { class: 'text-white' }, 'Tennis'),
+          el('span', { class: 'text-cyan-300 ml-1' }, 'Flow'),
+          el('span', { class: 'text-white/80 ml-2 font-light italic' }, 'Scouting'),
+        ),
+      ),
+      el('p', { class: 'text-sm text-white/70 mt-1' }, 'Marque pontos em tempo real, compartilhe com a família'),
+    ),
+    card,
+  ));
   inputs.email.focus();
 }
 
@@ -128,129 +141,149 @@ async function renderDashboard() {
     go('');
   };
 
-  const header = el('header', { class: 'bg-slate-900/60 border-b border-white/10 px-4 py-3 flex items-center justify-between' },
+  const header = el('header', { class: 'bg-slate-900/60 border-b border-white/10 px-4 py-3 flex items-center justify-between backdrop-blur' },
     el('div', { class: 'flex items-center gap-2' },
-      el('span', { class: 'text-lg' }, '🎾'),
-      el('span', { class: 'font-semibold' }, 'Scouting'),
+      el('span', { class: 'text-xl' }, '🎾'),
+      el('span', { class: 'text-lg font-bold tracking-tight' },
+        el('span', { class: 'text-white' }, 'Tennis'),
+        el('span', { class: 'text-cyan-300 ml-0.5' }, 'Flow'),
+        el('span', { class: 'text-white/80 ml-1.5 font-light italic text-base' }, 'Scouting'),
+      ),
     ),
     el('button', { class: 'text-xs text-white/60 hover:text-white', onClick: onLogout }, 'Sair'),
   );
 
   // ===== Bloco 1: Criar invite (search incremental) =====
-  let selected = null;
-  const filterInput = el('input', {
-    type: 'text',
-    placeholder: 'Digite parte do nome…',
-    class: 'w-full bg-white/95 text-slate-900 border border-white/30 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
-    autocomplete: 'off',
-  });
-  const filteredList = el('div', { class: 'mt-2 max-h-64 overflow-y-auto space-y-1' });
-  const selectedBox = el('div', { class: 'hidden mt-3 p-3 bg-cyan-900/30 border border-cyan-500/40 rounded-lg' });
-  const generateBtn = el('button', {
-    class: 'mt-3 w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 text-white font-semibold py-2.5 rounded-lg',
-    disabled: true,
-  }, '🔗 Gerar link pro scouter');
-  const generatedBox = el('div', { class: 'hidden mt-3' });
-
   function normalize(s) {
     return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
-  function selectAtleta(a) {
-    selected = a;
-    selectedBox.innerHTML = '';
-    selectedBox.classList.remove('hidden');
-    selectedBox.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-cyan-300/70 font-bold' }, 'Selecionado'));
-    selectedBox.appendChild(el('div', { class: 'text-base font-semibold' }, a.nome));
-    selectedBox.appendChild(el('div', { class: 'text-xs text-white/70' }, [a.categoria, a.clube].filter(Boolean).join(' · ')));
-    filterInput.value = '';
-    filteredList.innerHTML = '';
-    generateBtn.disabled = false;
-    generatedBox.classList.add('hidden');
+  // Cada slot (atleta + adversário) tem search incremental próprio.
+  function makeAtletaPicker({ label, optional, color, helperText, onChange }) {
+    let selected = null;
+    const input = el('input', {
+      type: 'text', placeholder: 'Digite parte do nome…', autocomplete: 'off',
+      class: 'w-full bg-white/95 text-slate-900 border border-white/30 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
+    });
+    const list = el('div', { class: 'mt-2 max-h-48 overflow-y-auto space-y-1' });
+    const selBox = el('div', { class: `hidden mt-2 p-3 ${color.bg} border ${color.border} rounded-lg flex items-start justify-between gap-2` });
+    const clearBtn = el('button', {
+      class: 'text-white/60 hover:text-white text-sm leading-none',
+      title: 'Limpar', onClick: () => clear(),
+    }, '×');
+    function clear() {
+      selected = null;
+      selBox.classList.add('hidden');
+      selBox.innerHTML = '';
+      input.value = '';
+      list.innerHTML = '';
+      onChange?.(null);
+    }
+    function set(a) {
+      selected = a;
+      selBox.innerHTML = '';
+      selBox.classList.remove('hidden');
+      const left = el('div', { class: 'min-w-0' },
+        el('div', { class: `text-[10px] uppercase tracking-wider ${color.label} font-bold` }, label),
+        el('div', { class: 'text-base font-semibold truncate' }, a.nome),
+        el('div', { class: 'text-xs text-white/70 truncate' }, [a.categoria, a.clube].filter(Boolean).join(' · ')),
+      );
+      selBox.appendChild(left);
+      selBox.appendChild(clearBtn);
+      input.value = '';
+      list.innerHTML = '';
+      onChange?.(a);
+    }
+    function render(q) {
+      list.innerHTML = '';
+      if (!q || q.length < 1) return;
+      const nq = normalize(q);
+      const matches = roster.atletas.filter(a => normalize(a.nome).includes(nq)).slice(0, 15);
+      if (!matches.length) {
+        list.appendChild(el('button', {
+          class: 'w-full text-left px-3 py-2 rounded bg-white/5 hover:bg-white/10 text-sm text-white/80',
+          onClick: () => set({ id: null, nome: q.trim(), categoria: null, clube: null }),
+        }, `+ Usar livre: "${q.trim()}"`));
+        return;
+      }
+      for (const a of matches) {
+        list.appendChild(el('button', {
+          class: 'w-full text-left px-3 py-2 rounded bg-white/5 hover:bg-white/10 text-sm flex items-baseline justify-between gap-2',
+          onClick: () => set(a),
+        },
+          el('span', { class: 'font-medium' }, a.nome),
+          el('span', { class: 'text-[10px] text-white/50' }, [a.categoria, a.clube].filter(Boolean).join(' · ').slice(0, 40)),
+        ));
+      }
+    }
+    input.addEventListener('input', () => render(input.value));
+    const wrap = el('div', { class: 'space-y-1' },
+      el('div', { class: 'text-[10px] uppercase tracking-wider text-white/60 font-bold' },
+        label, optional ? el('span', { class: 'text-white/40 ml-1 normal-case' }, '(opcional)') : null,
+      ),
+      input,
+      list,
+      selBox,
+      helperText ? el('div', { class: 'text-[11px] text-white/50' }, helperText) : null,
+    );
+    return { node: wrap, get: () => selected, clear };
   }
 
-  function renderFiltered(q) {
-    filteredList.innerHTML = '';
-    if (!q || q.length < 1) return;
-    const nq = normalize(q);
-    const matches = roster.atletas.filter(a => normalize(a.nome).includes(nq)).slice(0, 20);
-    if (!matches.length) {
-      filteredList.appendChild(el('div', { class: 'text-xs text-white/50 px-3 py-2' }, 'Nenhum atleta — escolha "Digitar livre" abaixo'));
-      filteredList.appendChild(el('button', {
-        class: 'w-full text-left px-3 py-2 rounded bg-white/5 hover:bg-white/10 text-sm',
-        onClick: () => selectAtleta({ id: null, nome: q.trim(), categoria: null, clube: null }),
-      }, `Usar livre: "${q.trim()}"`));
-      return;
-    }
-    for (const a of matches) {
-      filteredList.appendChild(el('button', {
-        class: 'w-full text-left px-3 py-2 rounded bg-white/5 hover:bg-white/10 text-sm flex items-baseline justify-between gap-2',
-        onClick: () => selectAtleta(a),
-      },
-        el('span', { class: 'font-medium' }, a.nome),
-        el('span', { class: 'text-[10px] text-white/50' }, [a.categoria, a.clube].filter(Boolean).join(' · ').slice(0, 40)),
-      ));
-    }
+  const athletePicker = makeAtletaPicker({
+    label: 'Atleta',
+    color: { bg: 'bg-cyan-900/30', border: 'border-cyan-500/40', label: 'text-cyan-300/70' },
+    onChange: () => updateGenerateBtn(),
+  });
+  const opponentPicker = makeAtletaPicker({
+    label: 'Adversário',
+    optional: true,
+    color: { bg: 'bg-rose-900/30', border: 'border-rose-500/40', label: 'text-rose-300/70' },
+    helperText: 'Se não preencher, o scouter completa antes de iniciar.',
+  });
+
+  const generateBtn = el('button', {
+    class: 'w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 text-white font-semibold py-2.5 rounded-lg mt-2',
+    disabled: true,
+  }, '🔗 Gerar link pro scouter');
+
+  function updateGenerateBtn() {
+    generateBtn.disabled = !athletePicker.get();
   }
-  filterInput.addEventListener('input', () => renderFiltered(filterInput.value));
 
   generateBtn.onclick = async () => {
-    if (!selected) return;
+    const a = athletePicker.get();
+    if (!a) return;
+    const o = opponentPicker.get();
     generateBtn.disabled = true;
     generateBtn.textContent = '⏳ Gerando…';
     try {
-      const invite = await api('POST', '/invites', {
-        atletaId: selected.id,
-        atletaNome: selected.nome,
-        atletaCategoria: selected.categoria,
+      await api('POST', '/invites', {
+        atletaId: a.id, atletaNome: a.nome, atletaCategoria: a.categoria,
+        opponentId: o?.id, opponentNome: o?.nome, opponentCategoria: o?.categoria,
       });
-      const fullUrl = `${window.location.origin}/scouting/start/${invite.token}`;
-      generatedBox.innerHTML = '';
-      generatedBox.classList.remove('hidden');
-      const linkInput = el('input', {
-        type: 'text', value: fullUrl, readonly: true,
-        class: 'w-full bg-slate-800 text-cyan-200 border border-cyan-500/40 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none',
-        onClick: (e) => e.target.select(),
-      });
-      generatedBox.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-1' }, '✅ Link pronto'));
-      generatedBox.appendChild(linkInput);
-      generatedBox.appendChild(el('div', { class: 'flex gap-2 mt-2' },
-        el('button', {
-          class: 'flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold py-2 rounded-lg',
-          onClick: async () => {
-            try { await navigator.clipboard.writeText(fullUrl); }
-            catch { linkInput.select(); document.execCommand('copy'); }
-            generatedBox.querySelector('.copy-feedback').classList.remove('hidden');
-            setTimeout(() => generatedBox.querySelector('.copy-feedback')?.classList.add('hidden'), 2000);
-          },
-        }, '📋 Copiar'),
-        el('a', {
-          class: 'flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2 rounded-lg text-center',
-          href: `https://wa.me/?text=${encodeURIComponent(`Scout do atleta ${selected.nome}: ${fullUrl}`)}`,
-          target: '_blank',
-        }, '💬 WhatsApp'),
-      ));
-      generatedBox.appendChild(el('div', { class: 'copy-feedback hidden text-xs text-emerald-300 mt-1' }, 'Link copiado!'));
+      athletePicker.clear();
+      opponentPicker.clear();
       generateBtn.textContent = '🔗 Gerar link pro scouter';
-      generateBtn.disabled = false;
-      // Refresh list de invites
       invites = await api('GET', '/invites');
       renderInvitesList();
+      // Destaque visual rápido no card recém-criado (1º item da lista)
+      const first = invitesContainer.querySelector('[data-invite-row]');
+      if (first) {
+        first.classList.add('ring-2', 'ring-emerald-400');
+        setTimeout(() => first.classList.remove('ring-2', 'ring-emerald-400'), 1800);
+      }
     } catch (e) {
       alert('Erro: ' + e.message);
       generateBtn.textContent = '🔗 Gerar link pro scouter';
-      generateBtn.disabled = false;
+      updateGenerateBtn();
     }
   };
 
-  const createCard = el('section', { class: 'bg-slate-900/40 border border-white/10 rounded-xl p-4 space-y-2' },
+  const createCard = el('section', { class: 'bg-slate-900/40 border border-white/10 rounded-xl p-4 space-y-3' },
     el('h3', { class: 'text-sm font-semibold text-cyan-300' }, '+ Nova partida'),
-    el('p', { class: 'text-xs text-white/60' }, 'Selecione o atleta e gere o link pro scouter.'),
-    filterInput,
-    filteredList,
-    selectedBox,
+    athletePicker.node,
+    opponentPicker.node,
     generateBtn,
-    generatedBox,
   );
 
   // ===== Bloco 2: Lista de invites =====
@@ -281,11 +314,17 @@ async function renderDashboard() {
         : (m && m.finished)
           ? { label: m.abandoned ? 'ABANDONADO' : 'ENCERRADO', cls: 'bg-slate-500/20 text-slate-300 border-slate-500/40' }
           : { label: 'AO VIVO', cls: 'bg-red-500/20 text-red-300 border-red-500/40' };
-      const row = el('div', { class: 'border border-white/10 rounded-lg p-3 bg-white/5' },
+      // Adversário: do match em curso > do invite (pré-selecionado pelo coach) > "?"
+      const opponentLabel = m?.opponentName || inv.opponentNome || null;
+      const fullUrl = `${window.location.origin}/scouting/start/${inv.token}`;
+      const waText = opponentLabel
+        ? `Scout: ${inv.atletaNome} vs ${opponentLabel} — ${fullUrl}`
+        : `Scout do atleta ${inv.atletaNome}: ${fullUrl}`;
+      const row = el('div', { 'data-invite-row': true, class: 'border border-white/10 rounded-lg p-3 bg-white/5 transition-shadow' },
         el('div', { class: 'flex items-start justify-between gap-2 mb-1' },
           el('div', { class: 'min-w-0' },
             el('div', { class: 'text-sm font-semibold truncate' },
-              `${inv.atletaNome}${m ? ' vs ' + m.opponentName : ''}`,
+              `${inv.atletaNome}${opponentLabel ? ' vs ' + opponentLabel : ''}`,
             ),
             el('div', { class: 'text-[11px] text-white/60' },
               [inv.atletaCategoria, fmtDate(inv.createdAt)].filter(Boolean).join(' · '),
@@ -294,15 +333,19 @@ async function renderDashboard() {
           el('span', { class: `text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.cls}` }, status.label),
         ),
         m && el('div', { class: 'text-xs text-white/70' }, renderScore(m)),
-        el('div', { class: 'flex gap-2 mt-2' },
+        el('div', { class: 'flex flex-wrap gap-2 mt-2' },
           !inv.matchId && el('button', {
             class: 'text-xs bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1.5 rounded',
             onClick: async () => {
-              const fullUrl = `${window.location.origin}/scouting/start/${inv.token}`;
               try { await navigator.clipboard.writeText(fullUrl); alert('Link copiado!'); }
               catch { prompt('Copie o link:', fullUrl); }
             },
           }, '📋 Copiar link'),
+          !inv.matchId && el('a', {
+            class: 'text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded',
+            href: `https://wa.me/?text=${encodeURIComponent(waText)}`,
+            target: '_blank',
+          }, '💬 WhatsApp'),
           inv.matchToken && el('a', {
             class: 'text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded',
             href: `/scout/${inv.matchToken}`, target: '_blank',
@@ -374,7 +417,7 @@ async function renderStart(token) {
     selected = a;
     selectedBox.innerHTML = '';
     selectedBox.classList.remove('hidden');
-    selectedBox.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-rose-300/70 font-bold' }, 'Adversária'));
+    selectedBox.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-rose-300/70 font-bold' }, 'Adversário'));
     selectedBox.appendChild(el('div', { class: 'text-base font-semibold' }, a.nome));
     if (a.categoria || a.clube) {
       selectedBox.appendChild(el('div', { class: 'text-xs text-white/70' }, [a.categoria, a.clube].filter(Boolean).join(' · ')));
@@ -419,7 +462,7 @@ async function renderStart(token) {
     btnA.className = firstServer === 'a' ? sel : unsel;
     btnO.className = firstServer === 'o' ? sel : unsel;
     btnA.textContent = `🎾 ${inv.atletaNome.split(' ')[0]}`;
-    btnO.textContent = `🎾 ${selected ? selected.nome.split(' ')[0] : 'Adversária'}`;
+    btnO.textContent = `🎾 ${selected ? selected.nome.split(' ')[0] : 'Adversário'}`;
   }
   btnA.onclick = () => { firstServer = 'a'; updateServerBtns(); };
   btnO.onclick = () => { firstServer = 'o'; updateServerBtns(); };
@@ -445,8 +488,8 @@ async function renderStart(token) {
   fmtBtns[0].className = 'text-xs px-3 py-2 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
 
   // Ad
-  const adOn  = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold' }, 'Com vantagem');
-  const adOff = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-white/30 text-white/80' }, 'Sem ad');
+  const adOn  = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold' }, 'Ad');
+  const adOff = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-white/30 text-white/80' }, 'No Ad');
   adOn.onclick = () => {
     ad = true;
     adOn.className = 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
@@ -480,14 +523,32 @@ async function renderStart(token) {
     }
   };
 
+  // Se o coach pré-selecionou adversário, pré-preenche o slot
+  if (inv.opponentNome) {
+    selectAdv({
+      id: inv.opponentId || null,
+      nome: inv.opponentNome,
+      categoria: inv.opponentCategoria || null,
+      clube: null,
+    });
+  }
+
   const card = el('div', { class: 'max-w-md mx-auto p-4 space-y-4' },
-    el('div', { class: 'space-y-1' },
-      el('div', { class: 'text-[10px] uppercase tracking-wider text-cyan-300 font-bold' }, '🎾 Iniciar scout'),
+    el('div', { class: 'space-y-1 text-center' },
+      el('div', { class: 'inline-flex items-center gap-2 mb-1' },
+        el('span', { class: 'text-2xl' }, '🎾'),
+        el('span', { class: 'text-xl font-bold tracking-tight' },
+          el('span', { class: 'text-white' }, 'Tennis'),
+          el('span', { class: 'text-cyan-300 ml-0.5' }, 'Flow'),
+          el('span', { class: 'text-white/80 ml-1.5 font-light italic text-base' }, 'Scouting'),
+        ),
+      ),
+      el('div', { class: 'text-[10px] uppercase tracking-wider text-cyan-300 font-bold mt-3' }, 'Iniciar scout'),
       el('h2', { class: 'text-lg font-semibold' }, inv.atletaNome),
       inv.atletaCategoria && el('div', { class: 'text-xs text-white/60' }, inv.atletaCategoria),
     ),
     el('div', { class: 'space-y-1' },
-      el('div', { class: 'text-[10px] uppercase tracking-wider text-white/60 font-bold' }, 'Adversária'),
+      el('div', { class: 'text-[10px] uppercase tracking-wider text-white/60 font-bold' }, 'Adversário'),
       filterInput,
       filteredList,
       selectedBox,
@@ -501,13 +562,13 @@ async function renderStart(token) {
       el('div', { class: 'grid grid-cols-2 gap-2' }, ...fmtBtns),
     ),
     el('div', { class: 'space-y-2' },
-      el('div', { class: 'text-[10px] uppercase tracking-wider text-white/60 font-bold' }, 'Vantagem no deuce'),
+      el('div', { class: 'text-[10px] uppercase tracking-wider text-white/60 font-bold' }, 'Vantagem'),
       el('div', { class: 'flex gap-2' }, adOn, adOff),
-      el('div', { class: 'text-[11px] text-white/50' }, 'Sem ad = no 40-40 o próximo ponto decide.'),
+      el('div', { class: 'text-[11px] text-white/50' }, 'No Ad = no 40-40 o próximo ponto decide.'),
     ),
     submitBtn,
   );
-  mount(el('div', { class: 'min-h-screen scout-grad' }, card));
+  mount(el('div', { class: 'min-h-screen' }, card));
   filterInput.focus();
 }
 

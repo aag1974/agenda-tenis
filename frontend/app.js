@@ -5109,8 +5109,8 @@ function openScoutCreateModal(profileId) {
 
   // Ad — par de botões seguindo o padrão de firstServer/format
   let adValue = true;
-  const adOn  = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold' }, 'Com vantagem');
-  const adOff = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700' }, 'Sem ad (no-ad)');
+  const adOn  = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold' }, 'Ad');
+  const adOff = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700' }, 'No Ad');
   adOn.onclick = () => {
     adValue = true;
     adOn.className  = 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
@@ -5121,9 +5121,9 @@ function openScoutCreateModal(profileId) {
     adOff.className = 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
     adOn.className  = 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700';
   };
-  body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Vantagem no deuce'));
+  body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Vantagem'));
   body.appendChild(el('div', { class: 'flex gap-2' }, adOn, adOff));
-  body.appendChild(el('div', { class: 'text-[11px] text-slate-500 mt-1' }, 'Sem ad = no 40-40 o ponto seguinte decide o game.'));
+  body.appendChild(el('div', { class: 'text-[11px] text-slate-500 mt-1' }, 'No Ad = no 40-40 o ponto seguinte decide o game.'));
 
   // Botão criar
   const errBox = el('div', { class: 'text-xs text-red-600 hidden' });
