@@ -9,7 +9,7 @@ import {
   markInviteCompleted, deleteInvite, SCOUTING_PROFILE_ID,
 } from './storage.js';
 import {
-  saveLiveMatch, newMatchId, createLiveMatchTokens,
+  saveLiveMatch, newMatchId, createLiveMatchTokens, getLiveMatchTokens,
 } from '../storage.js';
 import { createMatch as createMatchState } from '../tennis-score.js';
 import { attachScore } from '../match-score.js';
@@ -74,15 +74,23 @@ scoutingRouter.post('/invites', requireScoutingAuth, (req, res) => {
 });
 
 scoutingRouter.get('/invites', requireScoutingAuth, (req, res) => {
-  // Enriquece com placar quando o invite já tem match associado
+  // Enriquece com placar quando o invite já tem match associado.
+  // Também resolve viewerToken pra invites antigos que só tinham scoutToken.
   const all = listInvites();
   const enriched = all.map(inv => {
     if (!inv.matchId) return inv;
     const m = getLiveMatch(SCOUTING_PROFILE_ID, inv.matchId);
     if (!m) return inv;
+    let viewerToken = inv.viewerToken || null;
+    if (!viewerToken) {
+      // Invite antigo (pré-fix): busca o viewerToken no map global de tokens.
+      const t = getLiveMatchTokens(SCOUTING_PROFILE_ID, inv.matchId);
+      viewerToken = t?.viewerToken || null;
+    }
     const scored = attachScore(m);
     return {
       ...inv,
+      viewerToken,
       match: {
         id: scored.id,
         opponentName: scored.opponentName,
@@ -166,7 +174,8 @@ scoutingRouter.post('/start/:token/begin', (req, res) => {
   const tokens = createLiveMatchTokens(SCOUTING_PROFILE_ID, matchId);
   markInviteCompleted(req.params.token, {
     matchId,
-    matchToken: tokens.scoutToken,
+    matchToken: tokens.scoutToken,    // scouter usa pra marcar
+    viewerToken: tokens.viewerToken,  // coach acompanha em modo leitura
   });
   res.status(201).json({
     matchId,

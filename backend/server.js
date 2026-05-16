@@ -1952,6 +1952,28 @@ app.post('/api/profiles/:id/live-matches/:matchId/points', requireAuth, requireE
 });
 
 // Desfaz último ponto
+// Owner: registra "game manual" pra winner. Mesma lógica do endpoint
+// público — só limpa currentGame e aplica pontos com stat 'manual_game'
+// até o game fechar.
+app.post('/api/profiles/:id/live-matches/:matchId/games', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const { winner } = req.body || {};
+  if (winner !== 'a' && winner !== 'o') return res.status(400).json({ error: "winner deve ser 'a' ou 'o'" });
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  if (m.finished) return res.status(400).json({ error: 'Match já encerrado' });
+  const mode = m.currentGame?.mode || 'normal';
+  m.currentGame = { a: 0, o: 0, mode };
+  let safety = 20;
+  let next = m;
+  while (safety-- > 0 && !next.finished) {
+    next = applyPoint(next, winner, 'manual_game');
+    if (next.currentGame.a === 0 && next.currentGame.o === 0) break;
+  }
+  Object.assign(m, next);
+  saveLiveMatch(req.params.id, m);
+  res.json(attachScore(m));
+});
+
 app.delete('/api/profiles/:id/live-matches/:matchId/points/last', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
   const m = getLiveMatch(req.params.id, req.params.matchId);
   if (!m) return res.status(404).json({ error: 'Match não encontrado' });
@@ -1999,8 +2021,13 @@ app.patch('/api/profiles/:id/live-matches/:matchId', requireAuth, requireEditor,
     m.finished = true;
     m.abandoned = true;
     m.endedAt = new Date().toISOString();
-    const { abandonedBy } = req.body;
-    if (abandonedBy === 'a' || abandonedBy === 'o') m.abandonedBy = abandonedBy;
+    const { abandonedBy, abandonReason } = req.body;
+    if (abandonedBy === 'a' || abandonedBy === 'o') {
+      m.abandonedBy = abandonedBy;
+      // Vencedor é o outro lado de quem abandonou.
+      m.winner = abandonedBy === 'a' ? 'o' : 'a';
+    }
+    m.abandonReason = abandonReason === 'wo' ? 'wo' : 'ret';
   }
   saveLiveMatch(req.params.id, m);
   res.json(attachScore(m));
@@ -2082,6 +2109,93 @@ app.post('/api/scout/:token/notes', (req, res) => {
   res.json(attachScore(match));
 });
 
+
+// Scouter público: encerra o match marcando abandono.
+// Body { side: 'a'|'o', reason: 'wo'|'ret' }
+//   - wo (Walkover): atleta não compareceu, NÃO houve jogo
+//   - ret (Retirement): atleta começou e parou (lesão/desistência)
+// Default reason='ret' pra retrocompat. Lado obrigatório.
+app.post('/api/scout/:token/abandon', (req, res) => {
+  const { side, reason } = req.body || {};
+  const r = publicMatchByToken(req.params.token, 'scout');
+  if (r.error) return res.status(404).json({ error: r.error });
+  const { match, info } = r;
+  if (match.finished) return res.status(400).json({ error: 'Match já encerrado' });
+  match.finished = true;
+  match.abandoned = true;
+  match.abandonedBy = side === 'a' || side === 'o' ? side : null;
+  match.abandonReason = reason === 'wo' ? 'wo' : 'ret';
+  // Vencedor é o outro lado (quem não abandonou).
+  match.winner = match.abandonedBy === 'a' ? 'o' : (match.abandonedBy === 'o' ? 'a' : null);
+  match.endedAt = new Date().toISOString();
+  saveLiveMatch(info.profileId, match);
+  res.json(attachScore(match));
+});
+
+// Scouter perdeu o scout do game — registra "game pra winner" sem inventar
+// pontos. Limpa currentGame e adiciona N pontos pra winner com stat
+// 'manual_game' (filtrável depois nas stats).
+app.post('/api/scout/:token/games', (req, res) => {
+  const { winner } = req.body || {};
+  if (winner !== 'a' && winner !== 'o') return res.status(400).json({ error: "winner deve ser 'a' ou 'o'" });
+  const r = publicMatchByToken(req.params.token, 'scout');
+  if (r.error) return res.status(404).json({ error: r.error });
+  const { match, info } = r;
+  if (match.finished) return res.status(400).json({ error: 'Match já encerrado' });
+  // Reseta currentGame pro estado limpo do mode atual (preserva mode).
+  const mode = match.currentGame?.mode || 'normal';
+  match.currentGame = { a: 0, o: 0, mode };
+  // Aplica pontos via applyPoint até o currentGame zerar de novo
+  // (= game/TB fechou). Safety: para após 20 iterações.
+  let safety = 20;
+  let next = match;
+  while (safety-- > 0 && !next.finished) {
+    next = applyPoint(next, winner, 'manual_game');
+    if (next.currentGame.a === 0 && next.currentGame.o === 0) break;
+  }
+  Object.assign(match, next);
+  saveLiveMatch(info.profileId, match);
+  res.json(attachScore(match));
+});
+
+// Finaliza o match diretamente com placar manual (coach precisa fechar
+// uma partida cujo scouter sumiu, mas que terminou normalmente).
+// Body { sets: [{a, o}, ...] } — array de sets, A/O = games por lado.
+// Determina vencedor pela maioria dos sets. Sem points/markers — limpa.
+app.post('/api/scout/:token/finalize', (req, res) => {
+  const { sets } = req.body || {};
+  if (!Array.isArray(sets) || !sets.length) {
+    return res.status(400).json({ error: 'sets (array de {a,o}) obrigatório' });
+  }
+  const r = publicMatchByToken(req.params.token, 'scout');
+  if (r.error) return res.status(404).json({ error: r.error });
+  const { match, info } = r;
+  if (match.finished) return res.status(400).json({ error: 'Match já encerrado' });
+  // Valida e normaliza cada set
+  const cleaned = [];
+  let setsA = 0, setsO = 0;
+  for (const s of sets) {
+    const a = parseInt(s?.a, 10);
+    const o = parseInt(s?.o, 10);
+    if (!Number.isFinite(a) || !Number.isFinite(o) || a < 0 || o < 0) {
+      return res.status(400).json({ error: 'cada set precisa de {a,o} numéricos ≥ 0' });
+    }
+    cleaned.push({ a, o, tiebreak: null, mode: 'normal' });
+    if (a > o) setsA++; else if (o > a) setsO++;
+  }
+  match.setsHistory = cleaned;
+  match.currentSet = { a: 0, o: 0, mode: 'normal' };
+  match.currentGame = { a: 0, o: 0, mode: 'normal' };
+  match.finished = true;
+  match.abandoned = false;
+  match.abandonedBy = null;
+  match.abandonReason = null;
+  match.winner = setsA > setsO ? 'a' : (setsO > setsA ? 'o' : null);
+  match.endedAt = new Date().toISOString();
+  match.finalizedManually = true;
+  saveLiveMatch(info.profileId, match);
+  res.json(attachScore(match));
+});
 
 // Viewer: read-only. Retorna match completo com notas — link viewer é
 // o único link que o dono compartilha (ao vivo + relatório). Coach precisa

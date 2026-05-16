@@ -663,6 +663,34 @@ problemas que os usuários enfrentam. O que entra:
 
 Não precisa ser bonito — funcional pra atender suporte.
 
+## Migrar melhorias do /scouting pro TF (Tennis Flow)
+
+Várias coisas que polimos no /scouting durante o teste de Itajaí valem pro
+TF principal. Decisão (2026-05-16): aplicar depois do torneio pra não
+misturar foco. Lista do que migrar:
+
+- **`shortName` melhorado**: pular preposições ("de", "da", "do", "dos",
+  "das", "e", "di", "du", "del", "van", "von", "la", "le"). Resultado:
+  "Rafael de Veríssimo Queiroz" → "Rafael Veríssimo" (não "Rafael de").
+  Já implementado em `frontend/app.js` durante o teste — manter, beneficia
+  todo lugar que usa shortName (placar, kanban, lista de matches).
+- **`firstName` (helper novo)**: mesmo, pra primeiro nome significativo.
+  Já implementado, sem uso ainda no TF.
+- **`dualShortName(a, b)`**: desambigua 2 atletas homônimos pegando o
+  primeiro sobrenome diferente. Ex: "Rafael Veríssimo Queiroz" vs
+  "Rafael Veríssimo Pereira" → "Rafael Queiroz" vs "Rafael Pereira".
+  Aplicar em: header do tracking modal, lista de matches, qualquer
+  lugar onde "Atleta vs Adversário" aparece junto. Já implementado como
+  helper, falta aplicar nos call sites do TF.
+- **Game manual** (escolher vencedor do game quando perdeu o scout):
+  já existe pro scouter público. Aplicar também pro owner no
+  `openScoutTrackModal` — handler do botão `game-manual` no renderActions
+  + uncomment do `gameManualLiveMatch` no api.js. Endpoint backend
+  `POST /api/profiles/:id/live-matches/:matchId/games` já existe.
+- **Encerrar com modal estilizado** (não nativo): substituir alert/confirm
+  remanescentes no TF pelo padrão `confirmDialog` / `alertDialog` (já
+  documentado em CLAUDE.md, mas tem call sites antigos pra varrer).
+
 ## Scouting standalone — `/scouting` (produto separado, mesmo domínio)
 
 **Status:** desenho fechado em 2026-05-16. Implementação prevista pós-torneio

@@ -547,13 +547,22 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao adicionar nota');
     return r.json();
   },
-  async abandonLiveMatch(profileId, matchId, abandonedBy) {
+  async abandonLiveMatch(profileId, matchId, abandonedBy, abandonReason) {
     const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'abandon', abandonedBy }),
+      body: JSON.stringify({ action: 'abandon', abandonedBy, abandonReason }),
     });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao encerrar');
+    return r.json();
+  },
+  async gameManualLiveMatch(profileId, matchId, winner) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}/games`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ winner }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao registrar game manual');
     return r.json();
   },
   async deleteLiveMatch(profileId, matchId) {
@@ -616,6 +625,24 @@ const api = {
       body: JSON.stringify({ text, tag }),
     });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao adicionar nota');
+    return r.json();
+  },
+  async publicAbandonMatch(token, side, reason) {
+    const r = await fetch(`/api/scout/${token}/abandon`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ side, reason }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao encerrar');
+    return r.json();
+  },
+  async publicGameManual(token, winner) {
+    const r = await fetch(`/api/scout/${token}/games`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ winner }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao registrar game manual');
     return r.json();
   },
   async deleteLiveNote(profileId, matchId, noteId) {
@@ -5162,20 +5189,54 @@ function openScoutCreateModal(profileId) {
 
 // Bottom sheet: pergunta quem abandonou antes de confirmar encerramento.
 // Retorna 'a', 'o', ou null (cancelado).
+// Quando o scout chegou até aqui, a partida ESTAVA rolando — então não é
+// W.O. (W.O. = não houve jogo, scout deve ser apagado, não encerrado).
+// Aqui sempre é RET (Retirement): alguém parou. Retorna { side, reason } | null.
 function pickAbandonSide(athleteName, opponentName) {
   return new Promise((resolve) => {
     const root = document.createElement('div');
     document.body.appendChild(root);
-    const done = (side) => { root.remove(); resolve(side); };
+    const done = (result) => { root.remove(); resolve(result); };
+    const [shortA, shortB] = dualShortName(athleteName, opponentName);
     const btn = (label, color, side) => el('button', {
       class: `w-full py-3 rounded-xl text-sm font-bold text-white transition-opacity active:opacity-70 ${color}`,
-      onClick: () => done(side),
+      onClick: () => done({ side, reason: 'ret' }),
     }, label);
     root.append(
       el('div', { class: 'fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4', onClick: (e) => { if (e.currentTarget === e.target) done(null); } },
         el('div', { class: 'bg-white rounded-2xl px-5 py-5 max-w-sm w-full shadow-2xl' },
-          el('div', { class: 'text-sm font-bold text-slate-800 mb-1 text-center' }, 'Quem abandonou?'),
-          el('div', { class: 'text-xs text-slate-400 mb-5 text-center' }, 'O match será encerrado e não poderá ser editado.'),
+          el('div', { class: 'text-sm font-bold text-slate-800 mb-1 text-center' }, 'Quem parou?'),
+          el('div', { class: 'text-xs text-slate-400 mb-5 text-center' }, 'A partida será encerrada como RET (Retirement) — alguém desistiu durante o jogo.'),
+          el('div', { class: 'flex flex-col gap-2' },
+            btn(shortA, 'bg-cyan-600 hover:bg-cyan-700', 'a'),
+            btn(shortB, 'bg-rose-600 hover:bg-rose-700', 'o'),
+            el('button', {
+              class: 'w-full py-3 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200',
+              onClick: () => done(null),
+            }, 'Cancelar'),
+          ),
+        ),
+      ),
+    );
+  });
+}
+
+// Modal "Quem venceu este game?" pra game manual (scouter perdeu o
+// scout dos pontos). Mesma estética do pickAbandonSide.
+function pickGameWinner(athleteName, opponentName) {
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    const done = (winner) => { root.remove(); resolve(winner); };
+    const btn = (label, color, winner) => el('button', {
+      class: `w-full py-3 rounded-xl text-sm font-bold text-white transition-opacity active:opacity-70 ${color}`,
+      onClick: () => done(winner),
+    }, label);
+    root.append(
+      el('div', { class: 'fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4', onClick: (e) => { if (e.currentTarget === e.target) done(null); } },
+        el('div', { class: 'bg-white rounded-2xl px-5 py-5 max-w-sm w-full shadow-2xl' },
+          el('div', { class: 'text-sm font-bold text-slate-800 mb-1 text-center' }, 'Quem venceu este game?'),
+          el('div', { class: 'text-xs text-slate-400 mb-5 text-center' }, 'Use quando perdeu o scout dos pontos. Os pontos do game atual serão descartados.'),
           el('div', { class: 'flex flex-col gap-2' },
             btn(shortName(athleteName), 'bg-cyan-600 hover:bg-cyan-700', 'a'),
             btn(shortName(opponentName), 'bg-rose-600 hover:bg-rose-700', 'o'),
@@ -5369,12 +5430,14 @@ async function openScoutTrackModal(profileId, matchId) {
           if (action === 'undo') m = await api.undoLivePoint(profileId, m.id);
           else if (action === 'share') return openScoutShareModal(profileId, m);
           else if (action === 'abandon') {
-            const side = await pickAbandonSide(m.athleteName, m.opponentName);
-            if (!side) return;
-            await api.abandonLiveMatch(profileId, m.id, side);
+            const result = await pickAbandonSide(m.athleteName, m.opponentName);
+            if (!result) return;
+            await api.abandonLiveMatch(profileId, m.id, result.side, result.reason);
             close();
             return;
           }
+          // 'game-manual' fica só pro público (scouter) por enquanto.
+          // Owner do TF ainda não tem o botão.
           render();
         } catch (err) { alert(err.message); }
       }));
@@ -5436,8 +5499,44 @@ function renderScorePanel(m) {
   return wrap;
 }
 
+// Pula preposições/conectivos do nome ("de", "da", "do", "dos", "das", "e",
+// "di", "du") pra exibir tokens significativos. Mesma lógica do /scouting.
+const NAME_STOPWORDS = new Set(['de', 'da', 'do', 'dos', 'das', 'e', 'di', 'du', 'del', 'della', 'van', 'von', 'la', 'le']);
+function nameTokens(name) {
+  return (name || '').trim().split(/\s+/).filter(p => p && !NAME_STOPWORDS.has(p.toLowerCase()));
+}
+
+// "Rafael de Veríssimo Queiroz" → "Rafael Veríssimo".
 function shortName(name) {
-  return (name || '').split(' ').slice(0, 2).join(' ');
+  const t = nameTokens(name);
+  if (t.length <= 1) return t.join(' ');
+  return `${t[0]} ${t[1]}`;
+}
+
+function firstName(name) {
+  return nameTokens(name)[0] || '';
+}
+
+// Desambigua 2 nomes: se primeiro nome bate, busca primeiro sobrenome
+// diferente. "Rafael Veríssimo Queiroz" vs "Rafael Veríssimo Pereira" →
+// ["Rafael Queiroz", "Rafael Pereira"].
+function dualShortName(a, b) {
+  const ta = nameTokens(a);
+  const tb = nameTokens(b);
+  if (!ta.length || !tb.length) return [shortName(a), shortName(b)];
+  if (ta[0].toLowerCase() !== tb[0].toLowerCase()) return [shortName(a), shortName(b)];
+  const max = Math.max(ta.length, tb.length);
+  for (let i = 1; i < max; i++) {
+    const sa = (ta[i] || '').toLowerCase();
+    const sb = (tb[i] || '').toLowerCase();
+    if (sa !== sb) {
+      return [
+        `${ta[0]} ${ta[i] || ta[ta.length - 1]}`,
+        `${tb[0]} ${tb[i] || tb[tb.length - 1]}`,
+      ];
+    }
+  }
+  return [shortName(a), shortName(b)];
 }
 
 function rowForSide(side, name, m, cs, cg, sets, rowTemplate, setsCount) {
@@ -5606,25 +5705,37 @@ function renderStatBtn(b, onPoint, onMarker) {
 }
 
 function renderActions(m, profileId, onAction) {
-  // profileId null = scouter público (sem login). Mostra só undo, não pode encerrar.
+  // profileId null = scouter público. Compartilhar fica só pro dono
+  // (público já tem o link via dashboard do /scouting do coach).
+  // Game manual fica só pro público por enquanto.
   const isOwner = !!profileId;
-  const wrap = el('div', { class: `px-3 mt-3 grid gap-2 ${isOwner ? 'grid-cols-3' : 'grid-cols-1'}` });
+  const cols = isOwner ? 'grid-cols-3' : 'grid-cols-3';
+  const wrap = el('div', { class: `px-3 mt-3 grid gap-2 ${cols}` });
   const undoBtn = el('button', {
     class: 'text-xs px-3 py-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold disabled:opacity-50',
     onClick: () => onAction('undo'),
   }, '↶ Desfazer último');
   if (!m.points || m.points.length === 0) undoBtn.disabled = true;
   wrap.appendChild(undoBtn);
+  if (!isOwner) {
+    // Game manual: scouter perdeu o scout do game e marca "game pra X"
+    // sem inventar pontos.
+    wrap.appendChild(el('button', {
+      class: 'text-xs px-3 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 text-amber-100 font-semibold',
+      title: 'Use quando perdeu o scout dos pontos do game',
+      onClick: () => onAction('game-manual'),
+    }, '⇥ Game manual'));
+  }
   if (isOwner) {
     wrap.appendChild(el('button', {
       class: 'text-xs px-3 py-2.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 font-semibold',
       onClick: () => onAction('share'),
     }, '🔗 Compartilhar'));
-    wrap.appendChild(el('button', {
-      class: 'text-xs px-3 py-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 font-semibold',
-      onClick: () => onAction('abandon'),
-    }, '⏹ Encerrar'));
   }
+  wrap.appendChild(el('button', {
+    class: 'text-xs px-3 py-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 font-semibold',
+    onClick: () => onAction('abandon'),
+  }, '⏹ Encerrar'));
   return wrap;
 }
 
@@ -5634,11 +5745,12 @@ function renderStatsPanel(m) {
   const stats = computeStats(m);
   const tbl = el('div', { class: 'bg-white/5 rounded-lg border border-white/10 overflow-hidden' });
 
-  // Header
+  // Header com os nomes reais dos atletas (desambigua homônimos).
+  const [shortA, shortO] = dualShortName(m.athleteName, m.opponentName);
   const head = el('div', { class: 'grid grid-cols-3 text-[10px] uppercase tracking-wide text-white/50 border-b border-white/10' });
-  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-cyan-300' }, 'Anna'));
+  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-cyan-300 truncate' }, shortA || 'Atleta'));
   head.appendChild(el('div', { class: 'px-3 py-2 text-center' }, ''));
-  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-rose-300' }, 'Adv'));
+  head.appendChild(el('div', { class: 'px-3 py-2 text-center font-bold text-rose-300 truncate' }, shortO || 'Adv'));
   tbl.appendChild(head);
 
   // 1ª linha: Nota técnica (destacada) — cores fixas (cyan Anna, rose adv)
@@ -5667,6 +5779,8 @@ function renderStatsPanel(m) {
     // Return
     ['Return Winners',          sa.returnWinners, so.returnWinners],
     ['Return Errors',           sa.returnErrors, so.returnErrors],
+    ['Break Points Won',        sa.breakPointsFaced > 0 ? `${sa.breakPointsWon}/${sa.breakPointsFaced}` : '—',
+                                so.breakPointsFaced > 0 ? `${so.breakPointsWon}/${so.breakPointsFaced}` : '—'],
     // Rally
     ['Winners',                 sa.winners, so.winners],
     ['Forced Errors',           sa.forcedErrors, so.forcedErrors],
@@ -5907,6 +6021,7 @@ function computeStats(m) {
     firstServeIn: 0, firstServeAttempted: 0,
     pointsWonOn1stServe: 0, pointsPlayedOn1stServe: 0,
     pointsWonOn2ndServe: 0, pointsPlayedOn2ndServe: 0,
+    breakPointsWon: 0, breakPointsFaced: 0,
   });
   const s = { a: init(), o: init() };
 
@@ -5962,6 +6077,58 @@ function computeStats(m) {
 
     // Reset pro próximo ponto
     cur = { firstServeIn: true, server: null, ended: false };
+  }
+
+  // Break Points: 2ª passada com tracker próprio do game state.
+  // BP = receiver está em situação de ganhar o game com 1 ponto.
+  // Não conta em tiebreak (não tem saque/devolução distintos).
+  // ad=true: BP quando receiver_pts >= 3 e diff (recv-srv) >= 1.
+  // ad=false (no-ad): BP quando receiver_pts >= 3 e receiver_pts >= server_pts.
+  const adOn = m.config?.ad !== false;
+  let bpGame = { a: 0, o: 0 };
+  let bpServer = null;
+  let setGames = { a: 0, o: 0 };
+  let inTiebreak = false;
+  for (const p of (m.points || [])) {
+    if (p.winner == null) continue;
+    if (bpServer == null) bpServer = p.server;
+    const recv = bpServer === 'a' ? 'o' : 'a';
+    if (!inTiebreak) {
+      const r = bpGame[recv], sv = bpGame[bpServer];
+      const isBP = adOn ? (r >= 3 && r - sv >= 1) : (r >= 3 && r >= sv);
+      if (isBP) {
+        s[recv].breakPointsFaced++;
+        if (p.winner === recv) s[recv].breakPointsWon++;
+      }
+    }
+    bpGame[p.winner]++;
+    let ended = null;
+    if (inTiebreak) {
+      if (bpGame.a >= 7 && bpGame.a - bpGame.o >= 2) ended = 'a';
+      else if (bpGame.o >= 7 && bpGame.o - bpGame.a >= 2) ended = 'o';
+    } else if (adOn) {
+      if (bpGame.a >= 4 && bpGame.a - bpGame.o >= 2) ended = 'a';
+      else if (bpGame.o >= 4 && bpGame.o - bpGame.a >= 2) ended = 'o';
+    } else {
+      if (bpGame.a >= 4 && bpGame.a > bpGame.o) ended = 'a';
+      else if (bpGame.o >= 4 && bpGame.o > bpGame.a) ended = 'o';
+    }
+    if (ended) {
+      if (inTiebreak) {
+        setGames = { a: 0, o: 0 };
+        inTiebreak = false;
+      } else {
+        setGames[ended]++;
+        if (setGames.a === 6 && setGames.o === 6) inTiebreak = true;
+        if ((setGames.a >= 6 && setGames.a - setGames.o >= 2) ||
+            (setGames.o >= 6 && setGames.o - setGames.a >= 2) ||
+            setGames.a === 7 || setGames.o === 7) {
+          setGames = { a: 0, o: 0 };
+        }
+      }
+      bpGame = { a: 0, o: 0 };
+      bpServer = bpServer === 'a' ? 'o' : 'a';
+    }
   }
 
   // Contagem geral de "returns in play" (devoluções boas) — qualquer return_in_play marker já indica que voltou
@@ -6258,9 +6425,22 @@ async function openPublicLiveMatch(kind, token) {
           },
         ));
         leftCol.appendChild(renderActions(m, null, async (action) => {
-          if (action === 'undo') {
-            try { m = await api.publicUndoPoint(token); render(); }
-            catch (err) { alert(err.message); }
+          try {
+            if (action === 'undo') {
+              m = await api.publicUndoPoint(token); render();
+            } else if (action === 'game-manual') {
+              const winner = await pickGameWinner(m.athleteName, m.opponentName);
+              if (!winner) return;
+              m = await api.publicGameManual(token, winner);
+              render();
+            } else if (action === 'abandon') {
+              const result = await pickAbandonSide(m.athleteName, m.opponentName);
+              if (!result) return;
+              await api.publicAbandonMatch(token, result.side, result.reason);
+              window.location.reload();
+            }
+          } catch (err) {
+            alert(err.message);
           }
         }));
         rightCol.appendChild(renderStatsPanel(m));

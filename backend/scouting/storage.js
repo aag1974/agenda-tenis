@@ -104,12 +104,13 @@ export function createInvite({
   return invite;
 }
 
-export function markInviteCompleted(token, { matchId, matchToken }) {
+export function markInviteCompleted(token, { matchId, matchToken, viewerToken }) {
   const all = readJson(INVITES_FILE, {});
   const invite = all[token];
   if (!invite) return null;
   invite.matchId = matchId;
-  invite.matchToken = matchToken;
+  invite.matchToken = matchToken;        // scoutToken (pro scouter marcar)
+  invite.viewerToken = viewerToken;      // pro coach acompanhar read-only
   invite.completedAt = new Date().toISOString();
   writeJson(INVITES_FILE, all);
   return invite;
