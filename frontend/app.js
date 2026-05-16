@@ -627,6 +627,16 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao adicionar nota');
     return r.json();
   },
+  // Viewer (coach) adiciona nota — funciona AO VIVO e PÓS-JOGO (análise).
+  async publicLiveAddNote(token, text, tag) {
+    const r = await fetch(`/api/live/${token}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, tag }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao adicionar nota');
+    return r.json();
+  },
   async publicAbandonMatch(token, side, reason) {
     const r = await fetch(`/api/scout/${token}/abandon`, {
       method: 'POST',
@@ -6463,7 +6473,13 @@ async function openPublicLiveMatch(kind, token) {
             },
           }));
         } else {
-          rightCol.appendChild(renderNotesPanel(m, { readOnly: true }));
+          // Viewer (coach) pode adicionar notas — funciona ao vivo E pós-jogo.
+          rightCol.appendChild(renderNotesPanel(m, {
+            onAdd: async (text, tag) => {
+              m = await api.publicLiveAddNote(token, text, tag);
+              render();
+            },
+          }));
         }
       }
 

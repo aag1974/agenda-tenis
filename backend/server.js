@@ -2206,6 +2206,29 @@ app.get('/api/live/:token', (req, res) => {
   res.json(attachScore(r.match));
 });
 
+// Coach adiciona nota qualitativa via viewerToken — funciona tanto AO VIVO
+// quanto APÓS o encerramento (análise pós-jogo). Diferente do
+// /api/scout/:token/notes, este aceita match finalizado.
+app.post('/api/live/:token/notes', (req, res) => {
+  const { text, tag } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ error: 'text obrigatório' });
+  const info = resolveLiveMatchToken(req.params.token);
+  if (!info || info.kind !== 'viewer') return res.status(404).json({ error: 'Token inválido' });
+  const match = getLiveMatch(info.profileId, info.matchId);
+  if (!match) return res.status(404).json({ error: 'Match não encontrado' });
+  match.notes = match.notes || [];
+  match.notes.push({
+    id: 'n-' + Math.random().toString(36).slice(2, 10),
+    ts: new Date().toISOString(),
+    text: String(text).trim().slice(0, 500),
+    tag: VALID_NOTE_TAGS.has(tag) ? tag : null,
+    score: snapshotScore(match),
+    author: match.finished ? 'coach-post' : 'coach',
+  });
+  saveLiveMatch(info.profileId, match);
+  res.json(attachScore(match));
+});
+
 // Páginas públicas: serve o index.html (SPA detecta o path e abre tela
 // apropriada sem login). Tem que vir ANTES do express.static catch-all.
 app.get(['/scout/:token', '/live/:token'], (req, res) => {
