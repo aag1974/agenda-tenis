@@ -5402,17 +5402,25 @@ function renderScorePanel(m) {
   const cs = m.currentSet;
   const cg = formatGameLabel(m.currentGame, m.config?.ad);
   const sets = m.setsHistory || [];
+  // Colunas a exibir: só os sets jogados + 1 atual (se ao vivo).
+  // Resolve o bug do "set fantasma": backend não reseta currentSet ao
+  // finalizar, então mostrar set vazio em amarelo passava sensação de
+  // partida incompleta.
+  const setsCount = Math.max(1, m.finished ? sets.length : sets.length + 1);
+  const setColTemplate = Array(setsCount).fill('40px').join(' ');
+  const rowTemplate = `1fr ${setColTemplate} 50px`;
+
   const wrap = el('div', { class: 'px-4 py-4' });
   const grid = el('div', { class: 'bg-white/5 rounded-xl border border-white/10 overflow-hidden' });
-  const header = el('div', { class: 'grid', style: 'grid-template-columns: 1fr 32px 32px 32px 50px;' });
+  const header = el('div', { class: 'grid', style: `grid-template-columns: ${rowTemplate};` });
   header.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-white/40 px-3 py-1.5 font-bold' }, 'Atleta'));
-  for (let i = 0; i < 3; i++) header.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-white/40 px-1 py-1.5 text-center font-bold' }, String(i + 1)));
+  for (let i = 0; i < setsCount; i++) header.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-white/40 px-1 py-1.5 text-center font-bold' }, String(i + 1)));
   header.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-white/40 px-2 py-1.5 text-center font-bold' }, 'Pts'));
   grid.appendChild(header);
 
   // Anna (a)
-  grid.appendChild(rowForSide('a', m.athleteName, m, cs, cg, sets));
-  grid.appendChild(rowForSide('o', m.opponentName, m, cs, cg, sets));
+  grid.appendChild(rowForSide('a', m.athleteName, m, cs, cg, sets, rowTemplate, setsCount));
+  grid.appendChild(rowForSide('o', m.opponentName, m, cs, cg, sets, rowTemplate, setsCount));
   wrap.appendChild(grid);
 
   // Banner TIEBREAK / SUPER-TB destacado
@@ -5432,26 +5440,53 @@ function shortName(name) {
   return (name || '').split(' ').slice(0, 2).join(' ');
 }
 
-function rowForSide(side, name, m, cs, cg, sets) {
+function rowForSide(side, name, m, cs, cg, sets, rowTemplate, setsCount) {
   const isServer = m.server === side && !m.finished;
   const isWinner = m.finished && m.winner === side;
   const isLoser  = m.finished && m.winner && m.winner !== side;
-  const rowStyle = 'grid-template-columns: 1fr 32px 32px 32px 50px;' + (isLoser ? ' opacity: 0.5;' : '');
+  const rowStyle = `grid-template-columns: ${rowTemplate};` + (isLoser ? ' opacity: 0.5;' : '');
   const row = el('div', { class: 'grid items-center', style: rowStyle });
   const nameSuffix = isWinner ? ' 🏆' : (isServer ? ' 🎾' : '');
   row.appendChild(el('div', { class: `px-3 py-2 text-sm flex items-center gap-2 ${isWinner ? 'font-extrabold' : 'font-semibold'}` },
     el('span', { class: 'inline-block w-2.5 h-2.5 rounded-full', style: `background: ${side === 'a' ? '#0891b2' : '#e11d48'}` }),
     el('span', { class: 'truncate' }, shortName(name) + nameSuffix),
   ));
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < setsCount; i++) {
     const s = sets[i];
-    const isCurrent = !s && i === sets.length;
-    const v = s ? s[side] : (isCurrent ? cs[side] : '');
-    row.appendChild(el('div', {
-      class: 'px-1 py-2 text-center text-base font-bold' + (isCurrent ? ' text-yellow-300' : (s ? '' : ' opacity-40')),
-    }, String(v)));
+    if (s) {
+      // Set encerrado: amarelo só no vencedor; TB vira superscript no perdedor.
+      const setWinner = s.a > s.o ? 'a' : (s.o > s.a ? 'o' : null);
+      const wonThisSet = setWinner === side;
+      const classes = 'px-1 py-2 text-center text-base ' +
+        (wonThisSet ? 'font-extrabold text-yellow-300' : 'font-bold');
+      // Tiebreak: número pequeno (subscript) ao lado do perdedor mostra os
+      // pts dele no TB. Convenção ITF/CBT: "7  6³" — set 7-6, perdedor fez 3.
+      // Super-TB substitui set inteiro — mostra direto o score do TB.
+      const isSuperTb = s.mode === 'super_tiebreak' && s.tiebreak;
+      let children;
+      if (isSuperTb) {
+        children = [String(s.tiebreak[side])];
+      } else if (s.tiebreak && !wonThisSet) {
+        children = [
+          String(s[side]),
+          el('sup', { class: 'text-[10px] font-normal opacity-80 ml-0.5' }, String(s.tiebreak[side])),
+        ];
+      } else {
+        children = [String(s[side])];
+      }
+      row.appendChild(el('div', { class: classes }, ...children));
+    } else if (!m.finished) {
+      // Set sendo jogado: parcial em destaque ciano (não amarelo, pra
+      // amarelo ficar reservado a vencedor).
+      row.appendChild(el('div', {
+        class: 'px-1 py-2 text-center text-base font-bold text-cyan-300',
+      }, String(cs[side])));
+    } else {
+      // Não deveria cair aqui (setsCount agora é exato), mas mantém fallback.
+      row.appendChild(el('div', { class: 'px-1 py-2 text-center text-base opacity-40' }, ''));
+    }
   }
-  // Pts atuais
+  // Pts atuais (só ao vivo)
   const ptsLabel = m.finished ? '' : (cg.split('-')[side === 'a' ? 0 : 1] || '0');
   row.appendChild(el('div', { class: 'px-2 py-2 text-center text-xl font-extrabold text-yellow-300' }, ptsLabel));
   return row;
