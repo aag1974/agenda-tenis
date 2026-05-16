@@ -2,8 +2,9 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#0e3a4d">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a2e3d">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>TennisFlow Scouting</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎾</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -32,6 +33,15 @@
     body.scout-bg::before { top: -2rem; left: -2rem; transform: rotate(-15deg); }
     body.scout-bg::after  { bottom: -2rem; right: -2rem; transform: rotate(20deg); }
     #root { position: relative; z-index: 1; }
+
+    /* iPhone notch / status bar: o header pinta toda a área até o topo,
+       mas o conteúdo (logo + Sair) fica abaixo do status bar. */
+    .scout-header {
+      background: var(--ti-navy-dark) !important;
+      padding-top: max(0.75rem, env(safe-area-inset-top));
+      padding-left:  max(1rem, env(safe-area-inset-left));
+      padding-right: max(1rem, env(safe-area-inset-right));
+    }
   </style>
 </head>
 <body class="scout-bg">

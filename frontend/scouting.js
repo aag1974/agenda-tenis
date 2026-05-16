@@ -345,7 +345,7 @@ async function renderDashboard() {
     go('');
   };
 
-  const header = el('header', { class: 'bg-slate-900/60 border-b border-white/10 px-4 py-3 flex items-center justify-between backdrop-blur' },
+  const header = el('header', { class: 'scout-header border-b border-white/10 py-3 flex items-center justify-between' },
     el('div', { class: 'flex items-center gap-2' },
       el('span', { class: 'text-xl' }, '🎾'),
       el('span', { class: 'text-lg font-bold tracking-tight' },
