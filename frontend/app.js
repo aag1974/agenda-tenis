@@ -4964,12 +4964,12 @@ function scoutListItem(m, profileId, parentClose, isLive) {
   const cs = m.computedScore;
   const noteBadge = cs && (cs.a?.score != null || cs.o?.score != null)
     ? el('div', { class: 'flex gap-1' },
-        cs.a?.score != null && el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full text-cyan-700 bg-cyan-100' }, `Anna ${cs.a.score.toFixed(1)}`),
-        cs.o?.score != null && el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full text-rose-700 bg-rose-100' }, `Adv ${cs.o.score.toFixed(1)}`),
+        cs.a?.score != null && el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full text-cyan-700 bg-cyan-100' }, `Anna ${cs.a.score.toFixed(1).replace('.', ',')}`),
+        cs.o?.score != null && el('span', { class: 'text-[10px] font-bold px-2 py-0.5 rounded-full text-rose-700 bg-rose-100' }, `Adv ${cs.o.score.toFixed(1).replace('.', ',')}`),
       )
     : null;
 
-  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 mt-2 cursor-pointer hover:bg-slate-50' });
+  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 mt-2 cursor-pointer hover:bg-slate-50 relative' });
   const head = el('div', {},
     el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
       el('div', { class: 'min-w-0 flex-1' },
@@ -4983,6 +4983,25 @@ function scoutListItem(m, profileId, parentClose, isLive) {
       noteBadge,
     ),
   );
+  // Botão de excluir — discreto no canto inferior direito, stopPropagation
+  // pra não abrir o tracking. Top-right é ocupado pelo statusBadge.
+  const deleteBtn = el('button', {
+    class: 'absolute bottom-2 right-2 text-slate-300 hover:text-rose-500 text-base leading-none p-1 rounded transition-colors',
+    title: 'Excluir scout',
+  }, '🗑');
+  deleteBtn.onclick = async (e) => {
+    e.stopPropagation();
+    const summary = `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}${ctx ? ` · ${ctx}` : ''}`;
+    if (!(await confirmDialog(`Excluir este scout?\n\n${summary}\n\nNão dá pra desfazer — pontos, stats e notas serão perdidos.`, { danger: true, okLabel: 'Excluir' }))) return;
+    try {
+      await api.deleteLiveMatch(profileId, m.id);
+      parentClose();
+      openScoutListModal();
+    } catch (err) {
+      alert('Erro: ' + err.message);
+    }
+  };
+  wrap.appendChild(deleteBtn);
   // Ao vivo: abre tracking pra continuar marcando.
   // Encerrado: abre tracking em modo leitura — 🔗 no header pra compartilhar.
   wrap.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
@@ -5131,17 +5150,18 @@ function pickAbandonSide(athleteName, opponentName) {
       onClick: () => done(side),
     }, label);
     root.append(
-      el('div', { class: 'fixed inset-0 bg-black/50 z-[60]', onClick: () => done(null) }),
-      el('div', { class: 'fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-2xl px-5 pt-5 pb-10 max-w-md mx-auto' },
-        el('div', { class: 'text-sm font-bold text-slate-800 mb-1 text-center' }, 'Quem abandonou?'),
-        el('div', { class: 'text-xs text-slate-400 mb-5 text-center' }, 'O match será encerrado e não poderá ser editado.'),
-        el('div', { class: 'flex flex-col gap-2' },
-          btn(shortName(athleteName), 'bg-cyan-600 hover:bg-cyan-700', 'a'),
-          btn(shortName(opponentName), 'bg-rose-600 hover:bg-rose-700', 'o'),
-          el('button', {
-            class: 'w-full py-3 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200',
-            onClick: () => done(null),
-          }, 'Cancelar'),
+      el('div', { class: 'fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4', onClick: (e) => { if (e.currentTarget === e.target) done(null); } },
+        el('div', { class: 'bg-white rounded-2xl px-5 py-5 max-w-sm w-full shadow-2xl' },
+          el('div', { class: 'text-sm font-bold text-slate-800 mb-1 text-center' }, 'Quem abandonou?'),
+          el('div', { class: 'text-xs text-slate-400 mb-5 text-center' }, 'O match será encerrado e não poderá ser editado.'),
+          el('div', { class: 'flex flex-col gap-2' },
+            btn(shortName(athleteName), 'bg-cyan-600 hover:bg-cyan-700', 'a'),
+            btn(shortName(opponentName), 'bg-rose-600 hover:bg-rose-700', 'o'),
+            el('button', {
+              class: 'w-full py-3 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200',
+              onClick: () => done(null),
+            }, 'Cancelar'),
+          ),
         ),
       ),
     );
@@ -5149,13 +5169,50 @@ function pickAbandonSide(athleteName, opponentName) {
 }
 
 // Modal de tracking — coração do Scout ao Vivo
+// Modal de confirmação estilizado — substitui o confirm() nativo.
+// Uso: const ok = await confirmDialog('Excluir?', { danger: true });
+function confirmDialog(message, opts = {}) {
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    root.style.cssText = 'position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); padding:1rem;';
+    const card = el('div', { class: 'bg-white text-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden' });
+    if (opts.title) card.appendChild(el('div', { class: 'px-5 pt-4 pb-1 text-base font-semibold' }, opts.title));
+    card.appendChild(el('div', { class: 'px-5 py-3 text-sm text-slate-700 whitespace-pre-wrap' }, message));
+    const actions = el('div', { class: 'flex gap-2 justify-end px-5 pb-4' });
+    const cancelBtn = el('button', { class: 'px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium' }, opts.cancelLabel || 'Cancelar');
+    const okBtn = el('button', {
+      class: `px-4 py-2 rounded-lg text-white text-sm font-semibold ${opts.danger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-cyan-600 hover:bg-cyan-700'}`,
+    }, opts.okLabel || 'Confirmar');
+    actions.append(cancelBtn, okBtn);
+    card.appendChild(actions);
+    root.appendChild(card);
+    const onKey = (e) => { if (e.key === 'Escape') close(false); else if (e.key === 'Enter') close(true); };
+    const close = (result) => {
+      document.removeEventListener('keydown', onKey);
+      root.remove();
+      resolve(result);
+    };
+    cancelBtn.onclick = () => close(false);
+    okBtn.onclick = () => close(true);
+    root.onclick = (e) => { if (e.target === root) close(false); };
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(root);
+    setTimeout(() => okBtn.focus(), 50);
+  });
+}
+
 async function openScoutTrackModal(profileId, matchId) {
   const root = $('modal-root');
   root.innerHTML = '';
-  const close = () => { root.innerHTML = ''; };
+  // Ao fechar, volta pra lista de scouts (não fecha tudo) — UX esperada
+  // ao apertar o ← do header.
+  const close = () => { root.innerHTML = ''; openScoutListModal(); };
 
-  const overlay = el('div', { class: 'fixed inset-0 bg-slate-900 z-50', style: 'background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%);' });
-  const container = el('div', { class: 'relative z-50 max-w-md mx-auto text-white min-h-[100dvh] flex flex-col' });
+  const overlay = el('div', {
+    class: 'fixed inset-0 z-50',
+    style: 'background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%); overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;',
+  });
+  const container = el('div', { class: 'relative max-w-md lg:max-w-5xl mx-auto text-white flex flex-col pb-8' });
   overlay.appendChild(container);
   root.appendChild(overlay);
 
@@ -5196,13 +5253,20 @@ async function openScoutTrackModal(profileId, matchId) {
       }, '🔗') : null,
     ));
 
-    // Placar
+    // Placar (sempre full width no topo)
     container.appendChild(renderScorePanel(m));
 
-    // Botões de stat (se não terminou)
+    // Desktop: 2 colunas. Mobile: empilhado (grid-cols-1).
+    const grid = el('div', { class: 'grid grid-cols-1 lg:grid-cols-2 lg:gap-4' });
+    const leftCol = el('div', { class: 'flex flex-col' });
+    const rightCol = el('div', { class: 'flex flex-col' });
+    grid.append(leftCol, rightCol);
+    container.appendChild(grid);
+
     if (isLive) {
-      container.appendChild(renderPhaseBanner(m));
-      container.appendChild(renderStatButtons(m, profileId,
+      // Ao vivo: ações de marcar na esquerda, stats/momentum/notas na direita
+      leftCol.appendChild(renderPhaseBanner(m));
+      leftCol.appendChild(renderStatButtons(m, profileId,
         async (winner, stat) => {
           try { m = await api.addLivePoint(profileId, m.id, winner, stat); render(); }
           catch (err) { alert(err.message); }
@@ -5212,39 +5276,35 @@ async function openScoutTrackModal(profileId, matchId) {
           catch (err) { alert(err.message); }
         },
       ));
+      leftCol.appendChild(renderActions(m, profileId, async (action) => {
+        try {
+          if (action === 'undo') m = await api.undoLivePoint(profileId, m.id);
+          else if (action === 'share') return openScoutShareModal(profileId, m);
+          else if (action === 'abandon') {
+            const side = await pickAbandonSide(m.athleteName, m.opponentName);
+            if (!side) return;
+            await api.abandonLiveMatch(profileId, m.id, side);
+            close();
+            return;
+          }
+          render();
+        } catch (err) { alert(err.message); }
+      }));
+      rightCol.appendChild(renderStatsPanel(m));
+      rightCol.appendChild(renderMomentumPanel(m));
+      rightCol.appendChild(renderNotesPanel(m, {
+        onAdd: async (text, tag) => { m = await api.addLiveNote(profileId, m.id, text, tag); render(); },
+        onDelete: async (noteId) => { m = await api.deleteLiveNote(profileId, m.id, noteId); render(); },
+      }));
+    } else {
+      // Relatório: stats na esquerda, momentum + notas na direita
+      leftCol.appendChild(renderStatsPanel(m));
+      rightCol.appendChild(renderMomentumPanel(m));
+      rightCol.appendChild(renderNotesPanel(m, {
+        onAdd: async (text, tag) => { m = await api.addLiveNote(profileId, m.id, text, tag); render(); },
+        onDelete: async (noteId) => { m = await api.deleteLiveNote(profileId, m.id, noteId); render(); },
+      }));
     }
-
-    // Ações: undo/encerrar/share só ao vivo. Encerrado: share fica no header.
-    if (isLive) container.appendChild(renderActions(m, profileId, async (action) => {
-      try {
-        if (action === 'undo') m = await api.undoLivePoint(profileId, m.id);
-        else if (action === 'share') return openScoutShareModal(profileId, m);
-        else if (action === 'abandon') {
-          const side = await pickAbandonSide(m.athleteName, m.opponentName);
-          if (!side) return;
-          await api.abandonLiveMatch(profileId, m.id, side);
-          close();
-          return;
-        }
-        render();
-      } catch (err) { alert(err.message); }
-    }));
-
-    // Stats consolidados
-    container.appendChild(renderStatsPanel(m));
-    container.appendChild(renderMomentumPanel(m));
-
-    // Notas qualitativas (composer + lista) — dono pode adicionar e deletar
-    container.appendChild(renderNotesPanel(m, {
-      onAdd: async (text, tag) => {
-        m = await api.addLiveNote(profileId, m.id, text, tag);
-        render();
-      },
-      onDelete: async (noteId) => {
-        m = await api.deleteLiveNote(profileId, m.id, noteId);
-        render();
-      },
-    }));
   };
 
   render();
@@ -5463,10 +5523,10 @@ function renderStatsPanel(m) {
   if (cs && (cs.a?.score != null || cs.o?.score != null)) {
     const noteRow = el('div', { class: 'grid grid-cols-3 text-xs border-b border-white/10', style: 'background: rgba(255,255,255,0.04)' });
     noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center font-extrabold text-lg', style: 'color:#67e8f9' },
-      cs.a?.score != null ? cs.a.score.toFixed(1) : '—'));
+      cs.a?.score != null ? cs.a.score.toFixed(1).replace('.', ',') : '—'));
     noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center text-white/85 font-semibold uppercase tracking-wide text-[10px]' }, 'Nota técnica · 0-10'));
     noteRow.appendChild(el('div', { class: 'px-3 py-2 text-center font-extrabold text-lg', style: 'color:#fda4af' },
-      cs.o?.score != null ? cs.o.score.toFixed(1) : '—'));
+      cs.o?.score != null ? cs.o.score.toFixed(1).replace('.', ',') : '—'));
     tbl.appendChild(noteRow);
   }
 
@@ -5510,7 +5570,7 @@ function renderNotesPanel(m, opts = {}) {
   if (!opts.readOnly && opts.onAdd) {
     const composer = el('div', { class: 'bg-white rounded-xl p-3 text-slate-900 mb-3' });
     const textarea = el('textarea', {
-      placeholder: 'Observação rápida — ex: "saque externo funcionando" · "errou voleias quando subiu"…',
+      placeholder: 'Observação rápida — ex: "segundo saque na quadra" · "errou muitos voleios na subida à rede"…',
       class: 'w-full text-sm border border-slate-200 rounded-lg px-3 py-2 h-16 focus:outline-none focus:ring-2 focus:ring-cyan-300 resize-none',
     });
     composer.appendChild(textarea);
@@ -5601,7 +5661,7 @@ function renderNotesPanel(m, opts = {}) {
     if (opts.onDelete) {
       const del = el('button', { class: 'text-[10px] text-white/40 hover:text-red-300 ml-2' }, '×');
       del.onclick = async () => {
-        if (!confirm('Excluir esta nota?')) return;
+        if (!(await confirmDialog('Excluir esta nota?', { danger: true, okLabel: 'Excluir' }))) return;
         try { await opts.onDelete(n.id); } catch (err) { alert(err.message); }
       };
       head.appendChild(del);
@@ -5642,7 +5702,7 @@ function renderScoreBadge(cs) {
   wrap.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-white/50 font-bold' }, 'Nota técnica do match'));
 
   const row = el('div', { class: 'flex items-end gap-3 mt-1' });
-  const big = el('div', { class: 'text-5xl font-extrabold leading-none', style: `color:${color}` }, score.toFixed(1));
+  const big = el('div', { class: 'text-5xl font-extrabold leading-none', style: `color:${color}` }, score.toFixed(1).replace('.', ','));
   row.appendChild(big);
   row.appendChild(el('div', { class: 'text-xs text-white/60 pb-1' }, ' / 10'));
   wrap.appendChild(row);
@@ -5665,7 +5725,7 @@ function renderScoreBadge(cs) {
         el('div', { class: 'flex-1 h-1.5 rounded-full', style: 'background:rgba(255,255,255,0.1)' },
           el('div', { class: 'h-full rounded-full', style: `width:${val * 10}%; background:${c}` }),
         ),
-        el('span', { class: 'font-semibold text-white/85', style: 'min-width:1.75rem; text-align:right' }, val.toFixed(1)),
+        el('span', { class: 'font-semibold text-white/85', style: 'min-width:1.75rem; text-align:right' }, val.toFixed(1).replace('.', ',')),
       ),
     );
     grid.appendChild(item);
@@ -5991,7 +6051,8 @@ async function openPublicLiveMatch(kind, token) {
   document.body.style.cssText = 'margin:0; padding:0; min-height:100vh; color:white; background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
 
   const root = document.createElement('div');
-  root.style.cssText = 'max-width: 28rem; margin: 0 auto; min-height: 100vh; padding-bottom: 2rem;';
+  // Mobile: max 28rem (uma coluna). Desktop (lg+): max 64rem (duas colunas via grid abaixo)
+  root.className = 'mx-auto pb-8 min-h-screen max-w-md lg:!max-w-5xl';
   document.body.appendChild(root);
 
   const setMsg = (html) => { root.innerHTML = html; };
@@ -6050,9 +6111,20 @@ async function openPublicLiveMatch(kind, token) {
       // CDN tem MutationObserver e processa dinamicamente)
       root.appendChild(renderScorePanel(m));
 
+      // Desktop: 2 colunas. Mobile: tudo empilhado.
+      const grid = document.createElement('div');
+      grid.className = 'grid grid-cols-1 lg:grid-cols-2 lg:gap-4';
+      const leftCol = document.createElement('div');
+      leftCol.className = 'flex flex-col';
+      const rightCol = document.createElement('div');
+      rightCol.className = 'flex flex-col';
+      grid.appendChild(leftCol);
+      grid.appendChild(rightCol);
+      root.appendChild(grid);
+
       if (isScout && !m.finished) {
-        root.appendChild(renderPhaseBanner(m));
-        root.appendChild(renderStatButtons(m, null,
+        leftCol.appendChild(renderPhaseBanner(m));
+        leftCol.appendChild(renderStatButtons(m, null,
           async (winner, stat) => {
             try { m = await api.publicAddPoint(token, winner, stat); render(); }
             catch (err) { alert(err.message); }
@@ -6062,28 +6134,34 @@ async function openPublicLiveMatch(kind, token) {
             catch (err) { alert(err.message); }
           },
         ));
-        root.appendChild(renderActions(m, null, async (action) => {
+        leftCol.appendChild(renderActions(m, null, async (action) => {
           if (action === 'undo') {
             try { m = await api.publicUndoPoint(token); render(); }
             catch (err) { alert(err.message); }
           }
         }));
-      }
-
-      root.appendChild(renderStatsPanel(m));
-      root.appendChild(renderMomentumPanel(m));
-
-      // Notas — scouter público pode adicionar; viewer vê read-only.
-      // Link viewer é o "relatório" — coach precisa ver as notas.
-      if (isScout) {
-        root.appendChild(renderNotesPanel(m, {
+        rightCol.appendChild(renderStatsPanel(m));
+        rightCol.appendChild(renderMomentumPanel(m));
+        rightCol.appendChild(renderNotesPanel(m, {
           onAdd: async (text, tag) => {
             m = await api.publicAddNote(token, text, tag);
             render();
           },
         }));
       } else {
-        root.appendChild(renderNotesPanel(m, { readOnly: true }));
+        // Viewer (live ou relatório finalizado): stats à esquerda, momentum+notas à direita
+        leftCol.appendChild(renderStatsPanel(m));
+        rightCol.appendChild(renderMomentumPanel(m));
+        if (isScout) {
+          rightCol.appendChild(renderNotesPanel(m, {
+            onAdd: async (text, tag) => {
+              m = await api.publicAddNote(token, text, tag);
+              render();
+            },
+          }));
+        } else {
+          rightCol.appendChild(renderNotesPanel(m, { readOnly: true }));
+        }
       }
 
       if (!isScout && !m.finished) {
