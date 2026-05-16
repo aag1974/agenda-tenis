@@ -1,0 +1,2274 @@
+{
+  "atletas": [
+    {
+      "id": "237459",
+      "nome": "Elisa Philippe Lasmar",
+      "categoria": "12F GA",
+      "clube": "Tennis Route",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 12
+    },
+    {
+      "id": "257670",
+      "nome": "Luiza Bergozza Simioni Dos Santos",
+      "categoria": "12F GA",
+      "clube": "Recreio Cruzeiro",
+      "cidade": "Caxias do Sul",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "449487",
+      "nome": "Clara Braga Lima Santos",
+      "categoria": "12F GA",
+      "clube": "Clube do Exército (Sede Lago) - DF",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 12
+    },
+    {
+      "id": "278810",
+      "nome": "Agnes Loyola De Souza",
+      "categoria": "12F GA",
+      "clube": "Circulo Militar de Cuiabá",
+      "cidade": "Varzea Grande",
+      "uf": "MT",
+      "idade": 12
+    },
+    {
+      "id": "373623",
+      "nome": "Mirella De Souza Queiroz",
+      "categoria": "12F GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "Ribeirao Preto",
+      "uf": "SP",
+      "idade": 11
+    },
+    {
+      "id": "428445",
+      "nome": "Giovana Macedo Bezerra",
+      "categoria": "12F GA",
+      "clube": "Sport Clube Do Recife",
+      "cidade": "Recife",
+      "uf": "PE",
+      "idade": 12
+    },
+    {
+      "id": "273772",
+      "nome": "Clara Biscaro Wirbiski",
+      "categoria": "12F GA",
+      "clube": "Clube Curitibano",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 12
+    },
+    {
+      "id": "372805",
+      "nome": "Valentina Brandao da Cunha",
+      "categoria": "12F GA",
+      "clube": null,
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 11
+    },
+    {
+      "id": "460056",
+      "nome": "Maria Carolina Teixeira Santos",
+      "categoria": "12F GA",
+      "clube": "LOSS Tênis",
+      "cidade": "Palmas",
+      "uf": "TO",
+      "idade": 12
+    },
+    {
+      "id": "406385",
+      "nome": "Maria Luisa Santana Silva Arcieri",
+      "categoria": "12F GA",
+      "clube": null,
+      "cidade": "Uberlandia",
+      "uf": "MG",
+      "idade": 12
+    },
+    {
+      "id": "416735",
+      "nome": "Lorena Potier Mendes",
+      "categoria": "12F GA",
+      "clube": "Londrina Country Clube",
+      "cidade": "Londrina",
+      "uf": "PR",
+      "idade": 12
+    },
+    {
+      "id": "249416",
+      "nome": "Maria Antônia Ribeiro De Siqueira Mendes",
+      "categoria": "12F GA",
+      "clube": "Assembleia Paraense - Sede Campestre",
+      "cidade": "Belem",
+      "uf": "PA",
+      "idade": 11
+    },
+    {
+      "id": "394709",
+      "nome": "Luiza Didoni Pegoraro",
+      "categoria": "12F GA",
+      "clube": null,
+      "cidade": "Londrina",
+      "uf": "PR",
+      "idade": 12
+    },
+    {
+      "id": "383520",
+      "nome": "Betina Vandresen Garcia",
+      "categoria": "12F GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Florianopolis",
+      "uf": "SC",
+      "idade": 12
+    },
+    {
+      "id": "430547",
+      "nome": "Ana Beatriz Bernardes Alves",
+      "categoria": "12F GA",
+      "clube": "Clube Espéria",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "382413",
+      "nome": "Gabriela Muller Haas",
+      "categoria": "12F GA",
+      "clube": "Recreio da Juventude",
+      "cidade": "Santa Cruz do Sul",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "473521",
+      "nome": "Julia Coelho Ferreira Cardozo",
+      "categoria": "12F GA",
+      "clube": "Tennis Route",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 12
+    },
+    {
+      "id": "407640",
+      "nome": "Ana Mangaravite Da Silva Lacerda",
+      "categoria": "12F GA",
+      "clube": null,
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 11
+    },
+    {
+      "id": "450258",
+      "nome": "Julia Batista Ferreira",
+      "categoria": "12F GA",
+      "clube": null,
+      "cidade": "Salvador",
+      "uf": "BA",
+      "idade": 12
+    },
+    {
+      "id": "439776",
+      "nome": "Leticia Vital Gueiros Da Silva",
+      "categoria": "12F GA",
+      "clube": "Esporte Clube Pinheiros",
+      "cidade": "Vargem Grande Paulista",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "502915",
+      "nome": "Bia Martins Adade",
+      "categoria": "12F GA",
+      "clube": "Assembleia Paraense - Sede Campestre",
+      "cidade": "Belem",
+      "uf": "PA",
+      "idade": 12
+    },
+    {
+      "id": "468631",
+      "nome": "Amanda Robin Ajuz",
+      "categoria": "12F GA",
+      "clube": "Rio Tennis Academy",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 12
+    },
+    {
+      "id": "416937",
+      "nome": "Maria Eduarda Ferraz Melo",
+      "categoria": "12F GA",
+      "clube": "Sat - Sinop Academia De Tênis",
+      "cidade": "Sinop",
+      "uf": "MT",
+      "idade": 12
+    },
+    {
+      "id": "409296",
+      "nome": "Mariana Maliska Peiter",
+      "categoria": "12F GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Florianopolis",
+      "uf": "SC",
+      "idade": 12
+    },
+    {
+      "id": "495417",
+      "nome": "Helena Mendes Meireles",
+      "categoria": "12F GA",
+      "clube": "Clube Bahiano de Tênis",
+      "cidade": "Salvador",
+      "uf": "BA",
+      "idade": 11
+    },
+    {
+      "id": "417728",
+      "nome": "Maite Sparapani Machado Maciel",
+      "categoria": "12F GA",
+      "clube": "Rio Tennis Academy",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 12
+    },
+    {
+      "id": "489310",
+      "nome": "Laura D Angelo Luz Pereira",
+      "categoria": "12F GA",
+      "clube": "Alphaville Tênis Clube",
+      "cidade": "Santana de Parnaiba",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "418250",
+      "nome": "Alice Saldanha Correa",
+      "categoria": "12F GA",
+      "clube": "Avenida Tênis Clube",
+      "cidade": "Santa Maria",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "418156",
+      "nome": "Alice Lima Uszacki",
+      "categoria": "12F GA",
+      "clube": "Dietze Tennis",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 11
+    },
+    {
+      "id": "276442",
+      "nome": "Laura Torrezani Lopes",
+      "categoria": "12F GA",
+      "clube": null,
+      "cidade": "Brusque",
+      "uf": "SC",
+      "idade": 12
+    },
+    {
+      "id": "380528",
+      "nome": "Rafiza De Araujo Simões",
+      "categoria": "12F GA",
+      "clube": "Tênis Clube Santa Cruz",
+      "cidade": "Santa Cruz do Sul",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "403065",
+      "nome": "Lais De Oliveira Barison",
+      "categoria": "12F GA",
+      "clube": "Country Clube de Maringa",
+      "cidade": "Maringa",
+      "uf": "PR",
+      "idade": 11
+    },
+    {
+      "id": "380089",
+      "nome": "Manuela Tavares de Souza",
+      "categoria": "14F GA",
+      "clube": "Clube Curitibano",
+      "cidade": "Maringa",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "394032",
+      "nome": "Maria Julia Faustini Santos",
+      "categoria": "14F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Jundiai",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "237457",
+      "nome": "Heloíse Philippe Lasmar",
+      "categoria": "14F GA",
+      "clube": "Tennis Route",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 14
+    },
+    {
+      "id": "386018",
+      "nome": "Maria Alice De Loureiro Fernandes",
+      "categoria": "14F GA",
+      "clube": "Associação Desportiva Techset",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 13
+    },
+    {
+      "id": "262538",
+      "nome": "Eloah De Oliveira Barison",
+      "categoria": "14F GA",
+      "clube": "Clube Curitibano",
+      "cidade": "Maringa",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "240241",
+      "nome": "Aimê Ferreira",
+      "categoria": "14F GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Joinville",
+      "uf": "SC",
+      "idade": 14
+    },
+    {
+      "id": "481677",
+      "nome": "Kyara Pereira De Sousa",
+      "categoria": "14F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Santo Andre",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "227405",
+      "nome": "Valentina Mejolaro Britto",
+      "categoria": "14F GA",
+      "clube": "Recreio da Juventude",
+      "cidade": "Caxias do Sul",
+      "uf": "RS",
+      "idade": 13
+    },
+    {
+      "id": "455560",
+      "nome": "Amanda Hoffmann Rezende",
+      "categoria": "14F GA",
+      "clube": null,
+      "cidade": "Sinop",
+      "uf": "MT",
+      "idade": 14
+    },
+    {
+      "id": "263118",
+      "nome": "Maria Antonia Nicolau Melhem",
+      "categoria": "14F GA",
+      "clube": "Graciosa Country Clube",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "425635",
+      "nome": "Valentina De Souza Silva Ribeiro",
+      "categoria": "14F GA",
+      "clube": "Tennis Route",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 14
+    },
+    {
+      "id": "263036",
+      "nome": "Pietra Idalgo Zacharczuk Zakharov",
+      "categoria": "14F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Jacarei",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "243039",
+      "nome": "Anna Faminova",
+      "categoria": "14F GA",
+      "clube": "Avenida Tênis Clube",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 14
+    },
+    {
+      "id": "381788",
+      "nome": "Mariana Saboia Rivoli",
+      "categoria": "14F GA",
+      "clube": null,
+      "cidade": "Fortaleza",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "405700",
+      "nome": "Gabriela Miranda Parga Nina",
+      "categoria": "14F GA",
+      "clube": "Tennis Route",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 14
+    },
+    {
+      "id": "231440",
+      "nome": "Melissa Fernandes Kishimoto",
+      "categoria": "14F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "232223",
+      "nome": "Cecilia Santos Diaz",
+      "categoria": "14F GA",
+      "clube": "Associação Leopoldina Juvenil",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 14
+    },
+    {
+      "id": "415910",
+      "nome": "Maria Alice Ewald De Alencar",
+      "categoria": "14F GA",
+      "clube": "Costa Verde Tenis Clube",
+      "cidade": "Salvador",
+      "uf": "BA",
+      "idade": 13
+    },
+    {
+      "id": "380521",
+      "nome": "Helena Sappi Damasceno",
+      "categoria": "14F GA",
+      "clube": "Esporte Clube Pinheiros",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "390777",
+      "nome": "Manuelly Sella Morzelle",
+      "categoria": "14F GA",
+      "clube": null,
+      "cidade": "Maringa",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "490143",
+      "nome": "Manuela Paz Kashiwagi",
+      "categoria": "14F GA",
+      "clube": "GJ TÊNIS CLUBE",
+      "cidade": "Campo Mourao",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "240567",
+      "nome": "Nicole Martins Borba",
+      "categoria": "14F GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Itajai",
+      "uf": "SC",
+      "idade": 13
+    },
+    {
+      "id": "422959",
+      "nome": "Julia Castellanos Alem",
+      "categoria": "14F GA",
+      "clube": "Associação Brasileira A Hebraica de São Paulo",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "405777",
+      "nome": "Nicole Moorby Kerr",
+      "categoria": "14F GA",
+      "clube": "Associação Desportiva Techset",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 14
+    },
+    {
+      "id": "425106",
+      "nome": "Martina Pereira Schifino",
+      "categoria": "14F GA",
+      "clube": "Lagoa Iate Clube",
+      "cidade": "Florianopolis",
+      "uf": "SC",
+      "idade": 14
+    },
+    {
+      "id": "384218",
+      "nome": "Izadora Queiroz Freitas",
+      "categoria": "14F GA",
+      "clube": "ACADEMIA DE TÊNIS ROLÂNDIA",
+      "cidade": "Rolandia",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "406093",
+      "nome": "Valentina Lopes Vivenza",
+      "categoria": "14F GA",
+      "clube": "Minas Tênis Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 14
+    },
+    {
+      "id": "261820",
+      "nome": "Eduarda Turcato Bargieri",
+      "categoria": "14F GA",
+      "clube": "Clube Espéria",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "234796",
+      "nome": "Martina Schmidt Passold",
+      "categoria": "14F GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "Blumenau",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "263350",
+      "nome": "Catharina De Sousa Miranda",
+      "categoria": "14F GA",
+      "clube": "São Paulo Futebol Clube",
+      "cidade": "Ribeirao Pires",
+      "uf": "SP",
+      "idade": 13
+    },
+    {
+      "id": "273307",
+      "nome": "Victoria Maria Jondral Guimaraes Rotoli de Macedo",
+      "categoria": "14F GA",
+      "clube": "Clube Curitibano",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "430539",
+      "nome": "Maria Luiza Bernardes Alves",
+      "categoria": "14F GA",
+      "clube": "Clube Espéria",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 13
+    },
+    {
+      "id": "263126",
+      "nome": "Murilo Ferreira Vergutz",
+      "categoria": "12M GA",
+      "clube": "Santa Monica Clube de Campo",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 12
+    },
+    {
+      "id": "242145",
+      "nome": "Pedro Fox Assumpcao",
+      "categoria": "12M GA",
+      "clube": "Alphaville Tênis Clube",
+      "cidade": "Barueri",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "388287",
+      "nome": "Heitor Brandao",
+      "categoria": "12M GA",
+      "clube": "Clube Monte LÍbano - SJRP",
+      "cidade": "Sao Jose do Rio Preto",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "257249",
+      "nome": "Eduardo Soares Illes Pozzi",
+      "categoria": "12M GA",
+      "clube": "Alphaville Tênis Clube",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "387961",
+      "nome": "Bernardo Horta Soares",
+      "categoria": "12M GA",
+      "clube": "Grêmio Náutico União",
+      "cidade": "São Lourenço do Sul",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "370003",
+      "nome": "Pedro Maltez Fernandes",
+      "categoria": "12M GA",
+      "clube": null,
+      "cidade": "Sao Jose do Rio Preto",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "380182",
+      "nome": "Rafael Veríssimo Queiroz",
+      "categoria": "12M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 12
+    },
+    {
+      "id": "486847",
+      "nome": "Joao Guilherme Alves Chueiri",
+      "categoria": "12M GA",
+      "clube": "Gp Tênis",
+      "cidade": "Londrina",
+      "uf": "PR",
+      "idade": 12
+    },
+    {
+      "id": "240489",
+      "nome": "Tomás Corsini Madeira Mendes Soares",
+      "categoria": "12M GA",
+      "clube": "Tennis Route",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 12
+    },
+    {
+      "id": "275619",
+      "nome": "Vicenzo Lenoir Gouvea",
+      "categoria": "12M GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Itajai",
+      "uf": "SC",
+      "idade": 12
+    },
+    {
+      "id": "242194",
+      "nome": "Francisco Rela Puccinelli Monte",
+      "categoria": "12M GA",
+      "clube": "Sociedade Hípica de Campinas",
+      "cidade": "Itatiba",
+      "uf": "SP",
+      "idade": 11
+    },
+    {
+      "id": "260035",
+      "nome": "Henrique Pinhão Rechia",
+      "categoria": "12M GA",
+      "clube": "Avenida Tênis Clube",
+      "cidade": "Santa Maria",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "392257",
+      "nome": "Pedro Hofmeister Oreggia",
+      "categoria": "12M GA",
+      "clube": "Alphaville Tênis Clube",
+      "cidade": "Barueri",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "248785",
+      "nome": "Lucas Baruch Correa Zell",
+      "categoria": "12M GA",
+      "clube": null,
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 12
+    },
+    {
+      "id": "380210",
+      "nome": "Natan Teixeira Carvalho",
+      "categoria": "12M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 11
+    },
+    {
+      "id": "409497",
+      "nome": "Otavio Hoffmann De Lima",
+      "categoria": "12M GA",
+      "clube": null,
+      "cidade": "Sinop",
+      "uf": "MT",
+      "idade": 12
+    },
+    {
+      "id": "243046",
+      "nome": "Rafael Albuquerque Dietrich",
+      "categoria": "12M GA",
+      "clube": "Dietze Tennis",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "414281",
+      "nome": "Joao Paulo De Aguiar Coelho",
+      "categoria": "12M GA",
+      "clube": "Minas Tênis Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 12
+    },
+    {
+      "id": "440337",
+      "nome": "Theo Pittas Belem",
+      "categoria": "12M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 12
+    },
+    {
+      "id": "420987",
+      "nome": "Matheus Branco Machado",
+      "categoria": "12M GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "391589",
+      "nome": "Liam Trench",
+      "categoria": "12M GA",
+      "clube": "Clube Curitibano",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 12
+    },
+    {
+      "id": "237719",
+      "nome": "Breno Palazzo De Castro Pereira",
+      "categoria": "12M GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "Sao Jose Dos Campos",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "414527",
+      "nome": "Felipe Alvim De Conti",
+      "categoria": "12M GA",
+      "clube": "Minas Tênis Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 12
+    },
+    {
+      "id": "417338",
+      "nome": "Rafael Araujo Kato",
+      "categoria": "12M GA",
+      "clube": "Clube Atlético Ypiranga",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "242186",
+      "nome": "Felipe Rela Puccinelli Monte",
+      "categoria": "12M GA",
+      "clube": "Sociedade Hípica de Campinas",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 11
+    },
+    {
+      "id": "264145",
+      "nome": "Théo Paiva Lichtnow",
+      "categoria": "12M GA",
+      "clube": "Belém Novo Golf Club",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "414353",
+      "nome": "Rafael Horstmann Rebelo",
+      "categoria": "12M GA",
+      "clube": "Minas Tênis Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 12
+    },
+    {
+      "id": "380194",
+      "nome": "Bernardo Vogt Wiebbelling",
+      "categoria": "12M GA",
+      "clube": "Tênis Clube Santa Cruz",
+      "cidade": "Santa Cruz do Sul",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "243070",
+      "nome": "Davi Cristiano Canto Muniz",
+      "categoria": "12M GA",
+      "clube": "Dietze Tennis",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 12
+    },
+    {
+      "id": "422697",
+      "nome": "Benicio Cury Robusti Pinto",
+      "categoria": "12M GA",
+      "clube": "Centro de Formação e Treinamento Rib. Preto",
+      "cidade": "Ribeirao Preto",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "395667",
+      "nome": "Nicholas Mourad",
+      "categoria": "12M GA",
+      "clube": "Alphaville Tênis Clube",
+      "cidade": "Santana de Parnaiba",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "396977",
+      "nome": "David Castellanos Alem",
+      "categoria": "12M GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 12
+    },
+    {
+      "id": "234979",
+      "nome": "Felipe Kawatani de Oliveira",
+      "categoria": "14M GA",
+      "clube": "SOCIEDADE THALIA",
+      "cidade": "Sao Jose Dos Pinhais",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "226119",
+      "nome": "Mateus Augustin De Collo",
+      "categoria": "14M GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Mafra",
+      "uf": "SC",
+      "idade": 14
+    },
+    {
+      "id": "243669",
+      "nome": "Gustavo Oliveira Werchajzer",
+      "categoria": "14M GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Florianopolis",
+      "uf": "SC",
+      "idade": 14
+    },
+    {
+      "id": "215085",
+      "nome": "Alfredo Engel Hauser",
+      "categoria": "14M GA",
+      "clube": "Grêmio Náutico União",
+      "cidade": "Estância Velha",
+      "uf": "RS",
+      "idade": 14
+    },
+    {
+      "id": "225323",
+      "nome": "Bernardo Miliorini Chiaratti",
+      "categoria": "14M GA",
+      "clube": "Mercês Tênis Clube",
+      "cidade": "Campinas",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "234780",
+      "nome": "Alexandre Lyra Araujo Palmeira",
+      "categoria": "14M GA",
+      "clube": "Jaraguá Tênis Clube",
+      "cidade": "Maceio",
+      "uf": "AL",
+      "idade": 14
+    },
+    {
+      "id": "273778",
+      "nome": "Davi Biscaro Wirbiski",
+      "categoria": "14M GA",
+      "clube": "Clube Curitibano",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "415705",
+      "nome": "Bernardo Rocha Rangel",
+      "categoria": "14M GA",
+      "clube": null,
+      "cidade": "Juiz de Fora",
+      "uf": "RJ",
+      "idade": 14
+    },
+    {
+      "id": "250144",
+      "nome": "Miguel Bomfim Lima",
+      "categoria": "14M GA",
+      "clube": "Clube Ponta Lagoa",
+      "cidade": "Ponta Grossa",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "442833",
+      "nome": "Mateus Mulinari Fontana",
+      "categoria": "14M GA",
+      "clube": null,
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 13
+    },
+    {
+      "id": "379357",
+      "nome": "Rafael Furtado Moreira De Azevedo",
+      "categoria": "14M GA",
+      "clube": "Alphaville Tênis Clube",
+      "cidade": "Santana de Parnaiba",
+      "uf": "SP",
+      "idade": 13
+    },
+    {
+      "id": "231343",
+      "nome": "Henrique Sawada Araújo",
+      "categoria": "14M GA",
+      "clube": "Minas Tênis Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 13
+    },
+    {
+      "id": "245870",
+      "nome": "Guilherme Garbin Ferrarini",
+      "categoria": "14M GA",
+      "clube": "Recreio da Juventude",
+      "cidade": "Caxias do Sul",
+      "uf": "RS",
+      "idade": 14
+    },
+    {
+      "id": "235980",
+      "nome": "Igor Grisoste Figueiredo",
+      "categoria": "14M GA",
+      "clube": null,
+      "cidade": "Sinop",
+      "uf": "MT",
+      "idade": 14
+    },
+    {
+      "id": "392183",
+      "nome": "Lucas Ricardo De Andrade",
+      "categoria": "14M GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Sorocaba",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "390731",
+      "nome": "Rodrigo Santos De Macedo",
+      "categoria": "14M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 14
+    },
+    {
+      "id": "216991",
+      "nome": "Daniel Hoffmann Passini",
+      "categoria": "14M GA",
+      "clube": "Avenida Tênis Clube",
+      "cidade": "Santa Maria",
+      "uf": "RS",
+      "idade": 14
+    },
+    {
+      "id": "228034",
+      "nome": "Joao Pedro Hammerschmidt",
+      "categoria": "14M GA",
+      "clube": "SOCIEDADE THALIA",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "381689",
+      "nome": "João Mangaravite Da Silva Lacerda",
+      "categoria": "14M GA",
+      "clube": null,
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 14
+    },
+    {
+      "id": "260264",
+      "nome": "Caio Goncalves Brandina",
+      "categoria": "14M GA",
+      "clube": "Londrina Country Clube",
+      "cidade": "Londrina",
+      "uf": "PR",
+      "idade": 13
+    },
+    {
+      "id": "235270",
+      "nome": "Bernardo Dellagiustina Lenzi",
+      "categoria": "14M GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Timbo",
+      "uf": "SC",
+      "idade": 14
+    },
+    {
+      "id": "432987",
+      "nome": "Enzo Araujo Sbardellati",
+      "categoria": "14M GA",
+      "clube": "ECOPLAY ACADEMIA DE TENIS",
+      "cidade": "Maringa",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "256178",
+      "nome": "Davi Campos Ramos",
+      "categoria": "14M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 14
+    },
+    {
+      "id": "227882",
+      "nome": "Joao Victor Cruzeta Ramos",
+      "categoria": "14M GA",
+      "clube": "ASSOCIAÇÃO ICARO MARCOLIN - DM TÊNIS",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 14
+    },
+    {
+      "id": "262012",
+      "nome": "Daniel De Medeiros Navarro Brustolim",
+      "categoria": "14M GA",
+      "clube": null,
+      "cidade": "Sao Jose do Rio Preto",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "215347",
+      "nome": "Enzo Sulzbach de Faria",
+      "categoria": "14M GA",
+      "clube": null,
+      "cidade": "Balneario Camboriu",
+      "uf": "SC",
+      "idade": 14
+    },
+    {
+      "id": "378589",
+      "nome": "Leonardo Nardy Colepicolo",
+      "categoria": "14M GA",
+      "clube": null,
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 14
+    },
+    {
+      "id": "248854",
+      "nome": "Joao Leal De Miranda",
+      "categoria": "14M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 14
+    },
+    {
+      "id": "440092",
+      "nome": "João Siqueira Aratangy",
+      "categoria": "14M GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 14
+    },
+    {
+      "id": "216990",
+      "nome": "Miguel Hoffmann Passini",
+      "categoria": "14M GA",
+      "clube": "Avenida Tênis Clube",
+      "cidade": "Santa Maria",
+      "uf": "RS",
+      "idade": 14
+    },
+    {
+      "id": "243678",
+      "nome": "Vicente José Werlang Signor",
+      "categoria": "14M GA",
+      "clube": "Esporte Clube Concórdia",
+      "cidade": "Rio do Sul",
+      "uf": "SC",
+      "idade": 14
+    },
+    {
+      "id": "240859",
+      "nome": "Pedro Coelho Schmidt",
+      "categoria": "14M GA",
+      "clube": "Esporte Clube Concórdia",
+      "cidade": "Rio do Sul",
+      "uf": "SC",
+      "idade": 14
+    },
+    {
+      "id": "236628",
+      "nome": "Augusto Peixoto Cretella Scheidt",
+      "categoria": "16M GA",
+      "clube": "Graciosa Country Clube",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 16
+    },
+    {
+      "id": "205280",
+      "nome": "Thiago Veronezi Ribeiro",
+      "categoria": "16M GA",
+      "clube": "Graciosa Country Clube",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 16
+    },
+    {
+      "id": "218718",
+      "nome": "Davi Araújo De Sousa",
+      "categoria": "16M GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "56107",
+      "nome": "Gustavo Holanda Palmeira Oliva de Souza",
+      "categoria": "16M GA",
+      "clube": "Clube Curitibano",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 16
+    },
+    {
+      "id": "229669",
+      "nome": "Kilian Castell Postigo",
+      "categoria": "16M GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Niteroi",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "227117",
+      "nome": "Pedro Dias Sanches Nastrini",
+      "categoria": "16M GA",
+      "clube": "Pampulha Iate Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 15
+    },
+    {
+      "id": "224793",
+      "nome": "Gabriel Merlo Espinha",
+      "categoria": "16M GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "Barueri",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "219875",
+      "nome": "Pedro Bergamini Taicher",
+      "categoria": "16M GA",
+      "clube": "Belém Novo Golf Club",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 16
+    },
+    {
+      "id": "201986",
+      "nome": "Enzo Costanzo Prediger",
+      "categoria": "16M GA",
+      "clube": "Elase  Clube Social e Desportivo",
+      "cidade": "Florianopolis",
+      "uf": "SC",
+      "idade": 16
+    },
+    {
+      "id": "225957",
+      "nome": "Thomás Hernandes Amaral",
+      "categoria": "16M GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "Araras",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "237620",
+      "nome": "Fabio Leonardo De Oliveira Gueiros",
+      "categoria": "16M GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Osasco",
+      "uf": "SP",
+      "idade": 15
+    },
+    {
+      "id": "205915",
+      "nome": "Pedro Neves De Mello",
+      "categoria": "16M GA",
+      "clube": "Grêmio Náutico União",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 15
+    },
+    {
+      "id": "218430",
+      "nome": "Nicolas Kenji Kanashiro",
+      "categoria": "16M GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 15
+    },
+    {
+      "id": "204681",
+      "nome": "Mateus Bellorio Pinheiro",
+      "categoria": "16M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Goiania",
+      "uf": "DF",
+      "idade": 15
+    },
+    {
+      "id": "207225",
+      "nome": "Giuseppe Zem Bassani",
+      "categoria": "16M GA",
+      "clube": "Associação Leopoldina Juvenil",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 16
+    },
+    {
+      "id": "262298",
+      "nome": "Felipe Brandão Pinheiro",
+      "categoria": "16M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 16
+    },
+    {
+      "id": "230253",
+      "nome": "Samuel Cassim Rosseto",
+      "categoria": "16M GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Marialva",
+      "uf": "SP",
+      "idade": 15
+    },
+    {
+      "id": "409948",
+      "nome": "Nuno Paez Soares Martins",
+      "categoria": "16M GA",
+      "clube": "Rio Tennis Academy",
+      "cidade": "Niteroi",
+      "uf": "RJ",
+      "idade": 16
+    },
+    {
+      "id": "417066",
+      "nome": "Lucas Neri Machado Ferreira",
+      "categoria": "16M GA",
+      "clube": "Clube do Exército (Sede Lago) - DF",
+      "cidade": "Brasilia",
+      "uf": "TO",
+      "idade": 16
+    },
+    {
+      "id": "259511",
+      "nome": "Pedro Henrique Anastácio Alves",
+      "categoria": "16M GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Icara",
+      "uf": "SC",
+      "idade": 15
+    },
+    {
+      "id": "225044",
+      "nome": "Thiago Esteves Intini",
+      "categoria": "16M GA",
+      "clube": "Sociedade Hípica de Campinas",
+      "cidade": "Campinas",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "218363",
+      "nome": "Gustavo Diez Gomes Correa",
+      "categoria": "16M GA",
+      "clube": "Esporte Clube Pinheiros",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "210539",
+      "nome": "Breno Caixeta Silva",
+      "categoria": "16M GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Uberlandia",
+      "uf": "SC",
+      "idade": 16
+    },
+    {
+      "id": "463855",
+      "nome": "Bruno Lemos De Mesquita",
+      "categoria": "16M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 15
+    },
+    {
+      "id": "385826",
+      "nome": "Pedro Henrique Pironi Vicente De Paula",
+      "categoria": "16M GA",
+      "clube": "Academia Guia Do Atleta / Escola Guga",
+      "cidade": "Sorocaba",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "206822",
+      "nome": "Vinicius Valente Marx",
+      "categoria": "16M GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Joinville",
+      "uf": "SC",
+      "idade": 16
+    },
+    {
+      "id": "216119",
+      "nome": "Rafael Sperotto Bin",
+      "categoria": "16M GA",
+      "clube": "Recreio Cruzeiro",
+      "cidade": "Veranópolis",
+      "uf": "RS",
+      "idade": 16
+    },
+    {
+      "id": "227312",
+      "nome": "Felipe Cavalcante Batista Da Silva",
+      "categoria": "16M GA",
+      "clube": "Assembleia Paraense - Sede Campestre",
+      "cidade": "Belem",
+      "uf": "PA",
+      "idade": 16
+    },
+    {
+      "id": "208988",
+      "nome": "Sebastian Seixas Maia Sommer",
+      "categoria": "16M GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "241659",
+      "nome": "Felipe Mathias De Teive E Argolo",
+      "categoria": "16M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 16
+    },
+    {
+      "id": "216000",
+      "nome": "Márcio Walber Filho",
+      "categoria": "16M GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Passo Fundo",
+      "uf": "SC",
+      "idade": 16
+    },
+    {
+      "id": "423436",
+      "nome": "Eduardo Prado Kopachenski",
+      "categoria": "16M GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Camboriu",
+      "uf": "SC",
+      "idade": 16
+    },
+    {
+      "id": "205266",
+      "nome": "Luiz Gustavo Felisberto E Silva De Brito",
+      "categoria": "18M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 17
+    },
+    {
+      "id": "229717",
+      "nome": "Gustavo Torres Albuquerque",
+      "categoria": "18M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 17
+    },
+    {
+      "id": "56830",
+      "nome": "Leonardo Ebert Santos",
+      "categoria": "18M GA",
+      "clube": "Clube Curitibano",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 17
+    },
+    {
+      "id": "213825",
+      "nome": "Thiago José Dias Silveira",
+      "categoria": "18M GA",
+      "clube": "Pampulha Iate Clube",
+      "cidade": "Nova Lima",
+      "uf": "MG",
+      "idade": 18
+    },
+    {
+      "id": "237630",
+      "nome": "Rafael Diogenes Franca",
+      "categoria": "18M GA",
+      "clube": "São Paulo Futebol Clube",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 17
+    },
+    {
+      "id": "231490",
+      "nome": "Davi Mafumba Almeida",
+      "categoria": "18M GA",
+      "clube": "Novo Rio Country Clube / Ntc",
+      "cidade": "Serra",
+      "uf": "RJ",
+      "idade": 17
+    },
+    {
+      "id": "59186",
+      "nome": "Caetano Caldart Andretta",
+      "categoria": "18M GA",
+      "clube": "Recreio da Juventude",
+      "cidade": "Caxias do Sul",
+      "uf": "RS",
+      "idade": 17
+    },
+    {
+      "id": "209228",
+      "nome": "Felipe Merigueti Cordeiro",
+      "categoria": "18M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 18
+    },
+    {
+      "id": "228028",
+      "nome": "Davi Berti Mariot",
+      "categoria": "18M GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Florianopolis",
+      "uf": "SC",
+      "idade": 18
+    },
+    {
+      "id": "204370",
+      "nome": "Washington Cardoso De Matos Junior",
+      "categoria": "18M GA",
+      "clube": "Pampulha Iate Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 18
+    },
+    {
+      "id": "56796",
+      "nome": "Eduardo Procianoy Heineberg",
+      "categoria": "18M GA",
+      "clube": "Grêmio Náutico União",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 18
+    },
+    {
+      "id": "212961",
+      "nome": "Gabriel Barcelos Daudt",
+      "categoria": "18M GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Itajai",
+      "uf": "SC",
+      "idade": 17
+    },
+    {
+      "id": "222625",
+      "nome": "Henrique Moreira Nascimento",
+      "categoria": "18M GA",
+      "clube": "Pampulha Iate Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 18
+    },
+    {
+      "id": "383274",
+      "nome": "Pedro Lucas Da Silva Lima",
+      "categoria": "18M GA",
+      "clube": "Tijuca Tênis Clube",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 18
+    },
+    {
+      "id": "263426",
+      "nome": "Luigi Penachio",
+      "categoria": "18M GA",
+      "clube": "Academia CT Tennis Mogi das Cruzes",
+      "cidade": "Mogi Das Cruzes",
+      "uf": "SP",
+      "idade": 18
+    },
+    {
+      "id": "262584",
+      "nome": "Breno Higuchi Silva",
+      "categoria": "18M GA",
+      "clube": "ECOPLAY ACADEMIA DE TENIS",
+      "cidade": "Maringa",
+      "uf": "PR",
+      "idade": 18
+    },
+    {
+      "id": "236667",
+      "nome": "Julio Miarelli Moris",
+      "categoria": "18M GA",
+      "clube": "São Paulo Futebol Clube",
+      "cidade": "Sorocaba",
+      "uf": "SP",
+      "idade": 17
+    },
+    {
+      "id": "203671",
+      "nome": "Gabriel Jahjah Cramer Vergara",
+      "categoria": "18M GA",
+      "clube": "Clube Atlético São Paulo - SPAC",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 18
+    },
+    {
+      "id": "237670",
+      "nome": "Pedro Vardanega Landmeier",
+      "categoria": "18M GA",
+      "clube": "Lagoa Iate Clube",
+      "cidade": "Sao Jose",
+      "uf": "SC",
+      "idade": 18
+    },
+    {
+      "id": "214086",
+      "nome": "Rodrigo Kenichi Abe Hirai",
+      "categoria": "18M GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Pinhais",
+      "uf": "SP",
+      "idade": 18
+    },
+    {
+      "id": "231645",
+      "nome": "Bernardo Fusero Costodio",
+      "categoria": "18M GA",
+      "clube": "Graciosa Country Clube",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 17
+    },
+    {
+      "id": "56248",
+      "nome": "Matheus Costanzo Prediger",
+      "categoria": "18M GA",
+      "clube": "Elase  Clube Social e Desportivo",
+      "cidade": "Florianopolis",
+      "uf": "SC",
+      "idade": 18
+    },
+    {
+      "id": "414578",
+      "nome": "Izaack Viana De Jesus",
+      "categoria": "18M GA",
+      "clube": "Associação Esportiva Siderúrgica De Tubarão",
+      "cidade": "Serra",
+      "uf": "ES",
+      "idade": 17
+    },
+    {
+      "id": "231507",
+      "nome": "Joao Ogando Monteiro Machado",
+      "categoria": "18M GA",
+      "clube": "Esporte Clube Pinheiros",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 18
+    },
+    {
+      "id": "207237",
+      "nome": "Fernando Tomasi Chaves",
+      "categoria": "18M GA",
+      "clube": "Grêmio Náutico União",
+      "cidade": "Porto Alegre",
+      "uf": "RS",
+      "idade": 17
+    },
+    {
+      "id": "201311",
+      "nome": "Joao Pedro Pereira Pinto",
+      "categoria": "18M GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 17
+    },
+    {
+      "id": "237516",
+      "nome": "Luca Rabelo Ferreira",
+      "categoria": "18M GA",
+      "clube": "Minas Tênis Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 17
+    },
+    {
+      "id": "426711",
+      "nome": "Felipe Barbosa Pereira Da Silva",
+      "categoria": "18M GA",
+      "clube": null,
+      "cidade": "Nova Iguacu",
+      "uf": "RJ",
+      "idade": 17
+    },
+    {
+      "id": "263042",
+      "nome": "Breno Favalessa Fiorini",
+      "categoria": "18M GA",
+      "clube": "Federação Espírito-Santense de Tênis",
+      "cidade": "Vitoria",
+      "uf": "ES",
+      "idade": 18
+    },
+    {
+      "id": "274653",
+      "nome": "Gabriel Borges Mansur",
+      "categoria": "18M GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 17
+    },
+    {
+      "id": "218072",
+      "nome": "Johan Hemmelmann",
+      "categoria": "18M GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Itajai",
+      "uf": "SC",
+      "idade": 17
+    },
+    {
+      "id": "225923",
+      "nome": "Paulo Gonçalves Cotrim Dias",
+      "categoria": "18M GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Cuiaba",
+      "uf": "SC",
+      "idade": 16
+    },
+    {
+      "id": "202205",
+      "nome": "Maria Eduarda Carbone Dos Santos",
+      "categoria": "16F GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "Florianopolis",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "218409",
+      "nome": "Manuela Ferreira Banietti",
+      "categoria": "16F GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 15
+    },
+    {
+      "id": "261886",
+      "nome": "Laura Veronesi Noel Ribeiro",
+      "categoria": "16F GA",
+      "clube": "Esporte Clube Pinheiros",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "230310",
+      "nome": "Gabriela Carvalho Bettoni",
+      "categoria": "16F GA",
+      "clube": "Esporte Clube Pinheiros",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 15
+    },
+    {
+      "id": "225880",
+      "nome": "Mariana Paiva Ramos",
+      "categoria": "16F GA",
+      "clube": "Minas Tênis Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 16
+    },
+    {
+      "id": "262625",
+      "nome": "Rafaela Barth Frade",
+      "categoria": "16F GA",
+      "clube": "Clube Curitibano",
+      "cidade": "Maringa",
+      "uf": "PR",
+      "idade": 16
+    },
+    {
+      "id": "227887",
+      "nome": "Maria Alice Celia Gilaberte",
+      "categoria": "16F GA",
+      "clube": "Associação Desportiva Techset",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 16
+    },
+    {
+      "id": "382190",
+      "nome": "Larissa Lopes Missato",
+      "categoria": "16F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 15
+    },
+    {
+      "id": "242806",
+      "nome": "Leticia Jordana Vidal",
+      "categoria": "16F GA",
+      "clube": "Curitiba Tennis Center",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 16
+    },
+    {
+      "id": "263155",
+      "nome": "Maria Júlia Ewald De Alencar",
+      "categoria": "16F GA",
+      "clube": "Costa Verde Tenis Clube",
+      "cidade": "Salvador",
+      "uf": "BA",
+      "idade": 16
+    },
+    {
+      "id": "230291",
+      "nome": "Isabela Pare Pereira Caldas",
+      "categoria": "16F GA",
+      "clube": "Tijuca Tênis Clube",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 15
+    },
+    {
+      "id": "219658",
+      "nome": "Paola Rigon Polese",
+      "categoria": "16F GA",
+      "clube": "Recreio Cruzeiro",
+      "cidade": "Caxias do Sul",
+      "uf": "RS",
+      "idade": 16
+    },
+    {
+      "id": "225166",
+      "nome": "Sophie Abou Hana Da Silva",
+      "categoria": "16F GA",
+      "clube": null,
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 16
+    },
+    {
+      "id": "215636",
+      "nome": "Bruna Roberta Bouth Pinheiro",
+      "categoria": "16F GA",
+      "clube": "Gremio Literario e Recreativo Portugues",
+      "cidade": "Belem",
+      "uf": "PA",
+      "idade": 16
+    },
+    {
+      "id": "266223",
+      "nome": "Valentina Moletta",
+      "categoria": "16F GA",
+      "clube": null,
+      "cidade": "Piraquara",
+      "uf": "PR",
+      "idade": 15
+    },
+    {
+      "id": "247216",
+      "nome": "Julia Susanna Marques Jonsson",
+      "categoria": "16F GA",
+      "clube": "Tijuca Tênis Clube",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 15
+    },
+    {
+      "id": "225897",
+      "nome": "Yasmin Cristina Rodrigues Monteiro",
+      "categoria": "16F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Manaus",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "390561",
+      "nome": "Pietra Pappas Toscano Costa",
+      "categoria": "16F GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 15
+    },
+    {
+      "id": "389157",
+      "nome": "Lara De Freitas Shinzato",
+      "categoria": "16F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Jundiai",
+      "uf": "SP",
+      "idade": 15
+    },
+    {
+      "id": "233300",
+      "nome": "Sofia Pipino Giancoli",
+      "categoria": "16F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Sao Roque",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "500904",
+      "nome": "Gabriela Nascimento Jacomo",
+      "categoria": "16F GA",
+      "clube": null,
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 15
+    },
+    {
+      "id": "403110",
+      "nome": "Rafaela Ferreira Scain",
+      "categoria": "16F GA",
+      "clube": "Recreio da Juventude",
+      "cidade": "Caxias do Sul",
+      "uf": "RS",
+      "idade": 15
+    },
+    {
+      "id": "219756",
+      "nome": "Sara Wilbert",
+      "categoria": "16F GA",
+      "clube": "Recreio da Juventude",
+      "cidade": "Caxias do Sul",
+      "uf": "RS",
+      "idade": 16
+    },
+    {
+      "id": "375614",
+      "nome": "Julia Alves Nardy",
+      "categoria": "16F GA",
+      "clube": "Avulso",
+      "cidade": "Sao Jose do Rio Preto",
+      "uf": "SP",
+      "idade": 15
+    },
+    {
+      "id": "276782",
+      "nome": "Maria Eduarda Lepesqueur Moreti",
+      "categoria": "16F GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 15
+    },
+    {
+      "id": "263083",
+      "nome": "Taemy De Souza Oliveira",
+      "categoria": "16F GA",
+      "clube": "ASSOCIAÇÃO ICARO MARCOLIN - DM TÊNIS",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 15
+    },
+    {
+      "id": "396043",
+      "nome": "Joana Alvim Fernandes",
+      "categoria": "16F GA",
+      "clube": "Iate Clube De Brasília",
+      "cidade": "Brasilia",
+      "uf": "DF",
+      "idade": 16
+    },
+    {
+      "id": "474805",
+      "nome": "Lorena Walter Richter",
+      "categoria": "16F GA",
+      "clube": "Curitiba Tennis Center",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 15
+    },
+    {
+      "id": "379643",
+      "nome": "Maria Sofia Sêda De Castilho",
+      "categoria": "16F GA",
+      "clube": "Wsanchestenis",
+      "cidade": "Pouso Alegre",
+      "uf": "MG",
+      "idade": 16
+    },
+    {
+      "id": "264523",
+      "nome": "Eduarda De Padua Bruschi Dias",
+      "categoria": "16F GA",
+      "clube": "Pampulha Iate Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 15
+    },
+    {
+      "id": "409814",
+      "nome": "Lais Da Cruz Dick",
+      "categoria": "16F GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Cascavel",
+      "uf": "SC",
+      "idade": 16
+    },
+    {
+      "id": "391976",
+      "nome": "Luiza Melo",
+      "categoria": "16F GA",
+      "clube": "Minas Tênis Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 15
+    },
+    {
+      "id": "203842",
+      "nome": "Laura Pedrotti De Oliveira",
+      "categoria": "18F GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Joinville",
+      "uf": "SC",
+      "idade": 18
+    },
+    {
+      "id": "52294",
+      "nome": "Julia Martins Pretti",
+      "categoria": "18F GA",
+      "clube": "Clube Espéria",
+      "cidade": "Pirassununga",
+      "uf": "SP",
+      "idade": 18
+    },
+    {
+      "id": "373930",
+      "nome": "Milena Possodeli Brilhante",
+      "categoria": "18F GA",
+      "clube": "Associação Desportiva Techset",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 18
+    },
+    {
+      "id": "201572",
+      "nome": "Ticiani Vasconcelos Da Costa",
+      "categoria": "18F GA",
+      "clube": null,
+      "cidade": "Fortaleza",
+      "uf": "CE",
+      "idade": 17
+    },
+    {
+      "id": "389555",
+      "nome": "Joana Vasques Weisser Pinto Rodrigues",
+      "categoria": "18F GA",
+      "clube": "Clube Espéria",
+      "cidade": "Jundiai",
+      "uf": "SP",
+      "idade": 17
+    },
+    {
+      "id": "206326",
+      "nome": "Maria Fernanda Vogt Turim Lopes",
+      "categoria": "18F GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "Ribeirao Preto",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "222601",
+      "nome": "Martina Toniasso Mattos",
+      "categoria": "18F GA",
+      "clube": "Grêmio Náutico União",
+      "cidade": "Pelotas",
+      "uf": "RS",
+      "idade": 15
+    },
+    {
+      "id": "232266",
+      "nome": "Valentina Naves Attie Huang",
+      "categoria": "18F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "236291",
+      "nome": "Maria Luiza Pereira González",
+      "categoria": "18F GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Jaragua do Sul",
+      "uf": "SC",
+      "idade": 16
+    },
+    {
+      "id": "227961",
+      "nome": "Natália Rateke Da Silva",
+      "categoria": "18F GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Florianopolis",
+      "uf": "SC",
+      "idade": 18
+    },
+    {
+      "id": "204429",
+      "nome": "Dominiquea Romanholi Falcão De Souza",
+      "categoria": "18F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Fortaleza",
+      "uf": "SP",
+      "idade": 17
+    },
+    {
+      "id": "213871",
+      "nome": "Ana Luisa Galindo Rodrigues",
+      "categoria": "18F GA",
+      "clube": "Gp Tênis",
+      "cidade": "Londrina",
+      "uf": "PR",
+      "idade": 18
+    },
+    {
+      "id": "213646",
+      "nome": "Mariana Pizaia Ornellas",
+      "categoria": "18F GA",
+      "clube": "Londrina Country Clube",
+      "cidade": "Londrina",
+      "uf": "PR",
+      "idade": 17
+    },
+    {
+      "id": "225937",
+      "nome": "Luana Maria Silva Ferreira",
+      "categoria": "18F GA",
+      "clube": "Avulso - AV",
+      "cidade": "Franca",
+      "uf": "SP",
+      "idade": 17
+    },
+    {
+      "id": "57201",
+      "nome": "Isabeli Andreola",
+      "categoria": "18F GA",
+      "clube": "Recreio da Juventude",
+      "cidade": "Caxias do Sul",
+      "uf": "RS",
+      "idade": 18
+    },
+    {
+      "id": "226361",
+      "nome": "Maria Augusta Salomao Viana",
+      "categoria": "18F GA",
+      "clube": "Graciosa Country Clube",
+      "cidade": "Curitiba",
+      "uf": "PR",
+      "idade": 17
+    },
+    {
+      "id": "249141",
+      "nome": "Julia Viana Conrado Rocha",
+      "categoria": "18F GA",
+      "clube": "Associação Desportiva Techset",
+      "cidade": "Rio de Janeiro",
+      "uf": "RJ",
+      "idade": 17
+    },
+    {
+      "id": "224750",
+      "nome": "Olivia Tognato Da Rocha Martins",
+      "categoria": "18F GA",
+      "clube": "Itamirim Clube de Campo",
+      "cidade": "Itajai",
+      "uf": "SC",
+      "idade": 17
+    },
+    {
+      "id": "215803",
+      "nome": "Lorena Moraes Pasetto",
+      "categoria": "18F GA",
+      "clube": "Clube Espéria",
+      "cidade": "Mogi Das Cruzes",
+      "uf": "SP",
+      "idade": 17
+    },
+    {
+      "id": "201571",
+      "nome": "Mariana De Jesus Ribeiro Silveira",
+      "categoria": "18F GA",
+      "clube": "Clube Espéria",
+      "cidade": "Sao Carlos",
+      "uf": "SP",
+      "idade": 17
+    },
+    {
+      "id": "228881",
+      "nome": "Giovanna Ventura Aude",
+      "categoria": "18F GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Criciuma",
+      "uf": "SC",
+      "idade": 17
+    },
+    {
+      "id": "213760",
+      "nome": "Isabela Gontijo Campos",
+      "categoria": "18F GA",
+      "clube": "Pampulha Iate Clube",
+      "cidade": "Belo Horizonte",
+      "uf": "MG",
+      "idade": 18
+    },
+    {
+      "id": "234629",
+      "nome": "Ana Clara Furlan Britzki",
+      "categoria": "18F GA",
+      "clube": null,
+      "cidade": "Limeira",
+      "uf": "SP",
+      "idade": 16
+    },
+    {
+      "id": "275921",
+      "nome": "Agatha Ghisi Burigo",
+      "categoria": "18F GA",
+      "clube": "Sociedade Recreativa Mampituba",
+      "cidade": "Tubarao",
+      "uf": "GO",
+      "idade": 18
+    },
+    {
+      "id": "247187",
+      "nome": "Luiza Ninno Moreli",
+      "categoria": "18F GA",
+      "clube": "Club Athletico Paulistano",
+      "cidade": "Sao Jose do Rio Preto",
+      "uf": "SP",
+      "idade": 18
+    },
+    {
+      "id": "257551",
+      "nome": "Agatha Carvalho Clemente Rodrigues Pimentel",
+      "categoria": "18F GA",
+      "clube": "Set Point Belém",
+      "cidade": "São Paulo",
+      "uf": "PA",
+      "idade": 17
+    },
+    {
+      "id": "390778",
+      "nome": "Nicolly Sella Morzelle",
+      "categoria": "18F GA",
+      "clube": "GJ TÊNIS CLUBE",
+      "cidade": "Maringa",
+      "uf": "PR",
+      "idade": 17
+    },
+    {
+      "id": "504068",
+      "nome": "Giulia Bajsic Leo",
+      "categoria": "18F GA",
+      "clube": "Clube Paineiras do Morumby",
+      "cidade": "Itajai",
+      "uf": "SP",
+      "idade": 17
+    }
+  ],
+  "importedAt": "2026-05-16T20:28:41.156Z",
+  "source": "TI tournament 22142 GA"
+}

@@ -67,6 +67,7 @@ import {
   saveSubscription, removeSubscription, listSubscriptionsForUser,
   sendPushToUsers, sendPushToAll,
 } from './push.js';
+import { scoutingRouter } from './scouting/routes.js';
 
 migrateHouseholdsOnBoot();
 migrateUsersAddPlan();
@@ -358,6 +359,15 @@ app.post('/api/admin', (req, res) => {
 });
 
 app.use(express.static(join(__dirname, '..', 'frontend')));
+
+// ===== /scouting (produto separado dentro do mesmo domínio) =====
+// Rotas /api/scouting/* — auth/storage isolados do TF.
+app.use('/api/scouting', scoutingRouter);
+// SPA do scouting — todas as rotas /scouting* servem o mesmo HTML
+// (login, dashboard, start/:token), o cliente roteia por path.
+app.get(['/scouting', '/scouting/*'], (req, res) => {
+  res.sendFile(join(__dirname, '..', 'frontend', 'scouting.html'));
+});
 
 // Alias amigável pro manual público (também acessível em /manual.html)
 app.get('/manual', (req, res) => res.sendFile(join(__dirname, '..', 'frontend', 'manual.html')));
