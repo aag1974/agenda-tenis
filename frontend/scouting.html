@@ -48,10 +48,12 @@
       padding-left:  max(1rem, env(safe-area-inset-left));
       padding-right: max(1rem, env(safe-area-inset-right));
     }
+    /* Em mobile o Safari iOS retorna env(safe-area-inset-top) só DEPOIS
+       de scroll — abre com 0 e empurra com 54+ depois. Pra evitar que
+       o header abra sobreposto, usa fixo 54px (cobre o status bar de
+       qualquer iPhone moderno, incluindo Dynamic Island). */
     @media (max-width: 768px) {
-      .scout-header {
-        padding-top: max(env(safe-area-inset-top), 54px);
-      }
+      .scout-header { padding-top: 54px; }
     }
   </style>
 </head>
