@@ -218,18 +218,32 @@ function finishMatch(state, winner, fmt) {
   state.endedAt = new Date().toISOString();
 }
 
-// Desfaz o último ponto (pop do log + reaplica do zero).
+// Desfaz o último item do log (ponto ou marker) + reaplica o restante do zero.
 // Estratégia simples e robusta: replay completo. Custo O(N) por undo,
 // mas N é pequeno (~150 pontos por match no máximo).
+// Markers (1ª de saque errada, devolução boa) não mexem placar — só voltam
+// pro log com `server` atualizado pelo estado da época.
 export function undoLastPoint(state) {
   if (!state.points.length) return state;
   const newConfig = { ...state.config };
   let s = createMatch(newConfig);
-  // copia o startedAt original
   s.startedAt = state.startedAt;
   const replay = state.points.slice(0, -1);
   for (const p of replay) {
-    s = applyPoint(s, p.winner, p.stat);
+    if (p.marker || p.winner == null) {
+      // Re-injeta marker preservando timestamp/stat, server vem do estado atual
+      s = cloneState(s);
+      s.points.push({
+        n: s.points.length + 1,
+        ts: p.ts,
+        stat: p.stat || null,
+        winner: null,
+        server: s.server,
+        marker: true,
+      });
+    } else {
+      s = applyPoint(s, p.winner, p.stat);
+    }
   }
   return s;
 }
