@@ -663,6 +663,97 @@ problemas que os usuários enfrentam. O que entra:
 
 Não precisa ser bonito — funcional pra atender suporte.
 
+## Scouting standalone — `/scouting` (produto separado, mesmo domínio)
+
+**Status:** desenho fechado em 2026-05-16. Implementação prevista pós-torneio
+de Itajaí (após 23/05/2026), com base no aprendizado real do uso do scout
+do TennisFlow durante o torneio.
+
+**Visão:** produto independente do TennisFlow, vivendo em `tennis-flow.com.br/scouting`.
+Coach faz cadastro próprio (separado do TF), seleciona torneio + atleta_A,
+gera link pro scouter. Scouter abre o link, completa adversário + config
+(quem saca, formato, vantagem), inicia tracking.
+
+### Fluxo
+```
+Coach login → /scouting/dashboard
+       │
+       └─ "+ Nova partida"
+              │
+              ▼
+       Seleciona TORNEIO + ATLETA A
+              │
+              └─ Gera inviteToken → manda link (WhatsApp)
+                                       │
+                                       ▼
+                              Scouter abre /scouting/start/:inviteToken
+                                       │
+                                       Completa: adversário, saque,
+                                       formato, vantagem
+                                       │
+                                       ▼
+                              "▶ Iniciar tracking" → match criado
+                                       │
+                                       ▼
+                              Marca pontos (= scout atual)
+                                       │
+                                       ▼
+                              Encerrar → relatório público
+```
+
+### Decisões fechadas (7)
+
+| # | Decisão | Escolha |
+|---|---|---|
+| 1 | Cadastro do coach | **Separado** do TF — `scouting_users` próprio. Sem SSO inicial. |
+| 2 | Importar torneio | **Coach cola URL/ID do TI** — sistema extrai inscritos automaticamente. |
+| 3 | Atleta fora dos inscritos | **Permitir digitar manualmente** como fallback (wild cards, convidados). |
+| 4 | Lifecycle do invite | **1 invite = 1 match.** Coach gera novo a cada partida. |
+| 5 | Scouter retomar depois | **localStorage** salva o token do match. Link permanente. |
+| 6 | Adversário só da lista? | **Sim ou manual** — flexibilidade pra casos não-cadastrados. |
+| 7 | Storage | **Separado** — `data/scouting/`. Independente de `data/profile-*`. |
+
+### Estrutura técnica
+
+**Backend novo (`backend/scouting/`):**
+- `auth.js` — signup/login próprios (tabela `scouting_users` separada)
+- `tournaments.js` — importar TI por URL/ID, listar inscritos
+- `match-invites.js` — pre-match com {torneio, atletaA}
+- `routes.js` — endpoints sob `/api/scouting/*`
+- **Reusa** `tennis-score.js` e `match-report.js` (lógica pura)
+
+**Endpoints novos:**
+```
+POST /api/scouting/auth/signup
+POST /api/scouting/auth/login
+GET  /api/scouting/tournaments
+POST /api/scouting/tournaments/import       (URL do TI → extrai inscritos)
+GET  /api/scouting/tournaments/:tid/atletas
+POST /api/scouting/invites                  (coach gera inviteToken)
+GET  /api/scouting/start/:inviteToken       (scouter abre)
+POST /api/scouting/start/:inviteToken/begin (cria match) → scoutToken
+```
+
+**Frontend (`frontend/scouting/`):** páginas próprias servidas em `/scouting`,
+reusa componentes de placar/notas do TF.
+
+### Estimativa
+
+| Bloco | Horas |
+|---|---|
+| Auth próprio (signup/login/sessão) | 4-6h |
+| Importação de torneio TI (cola URL → extrai inscritos) | 3-4h |
+| T1: Coach gera invite | 2-3h |
+| T2: Scouter completa + cria match | 3-4h |
+| Storage separado + migration | 1-2h |
+| Reusar scout existente pra tracking | 2-3h |
+| Polish + smoke test end-to-end | 3-4h |
+| **TOTAL** | **~20-25h (2.5-3 dias)** |
+
+### Fora de escopo (decisão 2026-05-16)
+- **Email de confirmação** com link único — não fazer agora (precisa SMTP/Resend).
+- **SSO com TF** — fica pra depois, se a base de usuários crescer.
+
 ## Scraper multi-categoria (Juvenil M / Profissional / Beach / Senior / Tennis Kids)
 
 **Status hoje (2026-05-16):** o scraper foi construído pra Juvenil Feminino (Anna).
