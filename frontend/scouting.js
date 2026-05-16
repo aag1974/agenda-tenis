@@ -571,7 +571,7 @@ async function renderDashboard() {
         ? (m.abandonReason === 'wo' ? 'W.O.' : 'RET')
         : 'ENCERRADO';
       const status = !inv.matchId
-        ? { label: 'AGUARDANDO SCOUTER', cls: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' }
+        ? { label: 'AGUARDANDO', cls: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' }
         : (m && m.finished)
           ? { label: finishedLabel, cls: 'bg-slate-500/20 text-slate-300 border-slate-500/40' }
           : { label: 'AO VIVO', cls: 'bg-red-500/20 text-red-300 border-red-500/40' };
@@ -596,7 +596,7 @@ async function renderDashboard() {
               [inv.atletaCategoria, fmtDate(inv.createdAt)].filter(Boolean).join(' · '),
             ),
           ),
-          el('span', { class: `text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.cls}` }, status.label),
+          el('span', { class: `text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${status.cls}` }, status.label),
         ),
         m && el('div', { class: 'text-xs text-white/70' }, renderScore(m)),
         el('div', { class: 'flex flex-wrap gap-2 mt-2' },
