@@ -85,14 +85,27 @@
     }
     body.auth-mode::before { top: -2rem; left: -2rem; transform: rotate(-15deg); }
     body.auth-mode::after { bottom: -2rem; right: -2rem; transform: rotate(20deg); }
-    .kanban-card { transition: transform 0.05s ease, box-shadow 0.05s ease; }
-    .kanban-card:active { transform: scale(0.98); }
+    .kanban-card { transition: transform 0.05s ease, box-shadow 0.05s ease; cursor: grab; }
+    /* :active scale só se NÃO estiver em drag — durante drag, getBoundingClientRect
+       do card original é usado pra posicionar o clone, scale distorce isso */
+    .kanban-card:active:not(.sortable-chosen) { transform: scale(0.98); cursor: grabbing; }
     .kanban-card .line-clamp-2 {
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
       overflow: hidden;
     }
     .sortable-ghost { opacity: 0.4; }
+    /* Cursor grabbing em qualquer lugar durante drag — clone tem pointer-events:none
+       e cursor padrão "vaza" pra elemento de baixo */
+    body.kanban-dragging, body.kanban-dragging * { cursor: grabbing !important; }
     .sortable-chosen { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    /* fallbackClass: trava largura do clone no tamanho real do card/coluna,
+       evitando que ele herde largura do contêiner overflow */
+    .kanban-card-ghost { width: 20rem !important; max-width: 20rem !important; }
+    .kanban-col-ghost { width: 20rem !important; max-width: 20rem !important; }
+    @media (max-width: 640px) {
+      .kanban-card-ghost { width: 18rem !important; max-width: 18rem !important; }
+      .kanban-col-ghost { width: 18rem !important; max-width: 18rem !important; }
+    }
 
     /* Mobile: navy preenche safe areas; cada coluna ocupa 100% da viewport
        (estilo "página"); snap obrigatório com stop-always pra deslizar

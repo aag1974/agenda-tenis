@@ -2241,8 +2241,32 @@ function wireKanbanSortable(container) {
   // então congela quando o ghost fica dentro da última coluna visível.
   let edgeScrollTimer = null;
   let dragX = -1, dragY = -1;
+  let dragTapX = -1, dragTapY = -1;
+  let ghostOverrideRaf = null;
   let edgeScrollDelta = 0;
   let _diagTick = 0;
+  // Captura posição do click ANTES do SortableJS — evt.originalEvent em onStart
+  // não preserva clientX/Y de forma confiável. Esse listener pega o pointerdown direto.
+  if (colRowEl) {
+    colRowEl.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.kanban-card, .kanban-col-header')) {
+        dragTapX = e.clientX;
+        dragTapY = e.clientY;
+      }
+    }, { capture: true });
+  }
+  // Cancela compensação de scroll do SortableJS — força o clone a ficar sob o cursor
+  // preservando o offset do click, ignorando o deslocamento horizontal do colRowEl
+  function pinGhostToCursor() {
+    if (dragX >= 0 && dragY >= 0 && dragTapX >= 0) {
+      // Clone tem só .sortable-drag; original também tem .sortable-ghost
+      const ghost = document.querySelector('.sortable-drag:not(.sortable-ghost)');
+      if (ghost) {
+        ghost.style.transform = `translate3d(${dragX - dragTapX}px, ${dragY - dragTapY}px, 0)`;
+      }
+    }
+    ghostOverrideRaf = requestAnimationFrame(pinGhostToCursor);
+  }
   function trackDragX(e) {
     const t = e.touches && e.touches.length > 0 ? e.touches[0] : null;
     dragX = t ? t.clientX : e.clientX;
@@ -2278,10 +2302,13 @@ function wireKanbanSortable(container) {
     dragX = -1; dragY = -1;
     edgeScrollDelta = 0;
     _diagTick = 0;
+    document.body.classList.add('kanban-dragging');
     // 'important' vence o scroll-snap-type: x mandatory !important do @media mobile
     if (colRowEl) colRowEl.style.setProperty('scroll-snap-type', 'none', 'important');
     document.addEventListener('pointermove', trackDragX, { capture: true, passive: true });
     document.addEventListener('touchmove', trackDragX, { capture: true, passive: true });
+    // Pin ghost ao cursor — cancela compensação de scroll do SortableJS
+    ghostOverrideRaf = requestAnimationFrame(pinGhostToCursor);
     edgeScrollTimer = setInterval(() => {
       if (dragX < 0 || !colRowEl) return;
       const rect = colRowEl.getBoundingClientRect();
@@ -2317,7 +2344,12 @@ function wireKanbanSortable(container) {
   function stopEdgeScroll() {
     clearInterval(edgeScrollTimer);
     edgeScrollTimer = null;
+    if (ghostOverrideRaf) { cancelAnimationFrame(ghostOverrideRaf); ghostOverrideRaf = null; }
+    document.body.classList.remove('kanban-dragging');
     dragX = -1; dragY = -1;
+    // Não zerar dragTapX/Y aqui — startEdgeScroll chama stopEdgeScroll no início
+    // pra limpar estado, e isso apagaria o tap capturado pelo pointerdown.
+    // O pointerdown sobrescreve no próximo click.
     if (colRowEl) {
       if (edgeScrollDelta !== 0) {
         const isMobile = colRowEl.clientWidth < 640;
@@ -2351,6 +2383,12 @@ function wireKanbanSortable(container) {
       animation: 150,
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
+      // forceFallback + fallbackOnBody: tira o clone do contêiner overflow e gruda
+      // no <body>, evitando que o ghost herde a largura/posição do .kanban-list.
+      // fallbackClass: CSS abaixo (.kanban-card-ghost) trava a largura no tamanho do card.
+      forceFallback: true,
+      fallbackOnBody: true,
+      fallbackClass: 'kanban-card-ghost',
       // Touch: segurar 300ms imóvel pra iniciar drag. Qualquer movimento
        // dentro do delay cancela e libera scroll/swipe nativos.
       delay: 300,
@@ -2359,6 +2397,12 @@ function wireKanbanSortable(container) {
       scroll: false,
       onStart: (evt) => { diagEdgeScroll(evt); startEdgeScroll(); },
       onEnd: async (evt) => {
+        // Suprime o click que dispara junto com o pointerup após drag —
+        // sem isso o modal abre toda vez que o card é solto.
+        // forceFallback:true não cancela o click nativo como o HTML5 DnD faz.
+        const suppress = (e) => { e.stopPropagation(); e.preventDefault(); };
+        document.addEventListener('click', suppress, { capture: true, once: true });
+        setTimeout(() => document.removeEventListener('click', suppress, true), 100);
         stopEdgeScroll();
         const tid = evt.item.dataset.tid;
         const newColumn = evt.to.dataset.column;
@@ -2406,6 +2450,9 @@ function wireKanbanSortable(container) {
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       draggable: '.kanban-col',
+      forceFallback: true,
+      fallbackOnBody: true,
+      fallbackClass: 'kanban-col-ghost',
       delay: 300,
       delayOnTouchOnly: true,
       touchStartThreshold: 0,
