@@ -570,11 +570,12 @@ async function renderDashboard() {
       const finishedLabel = m && m.abandoned
         ? (m.abandonReason === 'wo' ? 'W.O.' : 'RET')
         : 'ENCERRADO';
+      const isLive = inv.matchId && m && !m.finished;
       const status = !inv.matchId
         ? { label: 'AGUARDANDO', cls: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' }
         : (m && m.finished)
           ? { label: finishedLabel, cls: 'bg-slate-500/20 text-slate-300 border-slate-500/40' }
-          : { label: 'AO VIVO', cls: 'bg-red-500/20 text-red-300 border-red-500/40' };
+          : { label: 'AO VIVO', cls: 'bg-red-500/20 text-red-300 border-red-500/40 animate-pulse', live: true };
       // Adversário: do match em curso > do invite (pré-selecionado pelo coach) > "?"
       const opponentLabel = m?.opponentName || inv.opponentNome || null;
       const fullUrl = `${window.location.origin}/scouting/start/${inv.token}`;
@@ -596,7 +597,10 @@ async function renderDashboard() {
               [inv.atletaCategoria, fmtDate(inv.createdAt)].filter(Boolean).join(' · '),
             ),
           ),
-          el('span', { class: `text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${status.cls}` }, status.label),
+          el('span', { class: `text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 inline-flex items-center gap-1 ${status.cls}` },
+            status.live ? el('span', { class: 'inline-block w-1.5 h-1.5 rounded-full bg-red-500' }) : null,
+            status.label,
+          ),
         ),
         m && el('div', { class: 'text-xs text-white/70' }, renderScore(m)),
         el('div', { class: 'flex flex-wrap gap-2 mt-2' },
