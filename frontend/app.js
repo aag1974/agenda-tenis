@@ -6349,7 +6349,9 @@ async function openPublicLiveMatch(kind, token) {
   // Esconde tudo do app normal e cria overlay fullscreen
   document.body.innerHTML = '';
   document.body.className = 'public-match-mode';
-  document.body.style.cssText = 'margin:0; min-height:100vh; color:white; background: linear-gradient(135deg, #0a2530 0%, #0e3a4d 100%); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
+  // Gradient começa com mesmo navy-dark do html (#0a2e3d) — sem isso o
+  // status bar e o body teriam tons diferentes e cria uma "faixa" feia.
+  document.body.style.cssText = 'margin:0; min-height:100vh; color:white; background: linear-gradient(135deg, #0a2e3d 0%, #0e3a4d 100%); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
 
   const root = document.createElement('div');
   // Mobile: max 28rem (uma coluna). Desktop (lg+): max 64rem (duas colunas via grid abaixo)
