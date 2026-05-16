@@ -4976,24 +4976,10 @@ function scoutListItem(m, profileId, parentClose, isLive) {
       )
     : null;
 
-  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 mt-2 cursor-pointer hover:bg-slate-50 relative' });
-  const head = el('div', {},
-    el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
-      el('div', { class: 'min-w-0 flex-1' },
-        el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}`),
-        ctx && el('div', { class: 'text-[11px] text-slate-500 truncate' }, ctx),
-      ),
-      statusBadge,
-    ),
-    el('div', { class: 'flex items-center justify-between gap-2 mt-1' },
-      el('div', { class: 'text-xs text-slate-700 font-medium' }, score),
-      noteBadge,
-    ),
-  );
-  // Botão de excluir — discreto no canto inferior direito, stopPropagation
-  // pra não abrir o tracking. Top-right é ocupado pelo statusBadge.
+  // Lixeira fica na linha inferior, sem sobrepor badges. stopPropagation
+  // pra não abrir o tracking ao clicar.
   const deleteBtn = el('button', {
-    class: 'absolute bottom-2 right-2 text-slate-300 hover:text-rose-500 text-base leading-none p-1 rounded transition-colors',
+    class: 'text-slate-300 hover:text-rose-500 text-base leading-none p-1 rounded transition-colors shrink-0',
     title: 'Excluir scout',
   }, '🗑');
   deleteBtn.onclick = async (e) => {
@@ -5008,9 +4994,26 @@ function scoutListItem(m, profileId, parentClose, isLive) {
       alert('Erro: ' + err.message);
     }
   };
-  wrap.appendChild(deleteBtn);
+
+  const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 mt-2 cursor-pointer hover:bg-slate-50' });
+  const head = el('div', {},
+    el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
+      el('div', { class: 'min-w-0 flex-1' },
+        el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}`),
+        ctx && el('div', { class: 'text-[11px] text-slate-500 truncate' }, ctx),
+      ),
+      statusBadge,
+    ),
+    el('div', { class: 'flex items-center justify-between gap-2 mt-1' },
+      el('div', { class: 'text-xs text-slate-700 font-medium' }, score),
+      el('div', { class: 'flex items-center gap-2' },
+        noteBadge,
+        deleteBtn,
+      ),
+    ),
+  );
   // Ao vivo: abre tracking pra continuar marcando.
-  // Encerrado: abre tracking em modo leitura — 🔗 no header pra compartilhar.
+  // Encerrado: abre tracking em modo leitura.
   wrap.onclick = () => { parentClose(); openScoutTrackModal(profileId, m.id); };
   wrap.appendChild(head);
   return wrap;
@@ -5104,11 +5107,23 @@ function openScoutCreateModal(profileId) {
   body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Formato'));
   body.appendChild(el('div', { class: 'grid grid-cols-2 gap-2' }, ...fmtBtns));
 
-  // Ad
-  const adCheck = el('input', { type: 'checkbox', class: 'rounded' });
-  adCheck.checked = true;
-  body.appendChild(el('label', { class: 'flex items-center gap-2 text-sm text-slate-700 mt-2' },
-    adCheck, el('span', null, 'Com vantagem (ad). Sem ad = ponto decide.')));
+  // Ad — par de botões seguindo o padrão de firstServer/format
+  let adValue = true;
+  const adOn  = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold' }, 'Com vantagem');
+  const adOff = el('button', { class: 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700' }, 'Sem ad (no-ad)');
+  adOn.onclick = () => {
+    adValue = true;
+    adOn.className  = 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
+    adOff.className = 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700';
+  };
+  adOff.onclick = () => {
+    adValue = false;
+    adOff.className = 'flex-1 text-sm px-3 py-2.5 rounded-lg border-2 border-cyan-500 bg-cyan-50 text-cyan-800 font-semibold';
+    adOn.className  = 'flex-1 text-sm px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700';
+  };
+  body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Vantagem no deuce'));
+  body.appendChild(el('div', { class: 'flex gap-2' }, adOn, adOff));
+  body.appendChild(el('div', { class: 'text-[11px] text-slate-500 mt-1' }, 'Sem ad = no 40-40 o ponto seguinte decide o game.'));
 
   // Botão criar
   const errBox = el('div', { class: 'text-xs text-red-600 hidden' });
@@ -5130,7 +5145,7 @@ function openScoutCreateModal(profileId) {
         opponentName: opponent,
         athleteName,
         tournamentName: contextInput.value.trim() || null,
-        config: { format, ad: adCheck.checked, firstServer },
+        config: { format, ad: adValue, firstServer },
       });
       close();
       openScoutTrackModal(profileId, m.id);
@@ -5317,13 +5332,13 @@ async function openScoutTrackModal(profileId, matchId) {
         el('div', { class: 'text-sm font-semibold truncate' }, `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}`),
         m.tournamentName && m.tournamentName.length >= 4 && el('div', { class: 'text-[11px] text-cyan-200 truncate' }, m.tournamentName),
       ),
-      // Match encerrado: ícone discreto de compartilhar no header (relatório).
+      // Match encerrado: botão visível de compartilhar no header (relatório).
       // Ao vivo, share fica nas ações junto com undo/encerrar.
       !isLive ? el('button', {
-        class: 'text-white/70 hover:text-white text-xl',
+        class: 'flex items-center gap-1.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 rounded-lg shrink-0',
         title: 'Compartilhar relatório',
         onClick: () => openScoutShareModal(profileId, m),
-      }, '🔗') : null,
+      }, '🔗', el('span', null, 'Compartilhar')) : null,
     ));
 
     // Placar (sempre full width no topo)

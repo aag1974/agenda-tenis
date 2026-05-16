@@ -2,48 +2,6 @@
 
 Ideias e features pendentes, em ordem aproximada de prioridade.
 
-## Bugs pendentes (próximo deploy)
-
-### A. Auto-sync dispara em todo deploy
-`startAutoSync()` em `backend/sync-manager.js` agenda primeiro tick 5 min após
-boot sem verificar quando foi o último sync. Todo deploy no Render → sync
-desnecessário ~5 min depois.
-
-**Fix**: em `runAutoSyncTick()` (~L268), antes de chamar `syncProfile(p.id)`,
-verificar `getSyncedData(p.id)?.syncedAt` — pular se sincronizou há < 3h.
-```js
-const lastSynced = getSyncedData(p.id)?.syncedAt;
-if (lastSynced && Date.now() - new Date(lastSynced).getTime() < 3 * 3600 * 1000) continue;
-```
-
-### B. Scout ao Vivo: nome longo desalinha placar
-Nome completo (ex: "Anna Luiza Mesquita Garcia") empurra colunas de sets/PTS
-porque o flex container pai não tem `min-w-0`.
-
-**Fix**: em `rowForSide()` (`frontend/app.js` ~L5002), renderizar `shortName(name)`
-em vez de `name`. Adicionar helper antes de `rowForSide`:
-```js
-function shortName(name) { return name.split(' ').slice(0, 2).join(' '); }
-```
-Resultado: "Anna Luiza Mesquita Garcia" → "Anna Luiza". Sem truncate, sem `…`.
-
-### C. Scout ao Vivo: modal trava após "Encerrar"
-Após `abandon`, modal chama `render()` e exibe estado "Abandonado" estático
-sem call-to-action óbvio. `←` funciona mas não é evidente — parece travado.
-
-**Fix**: em `openScoutTrackModal()` (`frontend/app.js` ~L4935), substituir
-```js
-m = await api.abandonLiveMatch(profileId, m.id);
-// render() chamado depois do else if
-```
-por
-```js
-await api.abandonLiveMatch(profileId, m.id);
-close(); return; // fecha modal, volta pra lista
-```
-
----
-
 ## Priorizadas
 
 ### 1. Arquivar cards (3 pontinhos)
@@ -704,6 +662,54 @@ problemas que os usuários enfrentam. O que entra:
   vê a rota `/admin`. Middleware backend valida.
 
 Não precisa ser bonito — funcional pra atender suporte.
+
+## Scraper multi-categoria (Juvenil M / Profissional / Beach / Senior / Tennis Kids)
+
+**Status hoje (2026-05-16):** o scraper foi construído pra Juvenil Feminino (Anna).
+Funciona parcialmente pra outras categorias — várias partes falham silenciosamente.
+
+### O que funciona pra qualquer atleta
+- Login + `athleteId` (`backend/ti-client.js:65`)
+- Nome, WTN, mão, about/UF — regex genéricas (`backend/scraper.js:88-134`)
+- Detecção de categorias TI ativas via `TI_CATEGORIES` (`backend/scraper.js:14-20`)
+- Catálogo de torneios — `fetchCatalog` aceita qualquer `category` (`backend/scraper.js:359`)
+- POST /perfil2/getStats (desempenho agregado) — agnóstico
+- POST /perfil2/jogos (histórico cru) — funciona, mas parse de tier/categoria é Juvenil
+
+### Hardcoded pra Juvenil F (precisa generalizar)
+
+| Lugar | Hardcode | O que falha |
+|---|---|---|
+| `backend/scraper.js:173` | `RANKING_PAGE_ID_CURRENT_YEAR = 1326` | É a página de Juvenil 2026. Cada categoria/ano tem ID próprio. |
+| `backend/scraper.js:174` | `CATEGORY_IDS = { '12F':9, '14F':10, '16F':11, '18F':12 }` | Sem masculino, sem outras categorias. |
+| `backend/scraper.js:889` | `getRegionalPosition(client, id, '12F')` | Fixo em 12F — outras retornam null. |
+| `backend/scraper.js:138` | regex `Ranking Nacional Juvenil` | Não captura Pro/Beach/Senior. |
+| `backend/scraper.js:25-30` | `CATEGORY_HINTS` só 12F/14F/16F/18F + M | Inscritos por categoria scan all anchors (lento) pra outras. |
+| `backend/scraper.js:380,584-588` | tiers `GA/G1/G2/G3` | Pro tem Future/Challenger; Beach BT50-400; Senior outros. |
+| `backend/match-scraper.js:57` | `/\b(\d{1,2})([FM])(D)?\b/` | Não bate ATP/WTA/BT. |
+
+### Plano em duas fases
+
+**Fase 1 — Rafael (12M, Juvenil Masculino):** factível agora, dá pra testar
+- Adicionar `12M/14M/16M/18M` ao `CATEGORY_IDS` (preciso confirmar IDs internos abrindo o `<select id="id_categoria">` em `/ranking_painel_classif/index/1326` — pode ser que masculino esteja em outra `rankingPageId` em vez da mesma página)
+- Generalizar `getRegionalPosition` pra usar primeira categoria detectada do atleta, não fixo `'12F'`
+- Validar com sync do Rafael — checar se ranking regional aparece correto
+
+**Fase 2 — Pro/Beach/Senior/Tennis Kids:** NÃO implementar antecipadamente
+- Razão: sem HTML real de TI dessas categorias na frente, vou inventar regex e IDs que vão estar errados em detalhes invisíveis. Risco de quebrar silenciosamente pro primeiro atleta dessas categorias que entrar.
+- Em vez disso:
+  - Garantir que código **falha limpo** pra categorias não suportadas (já faz em parte: `getRegionalPosition` retorna null)
+  - UI: ocultar bloco de ranking regional se null, sem mensagem de erro
+  - Logs explícitos: `[sync] categoria X não tem suporte de ranking ainda`
+  - Quando primeiro atleta dessas categorias entrar: roda sync, vê o que quebra com dados reais, implementa baseado no que TI realmente devolve
+
+### Categorias TI conhecidas (ID interno)
+Já está em `TI_CATEGORIES` em `backend/scraper.js:14-20`:
+- 2 = Juvenil
+- 17 = Profissional
+- 5 = Senior
+- 24 = Beach Tennis
+- 29 = Tennis Kids
 
 ## Ideias soltas
 
