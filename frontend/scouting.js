@@ -378,7 +378,9 @@ async function renderDashboard() {
     let categoryFilter = null;
     const input = el('input', {
       type: 'text', placeholder: 'Digite parte do nome…', autocomplete: 'off',
-      class: 'w-full bg-white/95 text-slate-900 border border-white/30 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
+      // text-base (16px) pra evitar zoom automático do iOS Safari em inputs
+      // (zoom acontece se font-size < 16px e não desfaz).
+      class: 'w-full bg-white/95 text-slate-900 border border-white/30 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
     });
     const filterHint = el('div', { class: 'hidden text-[11px] text-cyan-300 mt-1 flex items-center gap-2' });
     const list = el('div', { class: 'mt-2 max-h-48 overflow-y-auto space-y-1' });
@@ -767,7 +769,8 @@ async function renderStart(token) {
   // de novo) e fica só o card. Botão × no card permite trocar.
   const filterInput = el('input', {
     type: 'text', placeholder: 'Digite o nome…',
-    class: 'w-full bg-white/95 text-slate-900 border border-white/30 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
+    // text-base (16px) pra evitar zoom automático do iOS Safari.
+    class: 'w-full bg-white/95 text-slate-900 border border-white/30 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
     autocomplete: 'off',
   });
   const inputWrap = el('div', { class: 'space-y-1' }, filterInput);

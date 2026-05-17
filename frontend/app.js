@@ -5102,7 +5102,8 @@ function openScoutCreateModal(profileId) {
   const opponentInput = el('input', {
     type: 'text',
     placeholder: 'Nome da adversária',
-    class: 'w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-300',
+    // text-base (16px) pra evitar zoom automático do iOS Safari.
+    class: 'w-full text-base border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-300',
   });
   body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Adversária'));
   body.appendChild(opponentInput);
@@ -5111,7 +5112,8 @@ function openScoutCreateModal(profileId) {
   const contextInput = el('input', {
     type: 'text',
     placeholder: 'Ex: G1 Brasiliense · R2 · ou amistoso, treino…',
-    class: 'w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-300',
+    // text-base (16px) pra evitar zoom automático do iOS Safari.
+    class: 'w-full text-base border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-300',
   });
   body.appendChild(el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-2' }, 'Contexto (opcional)'));
   body.appendChild(contextInput);
