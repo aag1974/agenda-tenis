@@ -3531,14 +3531,18 @@ function openFiltersPanel() {
     onClick: (e) => { e.preventDefault(); onClick(); },
   }, text);
 
+  // options aceita string[] (compat) OU {value, label}[] (pra labels que
+  // diferem do valor — ex: coluna com ícone + nome customizado).
   const section = (label, options, isSelected, onTogglePill, onClearAll) => {
     if (!options.length) return null;
-    const allActive = !options.some(isSelected);
+    const valueOf = (o) => (o && typeof o === 'object') ? o.value : o;
+    const labelOf = (o) => (o && typeof o === 'object') ? o.label : o;
+    const allActive = !options.some(o => isSelected(valueOf(o)));
     return el('div', { class: 'px-4 py-3 border-b border-slate-100 last:border-b-0' },
       el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2' }, label),
       el('div', { class: 'flex flex-wrap gap-1.5' },
         pill('Todos', allActive, () => { onClearAll(); rerender(); rerenderBody(); renderHeader(); }),
-        ...options.map(v => pill(v, isSelected(v), () => { onTogglePill(v); rerender(); rerenderBody(); renderHeader(); })),
+        ...options.map(o => pill(labelOf(o), isSelected(valueOf(o)), () => { onTogglePill(valueOf(o)); rerender(); rerenderBody(); renderHeader(); })),
       ),
     );
   };
@@ -3592,45 +3596,25 @@ function openFiltersPanel() {
     },
   );
 
-  // Colunas — toggle visibilidade. Cards continuam agrupados pra reaparecer
-  // ao mostrar a coluna.
-  const columnsSection = el('div', { class: 'px-4 py-3' },
-    el('div', { class: 'flex items-center justify-between mb-2' },
-      el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500' }, 'Colunas'),
-      state.hiddenColumns.length > 0 && el('button', {
-        class: 'text-[11px] text-cyan-700 hover:underline',
-        onClick: (e) => {
-          e.preventDefault();
-          state.hiddenColumns = [];
-          localStorage.setItem('hiddenColumns', '[]');
-          rerender(); rerenderBody(); renderHeader();
-        },
-      }, 'Mostrar todas'),
-    ),
-    el('div', { class: 'space-y-1' },
-      ...KANBAN_COLUMNS.map(col => {
-        const hidden = state.hiddenColumns.includes(col.id);
-        const customLabel = state.columnLabels[col.id] || col.label;
-        return el('label', { class: 'flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-50 cursor-pointer' },
-          el('input', {
-            type: 'checkbox',
-            checked: !hidden,
-            class: 'w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer',
-            onChange: (e) => {
-              if (e.target.checked) {
-                state.hiddenColumns = state.hiddenColumns.filter(id => id !== col.id);
-              } else {
-                if (!state.hiddenColumns.includes(col.id)) state.hiddenColumns.push(col.id);
-              }
-              localStorage.setItem('hiddenColumns', JSON.stringify(state.hiddenColumns));
-              rerenderBody(); renderHeader();
-            },
-          }),
-          el('span', { class: 'text-base' }, col.icon),
-          el('span', { class: `text-sm ${hidden ? 'text-slate-400 line-through' : 'text-slate-800'}` }, customLabel),
-        );
-      }),
-    ),
+  // Colunas — toggle visibilidade. Mesmo layout de pills dos demais filtros.
+  // Pill ativa = coluna visível. Pill inativa = coluna oculta.
+  const columnsSection = section(
+    'Colunas',
+    KANBAN_COLUMNS.map(col => ({
+      value: col.id,
+      label: `${col.icon} ${state.columnLabels[col.id] || col.label}`,
+    })),
+    (id) => !state.hiddenColumns.includes(id),
+    (id) => {
+      const idx = state.hiddenColumns.indexOf(id);
+      if (idx >= 0) state.hiddenColumns.splice(idx, 1);
+      else state.hiddenColumns.push(id);
+      localStorage.setItem('hiddenColumns', JSON.stringify(state.hiddenColumns));
+    },
+    () => {
+      state.hiddenColumns = [];
+      localStorage.setItem('hiddenColumns', '[]');
+    },
   );
 
   const header = el('div', { class: 'sticky top-0 bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between' },

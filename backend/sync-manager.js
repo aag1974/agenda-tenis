@@ -1,4 +1,4 @@
-import { syncAthlete, enumerateTournamentsByIds, tournamentPassesScope } from './scraper.js';
+import { syncAthlete, enumerateTournamentsByIds, tournamentPassesScope, fetchTournamentDetails } from './scraper.js';
 import {
   listProfiles, getProfile, getProfileCredentials, getSyncedData, saveSyncedData,
   updateProfile, getNotes, updateTournamentNotes, addAutoActivity,
@@ -24,12 +24,73 @@ export function getSyncStatus(profileId) {
   return status.get(profileId) || { state: 'idle' };
 }
 
-// Refresh incremental da base do catálogo TI. Pega o lastIdSeen e
-// varre os próximos `chunk` IDs. Como TI publica ~5 IDs/dia, com sync
-// diário 100-200 IDs cobrem com folga. Idempotente — se já rodou
-// recentemente (< 1h), pula. Compartilhado entre profiles via lock.
-const REFRESH_MIN_INTERVAL_MS = 60 * 60 * 1000; // 1h
-const REFRESH_CHUNK = 150;
+// Refresh incremental da base do catálogo TI. Idempotente — se já rodou
+// na última hora, pula. Compartilhado entre profiles via lock.
+//
+// Estratégia: busca exponencial + binária pra descobrir o ID máximo
+// atual do TI sem desperdiçar requests numa varredura fixa. Com sync de
+// 6h e TI cadastrando ~8 IDs/dia, a janela típica é de 2 IDs — varredura
+// fixa de 150 era exagero.
+const REFRESH_MIN_INTERVAL_MS = 60 * 60 * 1000;     // 1h
+const PROBE_INITIAL_LOOK_AHEAD = 20;                // ~2.5 dias de cadastro
+const PROBE_MAX_LOOK_AHEAD = 300;                   // ~5 semanas (cap pra runaway)
+
+async function isValidTournamentId(id) {
+  try {
+    const det = await fetchTournamentDetails(id);
+    if (!det || !det.name) return false;
+    // "Sistema Tênis Integrado" é o fallback do TI pra IDs inexistentes.
+    return !/^sistema\s+t[eê]nis/i.test(det.name);
+  } catch {
+    return false;
+  }
+}
+
+// Testa se há algum torneio válido numa janela em torno do ID (anchor ± 2).
+// O TI ocasionalmente tem buracos (IDs cancelados/reservados); testar só 1
+// faz o probe parar cedo. Com janela de 5, só considera "região vazia" se
+// nenhum dos 5 vizinhos for válido.
+const HOLE_WINDOW = 2;
+async function hasValidInWindow(centerId) {
+  const ids = [];
+  for (let d = -HOLE_WINDOW; d <= HOLE_WINDOW; d++) {
+    if (centerId + d > 0) ids.push(centerId + d);
+  }
+  const results = await Promise.all(ids.map(isValidTournamentId));
+  return results.some(Boolean);
+}
+
+// Busca exponencial pra descobrir o limite superior, depois binária pra
+// achar o último ID válido. Retorna o maior ID com torneio confirmado
+// (com tolerância a buracos via janela de ±2).
+async function findHighestValidId(startId) {
+  let step = PROBE_INITIAL_LOOK_AHEAD;
+  let lastValid = startId;
+  let firstEmpty = null;
+
+  while (step <= PROBE_MAX_LOOK_AHEAD) {
+    const probe = startId + step;
+    if (await hasValidInWindow(probe)) {
+      lastValid = probe;
+      step *= 2;
+    } else {
+      firstEmpty = probe;
+      break;
+    }
+  }
+
+  if (firstEmpty === null) return startId + PROBE_MAX_LOOK_AHEAD;
+
+  // Binary search no intervalo (lastValid, firstEmpty)
+  let lo = lastValid;
+  let hi = firstEmpty;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (await hasValidInWindow(mid)) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
 
 export async function refreshCatalogueIncremental({ force = false } = {}) {
   if (catalogueRefreshInFlight) return catalogueRefreshInFlight;
@@ -44,16 +105,26 @@ export async function refreshCatalogueIncremental({ force = false } = {}) {
 
   catalogueRefreshInFlight = (async () => {
     const t0 = Date.now();
-    const startId = (base.lastIdSeen || 0) + 1;
+    const startId = base.lastIdSeen || 0;
     try {
+      // 1. Descobre até onde o TI publicou IDs (probe exponencial + binária)
+      const topId = await findHighestValidId(startId);
+      const newCount = topId - startId;
+      if (newCount <= 0) {
+        const probeMs = Date.now() - t0;
+        console.log(`[catalogue] nada novo desde ${startId} · probe em ${probeMs}ms`);
+        return { added: 0, lastIdSeen: startId, count: base.count, probeMs };
+      }
+
+      // 2. Varre sequencialmente do startId+1 até topId
       const news = await enumerateTournamentsByIds({
-        startId,
-        count: REFRESH_CHUNK,
+        startId: startId + 1,
+        count: newCount,
         concurrency: 4,
       });
       if (news.length > 0) mergeIntoCatalogue(news);
       const updated = getCatalogueBase();
-      console.log(`[catalogue] +${news.length} novos (range ${startId}..${startId + REFRESH_CHUNK - 1}) em ${((Date.now() - t0) / 1000).toFixed(1)}s · count=${updated.count}`);
+      console.log(`[catalogue] +${news.length} novos (range ${startId + 1}..${topId}) em ${((Date.now() - t0) / 1000).toFixed(1)}s · count=${updated.count}`);
       return { added: news.length, lastIdSeen: updated.lastIdSeen, count: updated.count };
     } catch (err) {
       console.error('[catalogue refresh]', err.message);

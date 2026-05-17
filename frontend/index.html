@@ -105,8 +105,14 @@
     }
     .sortable-ghost { opacity: 0.6; }
     /* Cursor grabbing em qualquer lugar durante drag — clone tem pointer-events:none
-       e cursor padrão "vaza" pra elemento de baixo */
-    body.kanban-dragging, body.kanban-dragging * { cursor: grabbing !important; }
+       e cursor padrão "vaza" pra elemento de baixo. user-select: none evita
+       que o navegador comece a selecionar texto dos cards por onde o cursor
+       passa durante o arrasto. */
+    body.kanban-dragging, body.kanban-dragging * {
+      cursor: grabbing !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+    }
     .sortable-chosen { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     /* fallbackClass: trava largura do clone no tamanho real do card/coluna,
        evitando que ele herde largura do contêiner overflow */
