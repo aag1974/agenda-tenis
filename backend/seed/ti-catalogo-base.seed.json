@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "lastIdSeen": 22800,
-  "fetchedAt": "2026-05-17T22:00:00.000Z",
+  "fetchedAt": "2026-05-17T22:57:02.270Z",
   "count": 2166,
   "tournaments": {
     "19001": {
@@ -5077,7 +5077,9 @@
       "cityState": "Serra Negra-SP",
       "startDate": "02/01/2025",
       "endDate": "06/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
@@ -5092,7 +5094,9 @@
       "cityState": "Sao Bernardo do Campo-SP",
       "startDate": "07/01/2025",
       "endDate": "12/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
@@ -5107,7 +5111,9 @@
       "cityState": "São Paulo-SP",
       "startDate": "13/01/2025",
       "endDate": "19/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
@@ -5122,7 +5128,9 @@
       "cityState": "Barueri-SP",
       "startDate": "27/01/2025",
       "endDate": "02/02/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/01/2025",
       "cancelDeadline": "14/01/2025",
@@ -5137,7 +5145,9 @@
       "cityState": "Santos-SP",
       "startDate": "03/02/2025",
       "endDate": "08/02/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/01/2025",
       "cancelDeadline": "14/01/2025",
@@ -5152,12 +5162,14 @@
       "cityState": "Maringa-PR",
       "startDate": "05/01/2025",
       "endDate": "09/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19768": {
       "id": "19768",
@@ -5167,12 +5179,14 @@
       "cityState": "Londrina-PR",
       "startDate": "10/01/2025",
       "endDate": "14/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19770": {
       "id": "19770",
@@ -5182,12 +5196,14 @@
       "cityState": "Itajai-SC",
       "startDate": "16/01/2025",
       "endDate": "20/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19771": {
       "id": "19771",
@@ -5197,12 +5213,14 @@
       "cityState": "Criciuma-SC",
       "startDate": "21/01/2025",
       "endDate": "25/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19772": {
       "id": "19772",
@@ -5212,12 +5230,14 @@
       "cityState": "Porto Alegre-RS",
       "startDate": "27/01/2025",
       "endDate": "31/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/01/2025",
       "cancelDeadline": "14/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19773": {
       "id": "19773",
@@ -5227,12 +5247,14 @@
       "cityState": "Porto Alegre-RS",
       "startDate": "01/02/2025",
       "endDate": "05/02/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/01/2025",
       "cancelDeadline": "14/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19774": {
       "id": "19774",
@@ -5242,12 +5264,14 @@
       "cityState": "Goiania-GO",
       "startDate": "07/01/2025",
       "endDate": "11/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19775": {
       "id": "19775",
@@ -5257,12 +5281,14 @@
       "cityState": "Goiania-GO",
       "startDate": "11/01/2025",
       "endDate": "15/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19776": {
       "id": "19776",
@@ -5272,7 +5298,9 @@
       "cityState": "São Paulo-SP",
       "startDate": "20/01/2025",
       "endDate": "26/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
@@ -5287,12 +5315,14 @@
       "cityState": "Niteroi-RJ",
       "startDate": "27/01/2025",
       "endDate": "31/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/01/2025",
       "cancelDeadline": "14/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19778": {
       "id": "19778",
@@ -5302,12 +5332,14 @@
       "cityState": "Goiania-GO",
       "startDate": "15/01/2025",
       "endDate": "19/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19779": {
       "id": "19779",
@@ -5317,12 +5349,14 @@
       "cityState": "Salvador-BA",
       "startDate": "05/01/2025",
       "endDate": "08/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19780": {
       "id": "19780",
@@ -5332,12 +5366,14 @@
       "cityState": "Niteroi-RJ",
       "startDate": "01/02/2025",
       "endDate": "05/02/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/01/2025",
       "cancelDeadline": "14/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19781": {
       "id": "19781",
@@ -5347,12 +5383,14 @@
       "cityState": "Recife-PE",
       "startDate": "17/01/2025",
       "endDate": "20/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19782": {
       "id": "19782",
@@ -5362,12 +5400,14 @@
       "cityState": "Maceio-AL",
       "startDate": "13/01/2025",
       "endDate": "16/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "15/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19783": {
       "id": "19783",
@@ -5377,12 +5417,14 @@
       "cityState": "Vitoria-ES",
       "startDate": "22/01/2025",
       "endDate": "25/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19784": {
       "id": "19784",
@@ -5392,12 +5434,14 @@
       "cityState": "Vitoria-ES",
       "startDate": "18/01/2025",
       "endDate": "21/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19785": {
       "id": "19785",
@@ -5407,12 +5451,14 @@
       "cityState": "Brasilia-DF",
       "startDate": "20/01/2025",
       "endDate": "24/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19786": {
       "id": "19786",
@@ -5422,12 +5468,14 @@
       "cityState": "Brasilia-DF",
       "startDate": "25/01/2025",
       "endDate": "29/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19787": {
       "id": "19787",
@@ -5437,12 +5485,14 @@
       "cityState": "Brasilia-DF",
       "startDate": "30/01/2025",
       "endDate": "03/02/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19788": {
       "id": "19788",
@@ -5467,12 +5517,14 @@
       "cityState": "Uberaba-MG",
       "startDate": "08/01/2025",
       "endDate": "12/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19792": {
       "id": "19792",
@@ -5482,12 +5534,14 @@
       "cityState": "Natal-RN",
       "startDate": "25/01/2025",
       "endDate": "28/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/01/2025",
       "cancelDeadline": "14/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19793": {
       "id": "19793",
@@ -5512,12 +5566,14 @@
       "cityState": "Campina Grande-PB",
       "startDate": "21/01/2025",
       "endDate": "24/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "07/01/2025",
       "cancelDeadline": "07/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19795": {
       "id": "19795",
@@ -5527,12 +5583,14 @@
       "cityState": "Uberaba-MG",
       "startDate": "12/01/2025",
       "endDate": "17/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19799": {
       "id": "19799",
@@ -5587,12 +5645,14 @@
       "cityState": "Aracaju-SE",
       "startDate": "09/01/2025",
       "endDate": "12/01/2025",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "16/12/2024",
       "cancelDeadline": "17/12/2024",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19818": {
       "id": "19818",
@@ -6240,12 +6300,14 @@
       "cityState": "Maringa-PR",
       "startDate": "01/10/2025",
       "endDate": "05/10/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "08/09/2025",
       "cancelDeadline": "09/09/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "19864": {
       "id": "19864",
@@ -7794,7 +7856,9 @@
       "cityState": "Caxias do Sul-RS",
       "startDate": "26/03/2025",
       "endDate": "30/03/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "06/03/2025",
       "cancelDeadline": "06/03/2025",
@@ -7839,7 +7903,9 @@
       "cityState": "Porto Alegre-RS",
       "startDate": "11/02/2025",
       "endDate": "14/02/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "20/01/2025",
       "cancelDeadline": "21/01/2025",
@@ -7854,7 +7920,9 @@
       "cityState": "Caxias do Sul-RS",
       "startDate": "11/02/2025",
       "endDate": "14/02/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "20/01/2025",
       "cancelDeadline": "21/01/2025",
@@ -7884,12 +7952,14 @@
       "cityState": "Vacaria-RS",
       "startDate": "04/09/2025",
       "endDate": "07/09/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "11/08/2025",
       "cancelDeadline": "12/08/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "20002": {
       "id": "20002",
@@ -7914,7 +7984,9 @@
       "cityState": "Volta Redonda-RJ",
       "startDate": "09/05/2025",
       "endDate": "15/05/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/04/2025",
       "cancelDeadline": "15/04/2025",
@@ -7946,12 +8018,14 @@
       "cityState": "Colombo-PR",
       "startDate": "06/05/2025",
       "endDate": "11/05/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "14/04/2025",
       "cancelDeadline": "15/04/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "20008": {
       "id": "20008",
@@ -8126,12 +8200,14 @@
       "cityState": "Sorocaba-SP",
       "startDate": "15/02/2025",
       "endDate": "18/02/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "20/01/2025",
       "cancelDeadline": "21/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "20021": {
       "id": "20021",
@@ -8141,12 +8217,14 @@
       "cityState": "Gaspar-SC",
       "startDate": "17/02/2025",
       "endDate": "19/02/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "27/01/2025",
       "cancelDeadline": "28/01/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "20022": {
       "id": "20022",
@@ -8231,7 +8309,9 @@
       "cityState": "Rio de Janeiro-RJ",
       "startDate": "27/03/2025",
       "endDate": "02/04/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "06/03/2025",
       "cancelDeadline": "06/03/2025",
@@ -8383,12 +8463,14 @@
       "cityState": "Sao Paulo-SP",
       "startDate": "22/02/2025",
       "endDate": "02/03/2025",
-      "tiers": [],
+      "tiers": [
+        "G3"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "19/02/2025",
       "cancelDeadline": "19/02/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "20041": {
       "id": "20041",
@@ -9043,7 +9125,9 @@
       "cityState": "Rio de Janeiro-RJ",
       "startDate": "25/09/2025",
       "endDate": "01/10/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "01/09/2025",
       "cancelDeadline": "02/09/2025",
@@ -9088,7 +9172,9 @@
       "cityState": "Cuiaba-MT",
       "startDate": "08/04/2025",
       "endDate": "12/04/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/03/2025",
       "cancelDeadline": "18/03/2025",
@@ -12295,7 +12381,9 @@
       "cityState": "Sao Jose Dos Campos-SP",
       "startDate": "16/06/2025",
       "endDate": "21/06/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "26/05/2025",
       "cancelDeadline": "27/05/2025",
@@ -12452,12 +12540,14 @@
       "cityState": "Uberlandia-MG",
       "startDate": "20/07/2025",
       "endDate": "24/07/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "01/07/2025",
       "cancelDeadline": "01/07/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "20469": {
       "id": "20469",
@@ -15302,7 +15392,9 @@
       "cityState": "Itauna-MG",
       "startDate": "03/09/2025",
       "endDate": "07/09/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "11/08/2025",
       "cancelDeadline": "12/08/2025",
@@ -16547,7 +16639,7 @@
       "registrationDeadline": "02/07/2025",
       "cancelDeadline": "02/07/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "20951": {
       "id": "20951",
@@ -16562,7 +16654,7 @@
       "registrationDeadline": "30/07/2025",
       "cancelDeadline": "30/07/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "20952": {
       "id": "20952",
@@ -16577,7 +16669,7 @@
       "registrationDeadline": "06/08/2025",
       "cancelDeadline": "06/08/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "20953": {
       "id": "20953",
@@ -17077,12 +17169,14 @@
       "cityState": "Belem-PA",
       "startDate": "01/09/2025",
       "endDate": "04/09/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "11/08/2025",
       "cancelDeadline": "12/08/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "21016": {
       "id": "21016",
@@ -19178,7 +19272,9 @@
       "cityState": "Recife-PE",
       "startDate": "24/09/2025",
       "endDate": "27/09/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "01/09/2025",
       "cancelDeadline": "02/09/2025",
@@ -19375,7 +19471,9 @@
       "cityState": "Sao Jose do Rio Preto-SP",
       "startDate": "22/09/2025",
       "endDate": "27/09/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "01/09/2025",
       "cancelDeadline": "02/09/2025",
@@ -20931,7 +21029,9 @@
       "cityState": "Barueri-SP",
       "startDate": "13/10/2025",
       "endDate": "19/10/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "22/09/2025",
       "cancelDeadline": "23/09/2025",
@@ -21237,7 +21337,9 @@
       "cityState": "Itajai-SC",
       "startDate": "28/10/2025",
       "endDate": "01/11/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "06/10/2025",
       "cancelDeadline": "07/10/2025",
@@ -22247,7 +22349,9 @@
       "cityState": "Salvador-BA",
       "startDate": "08/11/2025",
       "endDate": "12/11/2025",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "13/10/2025",
       "cancelDeadline": "14/10/2025",
@@ -22627,7 +22731,7 @@
       "registrationDeadline": "13/10/2025",
       "cancelDeadline": "13/10/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "21686": {
       "id": "21686",
@@ -24700,12 +24804,14 @@
       "cityState": "Porto Alegre-RS",
       "startDate": "27/01/2026",
       "endDate": "31/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "12/01/2026",
       "cancelDeadline": "13/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "21996": {
       "id": "21996",
@@ -24715,12 +24821,14 @@
       "cityState": "Porto Alegre-RS",
       "startDate": "01/02/2026",
       "endDate": "05/02/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "12/01/2026",
       "cancelDeadline": "13/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "21997": {
       "id": "21997",
@@ -24730,12 +24838,14 @@
       "cityState": "Maringa-PR",
       "startDate": "05/01/2026",
       "endDate": "09/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "10/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "21998": {
       "id": "21998",
@@ -24745,12 +24855,14 @@
       "cityState": "Sao Jose Dos Campos-SP",
       "startDate": "02/01/2026",
       "endDate": "06/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/12/2025",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "21999": {
       "id": "21999",
@@ -24760,12 +24872,14 @@
       "cityState": "Goiania-GO",
       "startDate": "19/01/2026",
       "endDate": "23/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22000": {
       "id": "22000",
@@ -24775,12 +24889,14 @@
       "cityState": "Goiania-GO",
       "startDate": "22/01/2026",
       "endDate": "28/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22001": {
       "id": "22001",
@@ -24790,12 +24906,14 @@
       "cityState": "Sao Bernardo do Campo-SP",
       "startDate": "07/01/2026",
       "endDate": "13/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/12/2025",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22002": {
       "id": "22002",
@@ -24805,12 +24923,14 @@
       "cityState": "São Paulo-SP",
       "startDate": "14/01/2026",
       "endDate": "22/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22003": {
       "id": "22003",
@@ -24820,12 +24940,14 @@
       "cityState": "Barueri-SP",
       "startDate": "28/01/2026",
       "endDate": "03/02/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "12/01/2026",
       "cancelDeadline": "13/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22004": {
       "id": "22004",
@@ -24835,12 +24957,14 @@
       "cityState": "Londrina-PR",
       "startDate": "09/01/2026",
       "endDate": "14/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "10/01/2026",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22005": {
       "id": "22005",
@@ -24850,7 +24974,9 @@
       "cityState": "São Paulo-SP",
       "startDate": "21/01/2026",
       "endDate": "27/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
@@ -24865,12 +24991,14 @@
       "cityState": "Santos-SP",
       "startDate": "04/02/2026",
       "endDate": "10/02/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "19/01/2026",
       "cancelDeadline": "20/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22007": {
       "id": "22007",
@@ -24910,12 +25038,14 @@
       "cityState": "Cuiaba-MT",
       "startDate": "07/01/2026",
       "endDate": "11/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/12/2025",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22012": {
       "id": "22012",
@@ -24925,12 +25055,14 @@
       "cityState": "Salvador-BA",
       "startDate": "28/01/2026",
       "endDate": "31/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "12/01/2026",
       "cancelDeadline": "13/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22020": {
       "id": "22020",
@@ -24940,12 +25072,14 @@
       "cityState": "Campina Grande-PB",
       "startDate": "11/01/2026",
       "endDate": "14/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/12/2025",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22021": {
       "id": "22021",
@@ -24955,12 +25089,14 @@
       "cityState": "Niteroi-RJ",
       "startDate": "30/01/2026",
       "endDate": "03/02/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "12/01/2026",
       "cancelDeadline": "13/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22022": {
       "id": "22022",
@@ -24970,12 +25106,14 @@
       "cityState": "Niteroi-RJ",
       "startDate": "04/02/2026",
       "endDate": "08/02/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "19/01/2026",
       "cancelDeadline": "20/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22023": {
       "id": "22023",
@@ -24985,12 +25123,14 @@
       "cityState": "Divinopolis-MG",
       "startDate": "10/01/2026",
       "endDate": "15/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/12/2025",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22024": {
       "id": "22024",
@@ -25000,12 +25140,14 @@
       "cityState": "Itajai-SC",
       "startDate": "15/01/2026",
       "endDate": "19/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22025": {
       "id": "22025",
@@ -25015,12 +25157,14 @@
       "cityState": "Belo Horizonte-MG",
       "startDate": "05/01/2026",
       "endDate": "10/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/12/2025",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22026": {
       "id": "22026",
@@ -25030,12 +25174,14 @@
       "cityState": "Criciuma-SC",
       "startDate": "20/01/2026",
       "endDate": "24/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "05/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22027": {
       "id": "22027",
@@ -25045,12 +25191,14 @@
       "cityState": "Aracaju-SE",
       "startDate": "24/01/2026",
       "endDate": "27/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22028": {
       "id": "22028",
@@ -25135,12 +25283,14 @@
       "cityState": "Cuiaba-MT",
       "startDate": "12/01/2026",
       "endDate": "16/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22036": {
       "id": "22036",
@@ -25150,12 +25300,14 @@
       "cityState": "Natal-RN",
       "startDate": "07/01/2026",
       "endDate": "10/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/12/2025",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22037": {
       "id": "22037",
@@ -25165,12 +25317,14 @@
       "cityState": "Vitoria-ES",
       "startDate": "17/01/2026",
       "endDate": "21/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22039": {
       "id": "22039",
@@ -25180,12 +25334,14 @@
       "cityState": "Maceio-AL",
       "startDate": "20/01/2026",
       "endDate": "23/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22040": {
       "id": "22040",
@@ -25195,12 +25351,14 @@
       "cityState": "Brasilia-DF",
       "startDate": "29/01/2026",
       "endDate": "02/02/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "12/01/2026",
       "cancelDeadline": "13/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22041": {
       "id": "22041",
@@ -25210,12 +25368,14 @@
       "cityState": "Brasilia-DF",
       "startDate": "03/02/2026",
       "endDate": "07/02/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "19/01/2026",
       "cancelDeadline": "20/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22043": {
       "id": "22043",
@@ -25225,12 +25385,14 @@
       "cityState": "Vitoria-ES",
       "startDate": "21/01/2026",
       "endDate": "25/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22044": {
       "id": "22044",
@@ -25240,12 +25402,14 @@
       "cityState": "Recife-PE",
       "startDate": "15/01/2026",
       "endDate": "19/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "05/01/2026",
       "cancelDeadline": "06/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22045": {
       "id": "22045",
@@ -25255,12 +25419,14 @@
       "cityState": "Belem-PA",
       "startDate": "04/01/2026",
       "endDate": "07/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/12/2025",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22046": {
       "id": "22046",
@@ -25270,12 +25436,14 @@
       "cityState": "Belem-PA",
       "startDate": "08/01/2026",
       "endDate": "11/01/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "17/12/2025",
       "cancelDeadline": "17/12/2025",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22047": {
       "id": "22047",
@@ -25315,12 +25483,14 @@
       "cityState": "Dourados-MS",
       "startDate": "08/02/2026",
       "endDate": "12/02/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "19/01/2026",
       "cancelDeadline": "20/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22051": {
       "id": "22051",
@@ -25330,12 +25500,14 @@
       "cityState": "Chapadao do Sul-MS",
       "startDate": "13/02/2026",
       "endDate": "17/02/2026",
-      "tiers": [],
+      "tiers": [
+        "G2"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "27/01/2026",
       "cancelDeadline": "27/01/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22053": {
       "id": "22053",
@@ -26333,7 +26505,7 @@
       "registrationDeadline": "02/11/2026",
       "cancelDeadline": "02/11/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22146": {
       "id": "22146",
@@ -27436,7 +27608,9 @@
       "cityState": "Caxias do Sul-RS",
       "startDate": "03/03/2026",
       "endDate": "06/03/2026",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "09/02/2026",
       "cancelDeadline": "10/02/2026",
@@ -27451,7 +27625,9 @@
       "cityState": "Porto Alegre-RS",
       "startDate": "03/03/2026",
       "endDate": "06/03/2026",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "09/02/2026",
       "cancelDeadline": "10/02/2026",
@@ -27571,12 +27747,14 @@
       "cityState": "Sao Jose do Rio Preto-SP",
       "startDate": "09/03/2026",
       "endDate": "13/03/2026",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "19/02/2026",
       "cancelDeadline": "19/02/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22230": {
       "id": "22230",
@@ -27693,7 +27871,9 @@
       "cityState": "Rio de Janeiro-RJ",
       "startDate": "03/04/2026",
       "endDate": "09/04/2026",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "09/03/2026",
       "cancelDeadline": "10/03/2026",
@@ -27772,7 +27952,9 @@
       "cityState": "Cuiaba-MT",
       "startDate": "07/04/2026",
       "endDate": "12/04/2026",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "18/03/2026",
       "cancelDeadline": "18/03/2026",
@@ -27864,12 +28046,14 @@
       "cityState": "Gaspar-SC",
       "startDate": "09/03/2026",
       "endDate": "13/03/2026",
-      "tiers": [],
+      "tiers": [
+        "G1"
+      ],
       "registrationOpensAt": null,
       "registrationDeadline": "19/02/2026",
       "cancelDeadline": "19/02/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22253": {
       "id": "22253",
@@ -28428,7 +28612,7 @@
       "registrationDeadline": "11/03/2026",
       "cancelDeadline": "11/03/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22310": {
       "id": "22310",
@@ -31050,7 +31234,7 @@
       "registrationDeadline": "04/03/2026",
       "cancelDeadline": "04/03/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22568": {
       "id": "22568",
@@ -31129,7 +31313,7 @@
       "registrationDeadline": "09/03/2026",
       "cancelDeadline": "09/03/2026",
       "kind": "tennis",
-      "audience": "unknown"
+      "audience": "juvenil"
     },
     "22575": {
       "id": "22575",
