@@ -7435,18 +7435,24 @@ async function openTournament(tid) {
   const t = state.data.tournaments.find(x => x.id === tid);
   if (!t) return;
   const isFuture = t.derivedStatus === 'upcoming' && t.startDate && t.endDate;
+  const isOngoing = t.derivedStatus === 'ongoing' && t.startDate && t.endDate;
+  // Detalhes (hotéis, venues, preços, observações) interessam pra torneios
+  // futuros E em andamento — quem está jogando ainda quer saber o local.
+  const wantsDetails = isFuture || isOngoing;
   const inscribedFinal = !t.notes?.manualGiveUp && (t.isAnnaInscribed || t.notes?.manualInscribed);
   const boletoExpired = !t.notes?.manualGiveUp && t.pendingPayment && isBoletoExpired(t);
   const registrationClosed = !t.pendingPayment && !t.notes?.manualGiveUp && isRegistrationClosed(t, inscribedFinal);
   const isLost = boletoExpired || (registrationClosed && !inscribedFinal);
-  const showTravelTools = isFuture && !isLost;
+  // Hotéis/venues/preços fazem sentido pra torneios futuros e em andamento
+  // (atleta já no destino ainda quer saber onde joga).
+  const showTravelTools = wantsDetails && !isLost;
 
   // Lazy-fetch detalhes + voo em paralelo — antes era sequencial e dobrava
   // o tempo de abertura do modal (cada um leva ~500-800ms).
   // Passa profileId pro backend persistir a união de tiers em synced.json
   // (corrige o caso de card multi-chave que aparecia com só uma).
   const [details, flightInfo] = await Promise.all([
-    isFuture ? api.tournamentDetails(tid, state.activeProfileId).catch(() => null) : Promise.resolve(null),
+    wantsDetails ? api.tournamentDetails(tid, state.activeProfileId).catch(() => null) : Promise.resolve(null),
     showTravelTools ? api.flightUrl(state.activeProfileId, tid).catch(() => ({ error: true })) : Promise.resolve(null),
   ]);
   // Une tiers locais + os detalhes pra etiquetas refletirem todas as chaves
