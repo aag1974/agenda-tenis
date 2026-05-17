@@ -62,7 +62,9 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function md(s) {
-  return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  return escapeHtml(s)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
 }
 
 // Formato numérico brasileiro: vírgula como separador decimal.
@@ -594,6 +596,10 @@ function renderChapter2(ctx) {
 
       <h3>Cuidado com a leitura</h3>
       <p>Com pouca amostra, qualquer conclusão é <strong>direção</strong>, não certeza. A faixa do Glicko ("± X") mostra esse tamanho de erro. Em 6 a 12 meses, com mais jogos no histórico, dá pra falar com mais firmeza.</p>
+
+      <h3>Sistema fechado: o que isso significa</h3>
+      <p>O rating Glicko-2 de cada ${G.adversario} é estimado <strong>apenas pelas partidas dentro deste dataset</strong> — o universo do ${G.atleta}. Não usamos ranking CBT, ITF, pontos oficiais ou qualquer dado público externo como ponto de partida. ${G.gender === 'F' ? 'Adversárias' : 'Adversários'} ${G.gender === 'F' ? 'nunca antes vistas' : 'nunca antes vistos'} começam neutros (1500 ± 350) e o rating ${G.gender === 'F' ? 'delas' : 'deles'} só evolui conforme aparecem em jogos do ${G.atleta}.</p>
+      <p>Na prática: probabilidades de vitória (ex: "tinha 28,8% de chance antes do jogo") refletem o que <strong>nosso modelo</strong> sabia naquele momento — não o que o mundo todo sabia. Se ${G.gender === 'F' ? 'uma adversária' : 'um adversário'} chegou de fora com histórico forte que a gente desconhece, ${G.gender === 'F' ? 'ela' : 'ele'} começa subestimad${G.gender === 'F' ? 'a' : 'o'} e só corrige depois de algumas partidas. É um modelo internamente consistente, mas confinado ao recorte.</p>
 
       <p class="footnote">Quem quiser entender exatamente como cada conta é feita, o Anexo C tem o detalhe técnico.</p>
     </section>

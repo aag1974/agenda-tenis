@@ -299,7 +299,7 @@ export function topPositiveNarrative(analysis) {
     title: `MAIOR CONQUISTA — ${formatBrDate(s.date)}`,
     line1: `vs ${s.opponentName} · ${s.tournamentName.slice(0, 60)}`,
     score: s.scoreRaw,
-    paragraph: `A chance estimada antes do jogo era de só ${String(s.expectedWinPct).replace('.', ',')}% — foi seu resultado mais inesperado do período. Vitórias contra adversárias estatisticamente acima de você são as que mais fazem o seu nível subir.`,
+    paragraph: `A chance estimada antes do jogo era de só ${String(s.expectedWinPct).replace('.', ',')}% — foi seu resultado mais inesperado do período. Vitórias contra adversárias estatisticamente acima de você são as que mais fazem o seu nível subir. *(A probabilidade é calculada usando apenas partidas deste dataset — ver Cap. 2 "Sistema fechado".)*`,
   };
 }
 
@@ -311,7 +311,7 @@ export function topNegativeNarrative(analysis) {
     title: `FRUSTRAÇÃO — ${formatBrDate(s.date)}`,
     line1: `vs ${s.opponentName} · ${s.tournamentName.slice(0, 60)}`,
     score: s.scoreRaw,
-    paragraph: `Você era favorita (${String(s.expectedWinPct).replace('.', ',')}% de chance de vitória) — foi o resultado mais inesperado pro lado ruim. Vale lembrar do jogo: o que mudou no decisivo?`,
+    paragraph: `Você era favorita (${String(s.expectedWinPct).replace('.', ',')}% de chance de vitória) — foi o resultado mais inesperado pro lado ruim. Vale lembrar do jogo: o que mudou no decisivo? *(A probabilidade é calculada usando apenas partidas deste dataset — ver Cap. 2 "Sistema fechado".)*`,
   };
 }
 
