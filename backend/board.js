@@ -118,6 +118,12 @@ export function computeAutoColumn(t, notes = {}) {
   const inscribed = t.isAnnaInscribed || notes.manualInscribed;
   const confirmed = t.isAnnaConfirmada;
 
+  // Torneio em andamento + atleta não inscrita = perdeu o bonde, vai pra
+  // arquivo. Sem isso, o card fica em "Inscrições Abertas" mesmo já tendo
+  // começado — confunde o cliente que pode achar que ainda dá pra jogar.
+  // Regra acordada com user 2026-05-17.
+  if (status === 'ongoing' && !inscribed) return 'historico';
+
   // Boleto vencido com inscrição — perdeu o prazo
   if (inscribed && pp?.dueDate) {
     const [d, m, y] = pp.dueDate.split('/').map(Number);

@@ -1558,6 +1558,9 @@ function autoColumnFor(t) {
   const inscribed = t.isAnnaInscribed || notes.manualInscribed;
   const confirmed = t.isAnnaConfirmada;
 
+  // Torneio em andamento + não inscrita = vai pra arquivo (espelha backend/board.js)
+  if (status === 'ongoing' && !inscribed) return 'historico';
+
   if (inscribed && pp?.dueDate) {
     const d = brToDate(pp.dueDate);
     if (d && d < startOfToday()) return 'torneios';
