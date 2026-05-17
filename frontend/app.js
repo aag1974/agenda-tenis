@@ -186,10 +186,21 @@ const state = {
       return v && typeof v === 'object' ? v : {};
     } catch { return {}; }
   })(),
-  hiddenColumns: (() => {
+  // Filtro positivo: vazio = todas visíveis. Com IDs = só essas visíveis.
+  // Migra de 'hiddenColumns' (semântica antiga, negativa) se existir.
+  visibleColumns: (() => {
     try {
-      const v = JSON.parse(localStorage.getItem('hiddenColumns') || '[]');
-      return Array.isArray(v) ? v : [];
+      const v = JSON.parse(localStorage.getItem('visibleColumns') || 'null');
+      if (Array.isArray(v)) return v;
+      // Migração: converte hiddenColumns no complemento.
+      const oldHidden = JSON.parse(localStorage.getItem('hiddenColumns') || '[]');
+      if (Array.isArray(oldHidden) && oldHidden.length > 0) {
+        const KANBAN_COLUMN_IDS_LIST = ['vou_jogar','inscricoes_abertas','pagar_inscricao','confirmado','viagem_comprada','torneios','historico'];
+        const visible = KANBAN_COLUMN_IDS_LIST.filter(id => !oldHidden.includes(id));
+        localStorage.setItem('visibleColumns', JSON.stringify(visible));
+        return visible;
+      }
+      return [];
     } catch { return []; }
   })(),
 };
@@ -875,16 +886,30 @@ function renderAuth() {
     root.innerHTML = '';
     const inputs = {};
     const field = (key, label, type, placeholder, icon) => {
+      const isPassword = type === 'password';
       const inp = el('input', {
         type, placeholder,
-        class: 'w-full bg-white/95 border border-white/30 text-slate-900 rounded-lg pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
+        class: `w-full bg-white/95 border border-white/30 text-slate-900 rounded-lg pl-10 ${isPassword ? 'pr-10' : 'pr-3'} py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400`,
       });
       inputs[key] = inp;
+      // Botão "olho" pra senha: alterna type=password ↔ type=text.
+      const toggleBtn = isPassword ? el('button', {
+        type: 'button',
+        class: 'absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-slate-500 hover:text-slate-700 rounded',
+        title: 'Mostrar/ocultar senha',
+        onClick: (e) => {
+          e.preventDefault();
+          const showing = inp.type === 'text';
+          inp.type = showing ? 'password' : 'text';
+          e.currentTarget.textContent = showing ? '👁' : '🙈';
+        },
+      }, '👁') : null;
       return el('label', { class: 'block' },
         el('div', { class: 'block text-xs text-white/80 mb-1.5 font-medium' }, label),
         el('div', { class: 'relative' },
           el('span', { class: 'absolute left-3 top-1/2 -translate-y-1/2 text-base text-slate-400 pointer-events-none' }, icon),
           inp,
+          toggleBtn,
         ),
       );
     };
@@ -1590,14 +1615,17 @@ function renderKanban(allTournaments) {
   const tournaments = applyHeaderFilters(allTournaments);
 
   // Resolve a ordem das colunas conforme preferência do usuário, depois
-  // filtra as ocultas (cards continuam agrupados pra reaparecer ao mostrar)
+  // filtra pelo visibleColumns (vazio = todas; com IDs = só esses).
+  // Cards continuam agrupados pra reaparecer ao mostrar a coluna.
   const allOrderedColumns = state.columnOrder
     ? [
         ...state.columnOrder.map(id => KANBAN_COLUMNS.find(c => c.id === id)).filter(Boolean),
         ...KANBAN_COLUMNS.filter(c => !state.columnOrder.includes(c.id)),
       ]
     : KANBAN_COLUMNS;
-  const orderedColumns = allOrderedColumns.filter(c => !state.hiddenColumns.includes(c.id));
+  const orderedColumns = state.visibleColumns?.length
+    ? allOrderedColumns.filter(c => state.visibleColumns.includes(c.id))
+    : allOrderedColumns;
 
   // Group by column
   const cardsByColumn = Object.fromEntries(KANBAN_COLUMN_IDS.map(c => [c, []]));
@@ -2822,7 +2850,7 @@ function renderFiltersButton() {
     (state.filterUFs?.length || 0) +
     (state.filterYears?.length || 0) +
     (state.filterTiers?.length || 0) +
-    (state.hiddenColumns?.length || 0);
+    (state.visibleColumns?.length || 0);
   // Funil (Heroicons FunnelIcon, mini 20x20) — 3 linhas formando triângulo
   // invertido, ícone universal de filtro.
   const funnel = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -3600,27 +3628,26 @@ function openFiltersPanel() {
     },
   );
 
-  // Colunas — toggle visibilidade. Mesmo layout de pills dos demais filtros.
-  // Pill ativa = coluna visível. "Todos" ativo quando nenhuma coluna está
-  // oculta (semântica oposta dos filtros — onde "Todos" = sem filtro).
+  // Colunas — filtro positivo igual UF/Ano/Chave.
+  // "Todos" ativo = sem filtro = todas visíveis (visibleColumns vazio).
+  // Clicar numa coluna isola ela; clicar em outra adiciona à seleção.
   const columnsSection = section(
     'Colunas',
     KANBAN_COLUMNS.map(col => ({
       value: col.id,
       label: `${col.icon} ${state.columnLabels[col.id] || col.label}`,
     })),
-    (id) => !state.hiddenColumns.includes(id),
+    (id) => state.visibleColumns.includes(id),
     (id) => {
-      const idx = state.hiddenColumns.indexOf(id);
-      if (idx >= 0) state.hiddenColumns.splice(idx, 1);
-      else state.hiddenColumns.push(id);
-      localStorage.setItem('hiddenColumns', JSON.stringify(state.hiddenColumns));
+      const idx = state.visibleColumns.indexOf(id);
+      if (idx >= 0) state.visibleColumns.splice(idx, 1);
+      else state.visibleColumns.push(id);
+      localStorage.setItem('visibleColumns', JSON.stringify(state.visibleColumns));
     },
     () => {
-      state.hiddenColumns = [];
-      localStorage.setItem('hiddenColumns', '[]');
+      state.visibleColumns = [];
+      localStorage.setItem('visibleColumns', '[]');
     },
-    { isAllActive: () => state.hiddenColumns.length === 0 },
   );
 
   const header = el('div', { class: 'sticky top-0 bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between' },
