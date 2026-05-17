@@ -39,21 +39,18 @@
     #root { position: relative; z-index: 1; }
 
     /* Header com cor sólida navy-dark cobre o status bar do iPhone.
-       Fallback fixo de 54px (status bar + notch ≈ 50-54px em iPhones
-       modernos) caso env() retorne 0 (Safari iOS modo browser não-PWA).
-       Em desktop, env() resolve pra 0 e fica padding-top normal. */
+       Usa !important pra sobrescrever py-3 do Tailwind (que carrega
+       depois deste style via CDN). */
     .scout-header {
       background: var(--ti-navy-dark) !important;
-      padding-top: max(env(safe-area-inset-top), 12px);
+      padding-top: max(env(safe-area-inset-top), 12px) !important;
       padding-left:  max(1rem, env(safe-area-inset-left));
       padding-right: max(1rem, env(safe-area-inset-right));
     }
-    /* Em mobile o Safari iOS retorna env(safe-area-inset-top) só DEPOIS
-       de scroll — abre com 0 e empurra com 54+ depois. Pra evitar que
-       o header abra sobreposto, usa fixo 54px (cobre o status bar de
-       qualquer iPhone moderno, incluindo Dynamic Island). */
+    /* Mobile: Safari iOS retorna env(safe-area-inset-top)=0 antes do
+       primeiro scroll. Fallback fixo 54px cobre status bar + notch. */
     @media (max-width: 768px) {
-      .scout-header { padding-top: 54px; }
+      .scout-header { padding-top: 54px !important; }
     }
   </style>
 </head>
