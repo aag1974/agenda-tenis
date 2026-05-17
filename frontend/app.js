@@ -2783,7 +2783,11 @@ function renderHeaderEl() {
 
   return el('header', { id: 'header-bar', class: 'flex items-center gap-2 sm:gap-3 pb-2 border-b border-slate-200 relative' },
     logo,
-    profile && el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchWrap),
+    // searchWrap só existe quando há profile; sem ele perdemos o flex-1
+    // que empurrava o avatar pra direita. Spacer garante o alinhamento.
+    profile
+      ? el('div', { class: 'flex-1 min-w-0 max-w-md mx-auto' }, searchWrap)
+      : el('div', { class: 'flex-1' }),
     el('div', { class: 'flex items-center gap-1 sm:gap-2 shrink-0' },
       viewerBadge,
       memberStack,
