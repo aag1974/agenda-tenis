@@ -296,7 +296,8 @@ function renderLogin() {
   const field = (key, label, type, placeholder, autocomplete) => {
     inputs[key] = el('input', {
       type, placeholder, autocomplete,
-      class: 'w-full bg-white/95 text-slate-900 border border-white/30 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
+      // text-base (16px) pra evitar zoom automático do iOS Safari.
+      class: 'w-full bg-white/95 text-slate-900 border border-white/30 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400',
     });
     inputs[key].addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
     return el('label', { class: 'block' },
