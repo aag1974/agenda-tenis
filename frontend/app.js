@@ -5510,7 +5510,13 @@ async function openScoutTrackModal(profileId, matchId) {
 
     // Header
     const isLive = !m.finished;
-    container.appendChild(el('div', { class: 'px-4 py-3 border-b border-white/10 flex items-center gap-3' },
+    // Padding-top respeita safe-area do iOS quando o app é instalado
+    // como PWA standalone (apple-mobile-web-app-status-bar-style: black-translucent
+    // deixa o status bar transparente sobre o conteúdo).
+    container.appendChild(el('div', {
+      class: 'px-4 py-3 border-b border-white/10 flex items-center gap-3',
+      style: 'padding-top: max(env(safe-area-inset-top), 0.75rem);',
+    },
       el('button', { class: 'text-white/70 hover:text-white text-xl', onClick: close }, '←'),
       el('div', { class: 'flex-1 min-w-0' },
         el('div', { class: 'flex items-center gap-2' },
