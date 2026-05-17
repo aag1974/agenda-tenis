@@ -3533,11 +3533,15 @@ function openFiltersPanel() {
 
   // options aceita string[] (compat) OU {value, label}[] (pra labels que
   // diferem do valor — ex: coluna com ícone + nome customizado).
-  const section = (label, options, isSelected, onTogglePill, onClearAll) => {
+  // opts.isAllActive sobrepõe a lógica padrão (default: ninguém selecionado
+  // = todos ativo). Útil pra Colunas, onde "Todos" = todas visíveis (oposto).
+  const section = (label, options, isSelected, onTogglePill, onClearAll, opts = {}) => {
     if (!options.length) return null;
     const valueOf = (o) => (o && typeof o === 'object') ? o.value : o;
     const labelOf = (o) => (o && typeof o === 'object') ? o.label : o;
-    const allActive = !options.some(o => isSelected(valueOf(o)));
+    const allActive = typeof opts.isAllActive === 'function'
+      ? opts.isAllActive()
+      : !options.some(o => isSelected(valueOf(o)));
     return el('div', { class: 'px-4 py-3 border-b border-slate-100 last:border-b-0' },
       el('div', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2' }, label),
       el('div', { class: 'flex flex-wrap gap-1.5' },
@@ -3597,7 +3601,8 @@ function openFiltersPanel() {
   );
 
   // Colunas — toggle visibilidade. Mesmo layout de pills dos demais filtros.
-  // Pill ativa = coluna visível. Pill inativa = coluna oculta.
+  // Pill ativa = coluna visível. "Todos" ativo quando nenhuma coluna está
+  // oculta (semântica oposta dos filtros — onde "Todos" = sem filtro).
   const columnsSection = section(
     'Colunas',
     KANBAN_COLUMNS.map(col => ({
@@ -3615,6 +3620,7 @@ function openFiltersPanel() {
       state.hiddenColumns = [];
       localStorage.setItem('hiddenColumns', '[]');
     },
+    { isAllActive: () => state.hiddenColumns.length === 0 },
   );
 
   const header = el('div', { class: 'sticky top-0 bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between' },
