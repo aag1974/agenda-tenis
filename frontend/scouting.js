@@ -959,9 +959,9 @@ async function renderStart(token) {
         headerBox.appendChild(el('div', { class: 'text-xs text-white/60' }, inv.atletaCategoria));
       }
       headerBox.appendChild(el('button', {
-        class: 'text-[11px] text-white/50 hover:text-white/80 underline underline-offset-2 mt-1',
+        class: 'text-xs text-cyan-300 hover:text-cyan-200 font-semibold underline underline-offset-2 mt-2 px-3 py-1',
         onClick: clearAdv,
-      }, 'trocar adversário'));
+      }, '↻ Trocar adversário'));
     } else {
       headerBox.appendChild(el('h2', { class: 'text-lg font-semibold' }, shortName(inv.atletaNome)));
       if (inv.atletaCategoria) {
