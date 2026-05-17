@@ -769,16 +769,38 @@ export function getCatalogueBase() {
   // versionado, materializamos a partir dele na primeira leitura — assim
   // o cliente já vê o painel completo no primeiro sync, sem precisar
   // esperar a enumeração reconstruir do zero.
-  if (!existsSync(CATALOGUE_BASE_FILE) && existsSync(CATALOGUE_BASE_SEED)) {
+  //
+  // Também migra schemaVersion: se o seed tem versão > arquivo local,
+  // re-materializa (caso típico: bump de schema preserva os IDs novos
+  // que o sync incremental adicionou desde a última materialização).
+  if (existsSync(CATALOGUE_BASE_SEED)) {
     try {
       const seed = readJson(CATALOGUE_BASE_SEED, null);
-      if (seed) writeJson(CATALOGUE_BASE_FILE, seed);
+      const local = existsSync(CATALOGUE_BASE_FILE)
+        ? readJson(CATALOGUE_BASE_FILE, null)
+        : null;
+      const seedVer = seed?.schemaVersion ?? 0;
+      const localVer = local?.schemaVersion ?? 0;
+      if (!local) {
+        writeJson(CATALOGUE_BASE_FILE, seed);
+      } else if (seedVer > localVer) {
+        // Migração: começa do seed (campos novos) mas preserva IDs
+        // descobertos via sync incremental que estejam além do seed.
+        const merged = { ...seed, tournaments: { ...seed.tournaments } };
+        for (const [id, t] of Object.entries(local.tournaments || {})) {
+          if (parseInt(id, 10) > (seed.lastIdSeen || 0)) {
+            merged.tournaments[id] = t;
+          }
+        }
+        merged.lastIdSeen = Math.max(seed.lastIdSeen || 0, local.lastIdSeen || 0);
+        writeJson(CATALOGUE_BASE_FILE, merged);
+      }
     } catch (err) {
       console.error('[catalogue] seed load failed:', err.message);
     }
   }
   return readJson(CATALOGUE_BASE_FILE, {
-    schemaVersion: 1,
+    schemaVersion: 2,
     lastIdSeen: 0,
     fetchedAt: null,
     count: 0,
