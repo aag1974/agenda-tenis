@@ -324,7 +324,7 @@ function renderLogin() {
           el('span', { class: 'text-white/80 ml-2 font-light italic' }, 'Scouting'),
         ),
       ),
-      el('p', { class: 'text-sm text-white/70 mt-1' }, 'Marque pontos em tempo real, compartilhe com a família'),
+      el('p', { class: 'text-sm text-white/70 mt-1' }, 'Scout ao vivo. Estatística estruturada. Análise sob demanda.'),
     ),
     card,
   ));
