@@ -33,7 +33,12 @@ async function api(method, path, body) {
 }
 
 function clear() { $root.innerHTML = ''; }
-function mount(node) { clear(); $root.appendChild(node); }
+function mount(node) {
+  clear();
+  $root.appendChild(node);
+  // Toda troca de tela começa no topo (login → dashboard, etc).
+  window.scrollTo(0, 0);
+}
 
 // Tokens significativos do nome — pula preposições ("de", "da", "do", "dos",
 // "das", "e", "di", "du"). "Rafael de Veríssimo Queiroz" → ["Rafael",
