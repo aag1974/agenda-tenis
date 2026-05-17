@@ -25,27 +25,28 @@
       min-height: 100vh; min-height: 100dvh;
       margin: 0;
     }
-    /* Bolas de tênis flutuando ao fundo (marca d'água) */
-    body.scout-bg::before, body.scout-bg::after {
-      content: '🎾';
-      position: fixed;
-      font-size: 12rem;
-      opacity: 0.05;
-      pointer-events: none;
-      z-index: 0;
+    /* Bolas de tênis decorativas só em desktop — em mobile estavam
+       interferindo no layout/stacking. */
+    @media (min-width: 769px) {
+      body.scout-bg::before, body.scout-bg::after {
+        content: '🎾';
+        position: fixed;
+        font-size: 12rem;
+        opacity: 0.05;
+        pointer-events: none;
+        z-index: 0;
+      }
+      body.scout-bg::before { top: -2rem; left: -2rem; transform: rotate(-15deg); }
+      body.scout-bg::after  { bottom: -2rem; right: -2rem; transform: rotate(20deg); }
     }
-    body.scout-bg::before { top: -2rem; left: -2rem; transform: rotate(-15deg); }
-    body.scout-bg::after  { bottom: -2rem; right: -2rem; transform: rotate(20deg); }
-    #root { position: relative; z-index: 1; }
 
-    /* Header navy-dark com safe-area top. Position sticky pra ficar
-       no topo durante scroll. iOS Safari (detectado via JS): usa fixo
-       50px porque env() retorna 0 antes do scroll. */
+    /* Header navy-dark com safe-area top. Sem sticky/fixed pra não
+       criar stacking context que conflita com o resto. Header rola
+       junto com a página (normal flow).
+       iOS Safari: env() retorna 0 antes do primeiro scroll, então
+       usa fixo 50px detectado via JS. */
     .scout-header {
       background: var(--ti-navy-dark) !important;
-      position: sticky;
-      top: 0;
-      z-index: 10;
       padding-top: max(env(safe-area-inset-top), 12px) !important;
       padding-left:  max(1rem, env(safe-area-inset-left));
       padding-right: max(1rem, env(safe-area-inset-right));
