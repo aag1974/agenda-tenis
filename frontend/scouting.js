@@ -687,13 +687,11 @@ async function renderDashboard() {
     }
   }
 
-  const main = el('main', { class: 'scout-root-main' },
-    el('div', { class: 'max-w-2xl mx-auto px-4 py-4' },
-      createCard,
-      invitesContainer,
-    ),
+  const main = el('main', { class: 'max-w-2xl mx-auto px-4 py-4' },
+    createCard,
+    invitesContainer,
   );
-  mount(el('div', { class: 'h-full flex flex-col' }, header, main));
+  mount(el('div', null, header, main));
   renderInvitesList();
 
   // Auto-refresh: a cada 5s checa se houve mudança nos invites/matches

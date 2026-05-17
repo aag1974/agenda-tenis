@@ -19,18 +19,12 @@
     /* HTML inteiro tem o navy-dark — qualquer área que o body não cobre
        (status bar do iOS no Safari, elastic overscroll) fica nessa cor. */
     html { background-color: var(--ti-navy-dark); }
-    /* Mesma abordagem que kanban-mode do TF: fullscreen com overflow
-       hidden no body, scroll interno no main. iOS Safari respeita melhor
-       safe-area assim. */
     body.scout-bg {
       background: linear-gradient(135deg, var(--ti-navy-dark) 0%, var(--ti-navy) 50%, var(--ti-board-bg) 100%);
       color: #f1f5f9;
-      height: 100vh; height: 100dvh;
-      overflow: hidden;
+      min-height: 100vh; min-height: 100dvh;
       margin: 0;
     }
-    #root { height: 100%; display: flex; flex-direction: column; }
-    .scout-root-main { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
     /* Bolas de tênis flutuando ao fundo (marca d'água) */
     body.scout-bg::before, body.scout-bg::after {
       content: '🎾';
@@ -44,19 +38,31 @@
     body.scout-bg::after  { bottom: -2rem; right: -2rem; transform: rotate(20deg); }
     #root { position: relative; z-index: 1; }
 
-    /* Header navy-dark com safe-area top. flex:none pra não esticar.
-       !important pra sobrescrever py-3 do Tailwind. */
+    /* Header navy-dark com safe-area top. Position sticky pra ficar
+       no topo durante scroll. iOS Safari (detectado via JS): usa fixo
+       50px porque env() retorna 0 antes do scroll. */
     .scout-header {
       background: var(--ti-navy-dark) !important;
-      flex: none;
+      position: sticky;
+      top: 0;
+      z-index: 10;
       padding-top: max(env(safe-area-inset-top), 12px) !important;
       padding-left:  max(1rem, env(safe-area-inset-left));
       padding-right: max(1rem, env(safe-area-inset-right));
     }
+    html.is-ios .scout-header { padding-top: 50px !important; }
   </style>
 </head>
 <body class="scout-bg">
   <div id="root" class="min-h-screen"></div>
+  <script>
+    // Detecta iOS pra aplicar padding-top fixo no header
+    // (env(safe-area-inset-top) é 0 no Safari iOS antes do primeiro scroll).
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.userAgent.includes('Mac') && 'ontouchend' in document)) {
+      document.documentElement.classList.add('is-ios');
+    }
+  </script>
   <script type="module" src="/scouting.js"></script>
 </body>
 </html>
