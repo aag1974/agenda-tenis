@@ -31,13 +31,11 @@
        Forçar 16px em todos os campos elimina o comportamento. */
     input, textarea, select { font-size: 16px !important; }
     /* Página pública de scout/live: respeita safe-area do iPhone.
-       Mobile usa fallback fixo (44px = status bar do iPhone com notch).
-       Safari iOS reporta env(safe-area-inset-top)=0 antes do primeiro scroll. */
+       Em mobile, usa o maior entre env() (Safari iOS reporta ~44px depois
+       do scroll) e 12px (mínimo para o header não colar no status bar
+       quando env() == 0 antes do primeiro scroll). */
     body.public-match-mode {
-      padding-top: env(safe-area-inset-top);
-    }
-    @media (max-width: 768px) {
-      body.public-match-mode { padding-top: 44px; }
+      padding-top: max(env(safe-area-inset-top), 12px);
     }
     /* Kanban-mode body bg overrides default — board area mais claro que o header */
     body.kanban-mode {
