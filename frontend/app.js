@@ -2616,9 +2616,10 @@ async function renderPushOptIn() {
       el('button', {
         class: 'text-[11px] text-emerald-700 hover:underline',
         onClick: async () => {
-          if (!confirm('Desativar notificações neste dispositivo?')) return;
+          const ok = await confirmDialog('Desativar notificações neste dispositivo?', { okLabel: 'Desativar', danger: true });
+          if (!ok) return;
           try { await unsubscribeFromPush(); openAlertsListModal(); }
-          catch (err) { alert('Erro: ' + err.message); }
+          catch (err) { await infoDialog('Não foi possível desativar: ' + err.message); }
         },
       }, 'Desativar'),
     );
@@ -2639,7 +2640,21 @@ async function renderPushOptIn() {
           openAlertsListModal();
         } catch (err) {
           btn.disabled = false; btn.textContent = 'Ativar notificações neste dispositivo';
-          alert('Não foi possível ativar: ' + err.message);
+          // Mensagem mais útil quando o navegador bloqueou — orienta a
+          // reativar manualmente nas configurações do site.
+          if (/permiss[ãa]o\s*negada|denied|NotAllowedError/i.test(err.message)) {
+            await infoDialog(
+              'O navegador bloqueou a permissão de notificações pra esse site.\n\n' +
+              'Pra reativar:\n' +
+              '1. Clique no cadeado / ícone à esquerda da URL\n' +
+              '2. Abra "Configurações do site"\n' +
+              '3. Em "Notificações", escolha Permitir\n' +
+              '4. Recarregue a página e tente novamente',
+              { title: 'Permissão bloqueada', okLabel: 'Entendi' }
+            );
+          } else {
+            await infoDialog('Não foi possível ativar: ' + err.message);
+          }
         }
       },
     }, 'Ativar notificações neste dispositivo'),
@@ -5480,6 +5495,30 @@ function errorDialog(message, { title = 'Erro' } = {}) {
   });
 }
 
+// Modal só-aviso (sem cancelar) — pra substituir alert() nativo nos casos
+// onde só precisamos comunicar algo ao usuário.
+function infoDialog(message, opts = {}) {
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    root.style.cssText = 'position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); padding:1rem;';
+    const card = el('div', { class: 'bg-white text-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden' });
+    if (opts.title) card.appendChild(el('div', { class: 'px-5 pt-4 pb-1 text-base font-semibold' }, opts.title));
+    card.appendChild(el('div', { class: 'px-5 py-3 text-sm text-slate-700 whitespace-pre-wrap' }, message));
+    const actions = el('div', { class: 'flex justify-end px-5 pb-4' });
+    const okBtn = el('button', { class: 'px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold' }, opts.okLabel || 'OK');
+    actions.appendChild(okBtn);
+    card.appendChild(actions);
+    root.appendChild(card);
+    const close = () => { document.removeEventListener('keydown', onKey); root.remove(); resolve(); };
+    const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Enter') close(); };
+    okBtn.onclick = close;
+    root.onclick = (e) => { if (e.target === root) close(); };
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(root);
+    setTimeout(() => okBtn.focus(), 50);
+  });
+}
+
 function confirmDialog(message, opts = {}) {
   return new Promise((resolve) => {
     const root = document.createElement('div');
@@ -7132,7 +7171,10 @@ function blobToDataUrl(blob) {
 function receiptsBlock(t) {
   const profileId = state.activeProfileId;
   const wrapper = el('section', null,
-    el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2' }, '📂 Comprovantes'),
+    el('div', { class: 'flex items-baseline gap-2 mb-2' },
+      el('h3', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-600' }, '📂 Comprovantes'),
+      el('span', { class: 'text-[11px] text-slate-500 italic' }, 'guardados por 30 dias'),
+    ),
     el('div', { class: 'rounded border border-slate-200 bg-white p-3 space-y-3', id: `receipts-${t.id}` },
       el('div', { class: 'text-xs text-slate-500' }, 'Carregando...'),
     ),
