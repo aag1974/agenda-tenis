@@ -589,9 +589,16 @@ export async function enumerateTournamentsByIds({ startId, count, concurrency = 
             name: det.name,
             city: det.city,
             state: det.state,
+            cityState: det.cityState,
             startDate: det.startDate,
             endDate: det.endDate,
             tiers: det.tiers || [],
+            // Campos de inscrição — essenciais pra getRegistrationWindowState
+            // classificar 'open' / 'closed' / 'pending'. Sem eles, o auto-label
+            // "Verificar no TI" aparece em todo torneio que veio da base.
+            registrationOpensAt: det.registrationOpensAt || null,
+            registrationDeadline: det.registrationDeadline || null,
+            cancelDeadline: det.cancelDeadline || null,
             kind: classifyKind(det.name),
             audience: classifyAudience(det.name, det.tiers),
             ok: true,

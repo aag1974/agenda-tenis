@@ -75,9 +75,13 @@ for (let i = 0; i < ids.length; i += CONCURRENCY) {
         name: r.name,
         city: r.city,
         state: r.state,
+        cityState: r.cityState,
         startDate: r.startDate,
         endDate: r.endDate,
         tiers: r.tiers || [],
+        registrationOpensAt: r.registrationOpensAt || null,
+        registrationDeadline: r.registrationDeadline || null,
+        cancelDeadline: r.cancelDeadline || null,
       };
       hits++;
     } else {

@@ -154,11 +154,16 @@ export async function syncProfile(profileId) {
           name: t.name,
           city: t.city,
           state: t.state,
-          cityState: t.city && t.state ? `${t.city}-${t.state}` : null,
+          cityState: t.cityState || (t.city && t.state ? `${t.city}-${t.state}` : null),
           startDate: t.startDate,
           endDate: t.endDate,
           tier: (t.tiers && t.tiers[0]) || null,
           tiers: t.tiers || [],
+          // Campos de inscrição da base — essenciais pra getRegistrationWindowState
+          // classificar a janela corretamente em vez de cair em 'unknown'.
+          registrationOpensAt: t.registrationOpensAt || null,
+          registrationDeadline: t.registrationDeadline || null,
+          cancelDeadline: t.cancelDeadline || null,
           tiCategoryId: 2,
           isAnnaInscribed: false,
           pendingPayment: null,
