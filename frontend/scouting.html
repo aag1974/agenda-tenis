@@ -39,18 +39,14 @@
     #root { position: relative; z-index: 1; }
 
     /* Header com cor sólida navy-dark cobre o status bar do iPhone.
-       Usa !important pra sobrescrever py-3 do Tailwind (que carrega
-       depois deste style via CDN). */
+       Usa max(env(), 12px): em iOS o env() reporta o tamanho real do
+       status bar (~44px), fora dele fica 12px mínimo pra não colar no topo.
+       !important pra sobrescrever py-3 do Tailwind (carrega via CDN). */
     .scout-header {
       background: var(--ti-navy-dark) !important;
       padding-top: max(env(safe-area-inset-top), 12px) !important;
       padding-left:  max(1rem, env(safe-area-inset-left));
       padding-right: max(1rem, env(safe-area-inset-right));
-    }
-    /* Mobile: Safari iOS retorna env(safe-area-inset-top)=0 antes do
-       primeiro scroll. Fallback fixo 54px cobre status bar + notch. */
-    @media (max-width: 768px) {
-      .scout-header { padding-top: 54px !important; }
     }
   </style>
 </head>
