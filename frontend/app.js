@@ -6923,9 +6923,56 @@ function switchProfile(id) {
 }
 
 function renderEmptyState() {
-  return el('div', { class: 'mt-12 text-center max-w-md mx-auto' },
-    el('p', { class: 'text-slate-600 mb-4' }, 'Nenhum perfil cadastrado. Adicione o atleta para começar.'),
-    el('button', { class: 'rounded bg-emerald-600 text-white px-4 py-2 hover:bg-emerald-700', onClick: () => openProfileForm() }, 'Adicionar atleta'),
+  // Aplica o tema do board pra tela não ficar com fundo "rachado" entre o
+  // header claro e o html navy-dark exposto. Mostra as colunas vazias por
+  // trás do card de boas-vindas pra dar contexto visual do que vem a
+  // seguir — princípio de previsibilidade.
+  document.body.classList.add('kanban-mode');
+
+  const ghostColumn = (col) => el('div', {
+    class: 'flex-shrink-0 w-56 sm:w-64 rounded-lg bg-white/[0.04] border border-white/[0.06] flex flex-col',
+    style: 'scroll-snap-align: start;',
+  },
+    el('div', { class: 'flex items-center gap-2 px-3 py-2 border-b border-white/[0.06]' },
+      el('span', { class: 'text-sm' }, col.icon),
+      el('span', { class: 'text-sm font-medium text-white/60 truncate' }, col.label),
+    ),
+    el('div', { class: 'flex-1 min-h-[8rem] flex items-center justify-center px-3 py-6 text-xs text-white/30' },
+      'vazio'),
+  );
+
+  const ghostBoard = el('div', {
+    class: 'flex gap-2 sm:gap-3 overflow-x-auto pb-2 px-1 opacity-50 pointer-events-none',
+    style: 'scroll-snap-type: x proximity;',
+  },
+    ...KANBAN_COLUMNS.map(ghostColumn),
+  );
+
+  const card = el('div', {
+    class: 'relative mx-auto max-w-md text-center bg-white/[0.06] backdrop-blur border border-white/[0.12] rounded-xl px-6 py-8 shadow-2xl',
+  },
+    el('div', { class: 'text-4xl mb-3' }, '🎾'),
+    el('h2', { class: 'text-xl font-semibold text-white mb-2' }, 'Bem-vindo ao Tennis Flow'),
+    el('p', { class: 'text-sm text-white/70 mb-5 leading-relaxed' },
+      'Cadastre o atleta para começar a acompanhar o calendário de torneios do Tênis Integrado.'),
+    el('button', {
+      class: 'inline-flex items-center gap-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-medium px-5 py-2.5 transition',
+      onClick: () => openProfileForm(),
+    }, '+ Adicionar atleta'),
+  );
+
+  // Layout: board fantasma como fundo, card centralizado sobreposto.
+  return el('div', {
+    id: 'kanban-board',
+    class: 'mt-4 flex-1 min-h-0 flex flex-col relative',
+  },
+    ghostBoard,
+    el('div', {
+      class: 'absolute inset-x-0 top-1/4 px-4 flex items-start justify-center',
+      style: 'pointer-events: none;',
+    },
+      el('div', { style: 'pointer-events: auto;' }, card),
+    ),
   );
 }
 
