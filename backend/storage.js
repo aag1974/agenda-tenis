@@ -11,6 +11,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = join(__dirname, '..', 'data');
 const PROFILES_FILE = join(DATA_DIR, 'profiles.json');
 const SECRET_FILE = join(DATA_DIR, '.secret');
+const CATALOGUE_BASE_FILE = join(DATA_DIR, 'ti-catalogo-base.json');
+const CATALOGUE_BASE_SEED = join(__dirname, 'seed', 'ti-catalogo-base.seed.json');
 
 mkdirSync(DATA_DIR, { recursive: true });
 
@@ -71,6 +73,7 @@ export function listProfiles({ userId = null, householdId = null } = {}) {
       tiEmail: p.tiEmail,
       originAirport: p.originAirport,
       originCity: p.originCity,
+      scope: p.scope || structuredClone(DEFAULT_SCOPE),
       calendarToken: p.calendarToken || null,
       createdAt: p.createdAt,
     }));
@@ -99,6 +102,11 @@ export function getProfileCredentials(id) {
   return { email: p.tiEmail, password: decrypt(p.tiPassword) };
 }
 
+export const DEFAULT_SCOPE = {
+  cbt: { tiers: ['GA+', 'GA', 'G1+', 'G1', 'G2', 'G3'] },
+  federacoes_uf: [],
+};
+
 export function createProfile({ userId, householdId, athleteName, tiEmail, tiPassword, originAirport, originCity }) {
   const all = readJson(PROFILES_FILE, []);
   const id = randomBytes(8).toString('hex');
@@ -112,6 +120,7 @@ export function createProfile({ userId, householdId, athleteName, tiEmail, tiPas
     tiPassword: encrypt(tiPassword),
     originAirport: originAirport || 'BSB',
     originCity: originCity || 'Brasília',
+    scope: structuredClone(DEFAULT_SCOPE),
     calendarToken,
     createdAt: new Date().toISOString(),
   };
@@ -146,8 +155,57 @@ export function updateProfile(id, updates) {
   if (updates.tiPassword !== undefined) p.tiPassword = encrypt(updates.tiPassword);
   if (updates.originAirport !== undefined) p.originAirport = updates.originAirport;
   if (updates.originCity !== undefined) p.originCity = updates.originCity;
+  if (updates.scope !== undefined) p.scope = normalizeScope(updates.scope);
   writeJson(PROFILES_FILE, all);
   return { ...p, tiPassword: undefined };
+}
+
+// UFs do Brasil (federações estaduais de tênis cobrem essas).
+const VALID_UFS = new Set([
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
+]);
+
+// Garante shape e valores válidos no scope antes de persistir.
+// Reseta pra default se vier malformado.
+function normalizeScope(s) {
+  if (!s || typeof s !== 'object') return structuredClone(DEFAULT_SCOPE);
+  const validTiers = new Set(['GA+', 'GA', 'G1+', 'G1', 'G2', 'G3']);
+  const tiers = Array.isArray(s.cbt?.tiers)
+    ? [...new Set(s.cbt.tiers.filter(t => validTiers.has(t)))]
+    : [...DEFAULT_SCOPE.cbt.tiers];
+  const ufs = Array.isArray(s.federacoes_uf)
+    ? [...new Set(s.federacoes_uf
+        .filter(u => typeof u === 'string')
+        .map(u => u.toUpperCase())
+        .filter(u => VALID_UFS.has(u)))]
+    : [];
+  return { cbt: { tiers }, federacoes_uf: ufs };
+}
+
+// Aplica default de escopo a partir do synced.json: usa a UF do
+// rankingRegional do atleta pra preencher federacoes_uf. Não sobrescreve
+// se o cliente já configurou (federacoes_uf não vazio).
+export function applyDefaultScopeIfNeeded(profileId, syncedData) {
+  const all = readJson(PROFILES_FILE, []);
+  const idx = all.findIndex(p => p.id === profileId);
+  if (idx < 0) return null;
+  const p = all[idx];
+  // Backfill: profile sem scope ganha o default.
+  if (!p.scope) p.scope = structuredClone(DEFAULT_SCOPE);
+  // Se federacoes_uf está vazio (cliente ainda não escolheu),
+  // tenta autopopular com a UF detectada no perfil TI.
+  if (p.scope.federacoes_uf.length === 0) {
+    const uf = syncedData?.athlete?.rankingRegional?.uf
+      || syncedData?.athlete?.about?.split('/')[1]
+      || null;
+    if (uf && uf.length === 2) {
+      p.scope.federacoes_uf = [uf.toUpperCase()];
+    }
+  }
+  writeJson(PROFILES_FILE, all);
+  return p.scope;
 }
 
 export function deleteProfile(id) {
@@ -699,4 +757,57 @@ export function saveAnnouncement(data) {
 
 export function clearAnnouncement() {
   if (existsSync(ANNOUNCEMENT_FILE)) unlinkSync(ANNOUNCEMENT_FILE);
+}
+
+// ===== Base do catálogo TI (compartilhada entre todos os profiles) =====
+// Esquema { schemaVersion, lastIdSeen, fetchedAt, count, tournaments: { id → {...} } }
+// Listagem agregada do TI esconde histórico, então construímos a base via
+// enumeração de IDs (one-shot inicial + incremental a cada sync).
+
+export function getCatalogueBase() {
+  // Em prod, data/ti-catalogo-base.json começa vazio. Se existe o seed
+  // versionado, materializamos a partir dele na primeira leitura — assim
+  // o cliente já vê o painel completo no primeiro sync, sem precisar
+  // esperar a enumeração reconstruir do zero.
+  if (!existsSync(CATALOGUE_BASE_FILE) && existsSync(CATALOGUE_BASE_SEED)) {
+    try {
+      const seed = readJson(CATALOGUE_BASE_SEED, null);
+      if (seed) writeJson(CATALOGUE_BASE_FILE, seed);
+    } catch (err) {
+      console.error('[catalogue] seed load failed:', err.message);
+    }
+  }
+  return readJson(CATALOGUE_BASE_FILE, {
+    schemaVersion: 1,
+    lastIdSeen: 0,
+    fetchedAt: null,
+    count: 0,
+    tournaments: {},
+  });
+}
+
+export function saveCatalogueBase(base) {
+  writeJson(CATALOGUE_BASE_FILE, {
+    ...base,
+    count: Object.keys(base.tournaments || {}).length,
+    fetchedAt: new Date().toISOString(),
+  });
+}
+
+// Mescla novos torneios na base e atualiza lastIdSeen.
+// `newItems` é array de { id, name, city, state, startDate, endDate, tiers, kind, audience }.
+export function mergeIntoCatalogue(newItems) {
+  if (!Array.isArray(newItems) || newItems.length === 0) return getCatalogueBase();
+  const base = getCatalogueBase();
+  let maxId = base.lastIdSeen || 0;
+  for (const t of newItems) {
+    if (!t || !t.id) continue;
+    base.tournaments[String(t.id)] = t;
+    const n = parseInt(t.id, 10);
+    if (Number.isFinite(n) && n > maxId) maxId = n;
+  }
+  base.lastIdSeen = maxId;
+  saveCatalogueBase(base);
+  // Re-lê pra garantir que retornamos o estado pós-save (com count atualizado)
+  return getCatalogueBase();
 }

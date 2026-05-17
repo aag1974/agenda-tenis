@@ -1,9 +1,10 @@
-import { syncAthlete } from './scraper.js';
+import { syncAthlete, enumerateTournamentsByIds, tournamentPassesScope } from './scraper.js';
 import {
   listProfiles, getProfile, getProfileCredentials, getSyncedData, saveSyncedData,
   updateProfile, getNotes, updateTournamentNotes, addAutoActivity,
   getAlertRules, addAlertEvents, getAlertEvents,
-  getMatchesData, upsertYearMatches,
+  getMatchesData, upsertYearMatches, applyDefaultScopeIfNeeded,
+  getCatalogueBase, mergeIntoCatalogue, DEFAULT_SCOPE,
 } from './storage.js';
 import { cleanupExpiredReceipts } from './receipts.js';
 import { diffTournamentForActivity } from './board.js';
@@ -14,8 +15,57 @@ import { listHouseholdMembers } from './household.js';
 const inFlight = new Map(); // profileId -> Promise
 const status = new Map();   // profileId -> { state, startedAt, finishedAt, error }
 
+// Lock global pro refresh da base (cross-profile). Múltiplos profiles
+// sincronizando ao mesmo tempo compartilham o mesmo refresh — não vale
+// duplicar o trabalho.
+let catalogueRefreshInFlight = null;
+
 export function getSyncStatus(profileId) {
   return status.get(profileId) || { state: 'idle' };
+}
+
+// Refresh incremental da base do catálogo TI. Pega o lastIdSeen e
+// varre os próximos `chunk` IDs. Como TI publica ~5 IDs/dia, com sync
+// diário 100-200 IDs cobrem com folga. Idempotente — se já rodou
+// recentemente (< 1h), pula. Compartilhado entre profiles via lock.
+const REFRESH_MIN_INTERVAL_MS = 60 * 60 * 1000; // 1h
+const REFRESH_CHUNK = 150;
+
+export async function refreshCatalogueIncremental({ force = false } = {}) {
+  if (catalogueRefreshInFlight) return catalogueRefreshInFlight;
+
+  const base = getCatalogueBase();
+  if (!force && base.fetchedAt) {
+    const last = new Date(base.fetchedAt).getTime();
+    if (Date.now() - last < REFRESH_MIN_INTERVAL_MS) {
+      return { skipped: true, reason: 'recent', lastIdSeen: base.lastIdSeen, count: base.count };
+    }
+  }
+
+  catalogueRefreshInFlight = (async () => {
+    const t0 = Date.now();
+    const startId = (base.lastIdSeen || 0) + 1;
+    try {
+      const news = await enumerateTournamentsByIds({
+        startId,
+        count: REFRESH_CHUNK,
+        concurrency: 4,
+      });
+      if (news.length > 0) mergeIntoCatalogue(news);
+      const updated = getCatalogueBase();
+      console.log(`[catalogue] +${news.length} novos (range ${startId}..${startId + REFRESH_CHUNK - 1}) em ${((Date.now() - t0) / 1000).toFixed(1)}s · count=${updated.count}`);
+      return { added: news.length, lastIdSeen: updated.lastIdSeen, count: updated.count };
+    } catch (err) {
+      console.error('[catalogue refresh]', err.message);
+      return { error: err.message };
+    }
+  })();
+
+  try {
+    return await catalogueRefreshInFlight;
+  } finally {
+    catalogueRefreshInFlight = null;
+  }
 }
 
 export async function syncProfile(profileId) {
@@ -28,6 +78,14 @@ export async function syncProfile(profileId) {
 
   const promise = (async () => {
     try {
+      // Refresh incremental da base TI compartilhada em paralelo. Idempotente
+      // (skipa se rodou na última hora). Não bloqueia o fluxo principal,
+      // apenas garante que a base esteja em dia pra Etapa 4.
+      const cataloguePromise = refreshCatalogueIncremental().catch(err => {
+        console.error(`[sync ${profileId}] catalogue refresh falhou:`, err.message);
+        return { error: err.message };
+      });
+
       const notes = getNotes(profileId);
       const starredIds = Object.entries(notes)
         .filter(([, n]) => n?.selected || n?.manualInscribed)
@@ -53,6 +111,85 @@ export async function syncProfile(profileId) {
         yearsToScrape,
         previousTournaments: previous?.tournaments || null,
       });
+
+      // ───── Etapa 4: aplica filtro de escopo + enriquece com base TI ─────
+      // Aguarda o refresh incremental terminar (rodou em paralelo no início).
+      // Sem isso, a base pode estar desatualizada.
+      await cataloguePromise;
+
+      const profileNow = getProfile(profileId);
+      const scope = profileNow?.scope || DEFAULT_SCOPE;
+      const base = getCatalogueBase();
+
+      // IDs já presentes no result vindo do scraper (catálogo TI + IDs da
+      // Anna). Esses são "oficialmente juvenis" porque vieram via fetchCatalog.
+      const scrapedIds = new Set((result.tournaments || []).map(t => String(t.id)));
+      // IDs com tiCategoryId === 2 (oficialmente Juvenil pelo TI)
+      const tiOfficialIds = new Set(
+        (result.tournaments || [])
+          .filter(t => t.tiCategoryId === 2)
+          .map(t => String(t.id))
+      );
+
+      // Adiciona torneios da base que passam o filtro de escopo e ainda
+      // não estão no result. Estes ganham campos consistentes pra UI.
+      // Limita à janela "passado recente até futuro" pra não poluir o
+      // painel com histórico antigo que a Anna não jogou.
+      const todayMs = Date.now();
+      const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+      const parseTournamentDate = (s) => {
+        if (!s) return null;
+        const [d, m, y] = s.split('/').map(Number);
+        if (!d || !m || !y) return null;
+        return new Date(y, m - 1, d).getTime();
+      };
+      const extras = [];
+      for (const t of Object.values(base.tournaments || {})) {
+        if (scrapedIds.has(String(t.id))) continue;
+        if (!tournamentPassesScope(t, scope, { tiOfficialIds })) continue;
+        const ts = parseTournamentDate(t.startDate);
+        if (ts && todayMs - ts > NINETY_DAYS_MS) continue;
+        extras.push({
+          id: String(t.id),
+          name: t.name,
+          city: t.city,
+          state: t.state,
+          cityState: t.city && t.state ? `${t.city}-${t.state}` : null,
+          startDate: t.startDate,
+          endDate: t.endDate,
+          tier: (t.tiers && t.tiers[0]) || null,
+          tiers: t.tiers || [],
+          tiCategoryId: 2,
+          isAnnaInscribed: false,
+          pendingPayment: null,
+          url: `https://www.tenisintegrado.com.br/torneio_painel_info/index/${t.id}`,
+          fromCatalogueBase: true,
+        });
+      }
+      if (extras.length) {
+        result.tournaments = [...(result.tournaments || []), ...extras];
+        console.log(`[scope ${profileId}] +${extras.length} torneios da base TI passaram o filtro de escopo`);
+      }
+
+      // Aplica filtro sobre TODO o conjunto — mas preserva sempre torneios
+      // "intocáveis" (Anna inscrita, com nota/estrela, com pagamento pendente).
+      const intocavelIds = new Set([
+        ...starredIds,
+        ...(result.tournaments || [])
+          .filter(t => t.isAnnaInscribed || t.pendingPayment)
+          .map(t => String(t.id)),
+      ]);
+      const beforeCount = result.tournaments?.length || 0;
+      result.tournaments = (result.tournaments || []).filter(t => {
+        if (intocavelIds.has(String(t.id))) return true;
+        return tournamentPassesScope(t, scope, { tiOfficialIds });
+      });
+      const removedByScope = beforeCount - result.tournaments.length;
+      if (removedByScope > 0) {
+        console.log(`[scope ${profileId}] −${removedByScope} torneios fora do escopo (wildcards, fora de tiers/UFs)`);
+      }
+      // ───── Fim da Etapa 4 ─────
+
       // Preserve firstSeenAt per tournament across syncs (used by "🆕" badge for 7 days)
       const firstSeenById = new Map(
         (previous?.tournaments || []).map(t => [t.id, t.firstSeenAt]).filter(([_, ts]) => ts)
@@ -179,6 +316,15 @@ export async function syncProfile(profileId) {
       }
 
       saveSyncedData(profileId, result);
+
+      // Backfill do scope a partir do TI: profiles antigos ganham scope default,
+      // e federacoes_uf vazio é autopopulado com a UF detectada no rankingRegional.
+      // Idempotente: só aplica se o cliente ainda não configurou.
+      try {
+        applyDefaultScopeIfNeeded(profileId, result);
+      } catch (err) {
+        console.error(`[scope ${profileId}]`, err.message);
+      }
 
       // Persist matches por ano (idempotente — re-scrape do mesmo ano substitui)
       if (result.matchesByYear) {

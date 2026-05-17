@@ -504,6 +504,111 @@ export async function fetchTournamentDetails(tournamentId) {
   return parseDetailsHtml(html, tournamentId, url);
 }
 
+// Classifica o tipo de torneio (tênis / beach / padel / etc.) e o público
+// (juvenil / adulto / desconhecido) a partir do nome. Heurísticas leves —
+// usadas pra filtrar a base sem ter que parsear cada torneio individualmente.
+const _ACC_MAP = 'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ'.split('');
+const _ACC_REPL = 'AAAAAEEEEIIIIOOOOOUUUUC';
+function stripAccents(s) {
+  if (!s) return '';
+  let out = s.toUpperCase();
+  for (let i = 0; i < _ACC_MAP.length; i++) {
+    out = out.replaceAll(_ACC_MAP[i], _ACC_REPL[i]);
+  }
+  return out;
+}
+
+function classifyKind(name) {
+  const n = stripAccents(name);
+  if (n.includes('BEACH')) return 'beach';
+  if (n.includes('PADEL')) return 'padel';
+  if (n.includes('PICKLEBALL')) return 'pickleball';
+  if (n.includes('VETERANO') || n.includes('SENIOR')) return 'senior';
+  if (n.includes('PROFISSIONAL') || n.trim().endsWith(' PROF')) return 'profissional';
+  return 'tennis';
+}
+
+const _JUVENIL_HINTS = ['JUVENIL', 'INFANTOJUVENIL', 'INFANTO-JUVENIL', 'INFANTO JUVENIL', 'KIDS', 'JUNIOR'];
+const _CAT_AGE_RE = /\b(8|10|12|14|16|18)[FMSDA]\b/i;
+function classifyAudience(name, tiers) {
+  if (Array.isArray(tiers) && tiers.length > 0) return 'juvenil';
+  const n = stripAccents(name);
+  if (_JUVENIL_HINTS.some(h => n.includes(h))) return 'juvenil';
+  if (_CAT_AGE_RE.test(name)) return 'juvenil';
+  return 'unknown';
+}
+
+// Wild Cards e pré-classificatórios ITF aparecem catalogados como juvenil
+// pelo TI mas não são torneios "do calendário" — pra Anna, viram ruído.
+// Regex usado pelo filtro de escopo da Etapa 4.
+const WILDCARD_RE = /^Solicita[çc][ãa]o de Wild ?Card|Pr[éeê]\s*Qualifying/i;
+export function isWildcardTournament(name) {
+  return WILDCARD_RE.test((name || '').trim());
+}
+
+// Aplica o filtro de escopo do profile sobre um torneio. Retorna true
+// se o torneio deve aparecer no painel.
+//   - tier ∈ scope.cbt.tiers                           → CBT regular
+//   - sem tier + cat=2 oficial + não-wildcard          → CBT especial (Brasileirão, Banana Bowl…)
+//   - sem tier + audience juvenil + state ∈ fed UFs    → regional
+// `opts.tiOfficialIds` é Set de IDs que estão na listagem TI cat=2.
+export function tournamentPassesScope(t, scope, opts = {}) {
+  if (!t || !scope) return false;
+  if (t.kind && t.kind !== 'tennis') return false;
+  const cbtTiers = new Set(scope.cbt?.tiers || []);
+  const fedUfs = new Set(scope.federacoes_uf || []);
+  const tiers = t.tiers || (t.tier ? [t.tier] : []);
+  const primary = tiers[0] || null;
+  if (primary && cbtTiers.has(primary)) return true;
+  if (!tiers.length) {
+    const tid = String(t.id);
+    const officialJuv = opts.tiOfficialIds?.has(tid);
+    if (officialJuv && !isWildcardTournament(t.name)) return true;
+    if (t.audience === 'juvenil' && fedUfs.has(t.state)) return true;
+  }
+  return false;
+}
+
+// Enumera N IDs a partir de startId, retornando torneios válidos (com nome
+// e datas). Concorrência baixa pra não pressionar o TI. Sem login — endpoint
+// /torneio_painel_info/index/X é público.
+export async function enumerateTournamentsByIds({ startId, count, concurrency = 4, retry = 1 }) {
+  const ids = Array.from({ length: count }, (_, i) => startId + i);
+  const results = [];
+  for (let i = 0; i < ids.length; i += concurrency) {
+    const batch = ids.slice(i, i + concurrency);
+    const settled = await Promise.all(batch.map(async (id) => {
+      for (let attempt = 0; attempt <= retry; attempt++) {
+        try {
+          const det = await fetchTournamentDetails(id);
+          if (!det || !det.name || /^sistema\s+t[eê]nis/i.test(det.name)) {
+            return { id, ok: false };
+          }
+          return {
+            id: String(id),
+            name: det.name,
+            city: det.city,
+            state: det.state,
+            startDate: det.startDate,
+            endDate: det.endDate,
+            tiers: det.tiers || [],
+            kind: classifyKind(det.name),
+            audience: classifyAudience(det.name, det.tiers),
+            ok: true,
+          };
+        } catch {
+          if (attempt < retry) await new Promise(r => setTimeout(r, 300));
+        }
+      }
+      return { id, ok: false };
+    }));
+    results.push(...settled);
+    // Pequeno delay entre lotes pra ser educado com o TI
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return results.filter(r => r.ok);
+}
+
 function parseDetailsHtml(html, id, url) {
   const $ = cheerio.load(html);
   const titleEl = $('.tournament-title').first();
