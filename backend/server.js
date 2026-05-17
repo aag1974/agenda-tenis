@@ -1957,6 +1957,42 @@ app.post('/api/profiles/:id/live-matches/:matchId/points', requireAuth, requireE
 });
 
 // Desfaz último ponto
+// Owner: finaliza match com placar manual (perdeu o scouter ou jogo
+// terminou normal mas sem ter sido marcado ponto a ponto).
+// Body { sets: [{a, o}, ...] }
+app.post('/api/profiles/:id/live-matches/:matchId/finalize', requireAuth, requireEditor, ensureOwnedProfile, (req, res) => {
+  const { sets } = req.body || {};
+  if (!Array.isArray(sets) || !sets.length) {
+    return res.status(400).json({ error: 'sets (array de {a,o}) obrigatório' });
+  }
+  const m = getLiveMatch(req.params.id, req.params.matchId);
+  if (!m) return res.status(404).json({ error: 'Match não encontrado' });
+  if (m.finished) return res.status(400).json({ error: 'Match já encerrado' });
+  const cleaned = [];
+  let setsA = 0, setsO = 0;
+  for (const s of sets) {
+    const a = parseInt(s?.a, 10);
+    const o = parseInt(s?.o, 10);
+    if (!Number.isFinite(a) || !Number.isFinite(o) || a < 0 || o < 0) {
+      return res.status(400).json({ error: 'cada set precisa de {a,o} numéricos ≥ 0' });
+    }
+    cleaned.push({ a, o, tiebreak: null, mode: 'normal' });
+    if (a > o) setsA++; else if (o > a) setsO++;
+  }
+  m.setsHistory = cleaned;
+  m.currentSet = { a: 0, o: 0, mode: 'normal' };
+  m.currentGame = { a: 0, o: 0, mode: 'normal' };
+  m.finished = true;
+  m.abandoned = false;
+  m.abandonedBy = null;
+  m.abandonReason = null;
+  m.winner = setsA > setsO ? 'a' : (setsO > setsA ? 'o' : null);
+  m.endedAt = new Date().toISOString();
+  m.finalizedManually = true;
+  saveLiveMatch(req.params.id, m);
+  res.json(attachScore(m));
+});
+
 // Owner: registra "game manual" pra winner. Mesma lógica do endpoint
 // público — só limpa currentGame e aplica pontos com stat 'manual_game'
 // até o game fechar.
@@ -2026,13 +2062,15 @@ app.patch('/api/profiles/:id/live-matches/:matchId', requireAuth, requireEditor,
     m.finished = true;
     m.abandoned = true;
     m.endedAt = new Date().toISOString();
-    const { abandonedBy, abandonReason } = req.body;
+    const { abandonedBy } = req.body;
     if (abandonedBy === 'a' || abandonedBy === 'o') {
       m.abandonedBy = abandonedBy;
       // Vencedor é o outro lado de quem abandonou.
       m.winner = abandonedBy === 'a' ? 'o' : 'a';
     }
-    m.abandonReason = abandonReason === 'wo' ? 'wo' : 'ret';
+    // Abandono via scout = sempre RET (alguém parou durante o jogo).
+    // W.O. não usa scout — invite é excluído antes do jogo.
+    m.abandonReason = 'ret';
   }
   saveLiveMatch(req.params.id, m);
   res.json(attachScore(m));
@@ -2115,13 +2153,11 @@ app.post('/api/scout/:token/notes', (req, res) => {
 });
 
 
-// Scouter público: encerra o match marcando abandono.
-// Body { side: 'a'|'o', reason: 'wo'|'ret' }
-//   - wo (Walkover): atleta não compareceu, NÃO houve jogo
-//   - ret (Retirement): atleta começou e parou (lesão/desistência)
-// Default reason='ret' pra retrocompat. Lado obrigatório.
+// Scouter público: encerra o match como RET (Retirement) — alguém parou
+// durante o jogo. W.O. (não comparecimento) não usa scout: se o atleta
+// não jogou, o invite é excluído pelo coach (não há scout pra encerrar).
 app.post('/api/scout/:token/abandon', (req, res) => {
-  const { side, reason } = req.body || {};
+  const { side } = req.body || {};
   const r = publicMatchByToken(req.params.token, 'scout');
   if (r.error) return res.status(404).json({ error: r.error });
   const { match, info } = r;
@@ -2129,8 +2165,7 @@ app.post('/api/scout/:token/abandon', (req, res) => {
   match.finished = true;
   match.abandoned = true;
   match.abandonedBy = side === 'a' || side === 'o' ? side : null;
-  match.abandonReason = reason === 'wo' ? 'wo' : 'ret';
-  // Vencedor é o outro lado (quem não abandonou).
+  match.abandonReason = 'ret';
   match.winner = match.abandonedBy === 'a' ? 'o' : (match.abandonedBy === 'o' ? 'a' : null);
   match.endedAt = new Date().toISOString();
   saveLiveMatch(info.profileId, match);

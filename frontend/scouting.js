@@ -575,9 +575,7 @@ async function renderDashboard() {
     for (const inv of invites) {
       const m = inv.match;
       // Status badge: abandono distingue W.O. (não compareceu) de Ret. (parou).
-      const finishedLabel = m && m.abandoned
-        ? (m.abandonReason === 'wo' ? 'W.O.' : 'RET')
-        : 'ENCERRADO';
+      const finishedLabel = m && m.abandoned ? 'RET' : 'ENCERRADO';
       const isLive = inv.matchId && m && !m.finished;
       const status = !inv.matchId
         ? { label: 'AGUARDANDO', cls: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' }

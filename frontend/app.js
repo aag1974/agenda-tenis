@@ -565,6 +565,15 @@ const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao registrar game manual');
     return r.json();
   },
+  async finalizeLiveMatch(profileId, matchId, sets) {
+    const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}/finalize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sets }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao finalizar match');
+    return r.json();
+  },
   async deleteLiveMatch(profileId, matchId) {
     const r = await fetch(`/api/profiles/${profileId}/live-matches/${matchId}`, { method: 'DELETE' });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erro ao deletar');
@@ -5021,7 +5030,8 @@ function scoutListItem(m, profileId, parentClose, isLive) {
   }, '🗑');
   deleteBtn.onclick = async (e) => {
     e.stopPropagation();
-    const summary = `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}${ctx ? ` · ${ctx}` : ''}`;
+    const [_sA, _sO] = dualShortName(m.athleteName, m.opponentName);
+    const summary = `${_sA} × ${_sO}${ctx ? ` · ${ctx}` : ''}`;
     if (!(await confirmDialog(`Excluir este scout?\n\n${summary}\n\nNão dá pra desfazer — pontos, stats e notas serão perdidos.`, { danger: true, okLabel: 'Excluir' }))) return;
     try {
       await api.deleteLiveMatch(profileId, m.id);
@@ -5032,11 +5042,12 @@ function scoutListItem(m, profileId, parentClose, isLive) {
     }
   };
 
+  const [_titleA, _titleO] = dualShortName(m.athleteName, m.opponentName);
   const wrap = el('div', { class: 'border border-slate-200 rounded-lg p-3 mt-2 cursor-pointer hover:bg-slate-50' });
   const head = el('div', {},
     el('div', { class: 'flex items-start justify-between gap-3 mb-1' },
       el('div', { class: 'min-w-0 flex-1' },
-        el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}`),
+        el('div', { class: 'text-sm font-semibold text-slate-900 truncate' }, `${_titleA} × ${_titleO}`),
         ctx && el('div', { class: 'text-[11px] text-slate-500 truncate' }, ctx),
       ),
       statusBadge,
@@ -5231,6 +5242,115 @@ function pickAbandonSide(athleteName, opponentName) {
   });
 }
 
+// Modal "Encerrar match" com 2 caminhos: placar final manual OU RET.
+// Retorna { kind: 'sets', sets: [{a,o}] } | { kind: 'ret', side: 'a'|'o' } | null.
+// Mesma estética visual do app (modal branco). Usado no owner E poderia ser
+// reaproveitado no scouter público no futuro.
+function pickFinalizeOrRet(athleteName, opponentName) {
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    let phase = 'choice'; // 'choice' | 'sets' | 'ret'
+    const cardWrap = el('div', { class: 'space-y-3' });
+    function done(result) { root.remove(); resolve(result); }
+    function renderPhase(p) {
+      phase = p;
+      cardWrap.innerHTML = '';
+      const back = el('button', {
+        class: 'w-full py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-700 underline',
+        onClick: () => renderPhase('choice'),
+      }, '← Voltar');
+      if (phase === 'choice') {
+        cardWrap.appendChild(el('div', { class: 'text-sm font-bold text-slate-800 text-center' }, 'Encerrar match'));
+        cardWrap.appendChild(el('div', { class: 'text-xs text-slate-500 text-center' }, 'Como o jogo terminou?'));
+        cardWrap.appendChild(el('div', { class: 'flex flex-col gap-2 mt-3' },
+          el('button', {
+            class: 'w-full py-3 rounded-xl text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-700',
+            onClick: () => renderPhase('sets'),
+          }, 'Marcar placar final'),
+          el('button', {
+            class: 'w-full py-3 rounded-xl text-sm font-bold text-white bg-amber-700 hover:bg-amber-800',
+            onClick: () => renderPhase('ret'),
+          }, 'Retirement (alguém parou)'),
+          el('button', {
+            class: 'w-full py-3 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 mt-1',
+            onClick: () => done(null),
+          }, 'Cancelar'),
+        ));
+      } else if (phase === 'sets') {
+        cardWrap.appendChild(el('div', { class: 'text-sm font-bold text-slate-800 text-center' }, 'Placar final'));
+        cardWrap.appendChild(el('div', { class: 'text-xs text-slate-500 text-center' }, 'Games por set. Deixe vazio o set que não houve.'));
+        const [shortA, shortB] = dualShortName(athleteName, opponentName);
+        const inputs = [];
+        function makeSetRow(idx) {
+          const inA = el('input', {
+            type: 'number', min: '0', max: '99', placeholder: '—',
+            class: 'w-16 text-center text-base font-bold bg-white text-slate-900 border border-slate-300 rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400',
+          });
+          const inO = el('input', {
+            type: 'number', min: '0', max: '99', placeholder: '—',
+            class: 'w-16 text-center text-base font-bold bg-white text-slate-900 border border-slate-300 rounded px-2 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400',
+          });
+          inputs.push({ a: inA, o: inO });
+          return el('div', { class: 'flex items-center justify-center gap-3' },
+            el('div', { class: 'text-[10px] uppercase tracking-wider text-slate-500 font-bold w-12 text-right' }, `Set ${idx + 1}`),
+            inA,
+            el('span', { class: 'text-slate-400' }, '·'),
+            inO,
+          );
+        }
+        cardWrap.appendChild(el('div', { class: 'space-y-2 my-2' },
+          el('div', { class: 'flex items-center justify-center gap-3 text-[10px] uppercase tracking-wider' },
+            el('div', { class: 'w-12' }),
+            el('div', { class: 'w-16 text-center text-cyan-700 font-bold truncate' }, shortA),
+            el('div', { class: 'opacity-0' }, '·'),
+            el('div', { class: 'w-16 text-center text-rose-700 font-bold truncate' }, shortB),
+          ),
+          makeSetRow(0),
+          makeSetRow(1),
+          makeSetRow(2),
+        ));
+        const errBox = el('div', { class: 'hidden text-xs text-rose-600 text-center' });
+        cardWrap.appendChild(errBox);
+        cardWrap.appendChild(el('button', {
+          class: 'w-full py-3 rounded-xl text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-700',
+          onClick: () => {
+            const sets = [];
+            for (const { a, o } of inputs) {
+              const va = a.value.trim(), vo = o.value.trim();
+              if (!va && !vo) continue;
+              if (!va || !vo) { errBox.textContent = 'Preencha os 2 lados do set ou deixe ambos vazios.'; errBox.classList.remove('hidden'); return; }
+              sets.push({ a: parseInt(va, 10), o: parseInt(vo, 10) });
+            }
+            if (!sets.length) { errBox.textContent = 'Informe ao menos 1 set.'; errBox.classList.remove('hidden'); return; }
+            done({ kind: 'sets', sets });
+          },
+        }, 'Salvar placar'));
+        cardWrap.appendChild(back);
+      } else if (phase === 'ret') {
+        const [shortA, shortB] = dualShortName(athleteName, opponentName);
+        cardWrap.appendChild(el('div', { class: 'text-sm font-bold text-slate-800 text-center' }, 'Quem parou?'));
+        cardWrap.appendChild(el('div', { class: 'text-xs text-slate-500 text-center' }, 'Encerra como RET (Retirement). O placar atual fica como resultado.'));
+        cardWrap.appendChild(el('div', { class: 'flex flex-col gap-2 mt-3' },
+          el('button', {
+            class: 'w-full py-3 rounded-xl text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-700',
+            onClick: () => done({ kind: 'ret', side: 'a' }),
+          }, shortA),
+          el('button', {
+            class: 'w-full py-3 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700',
+            onClick: () => done({ kind: 'ret', side: 'o' }),
+          }, shortB),
+          back,
+        ));
+      }
+    }
+    root.appendChild(el('div', { class: 'fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4', onClick: (e) => { if (e.currentTarget === e.target) done(null); } },
+      el('div', { class: 'bg-white rounded-2xl px-5 py-5 max-w-sm w-full shadow-2xl' }, cardWrap),
+    ));
+    renderPhase('choice');
+  });
+}
+
 // Modal "Quem venceu este game?" pra game manual (scouter perdeu o
 // scout dos pontos). Mesma estética do pickAbandonSide.
 function pickGameWinner(athleteName, opponentName) {
@@ -5397,10 +5517,10 @@ async function openScoutTrackModal(profileId, matchId) {
           isLive ? el('span', { class: 'inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse' }) : null,
           el('span', { class: `text-[10px] font-bold uppercase tracking-wider ${isLive ? 'text-red-400' : 'text-slate-400'}` },
             isLive ? 'Ao vivo' : (m.abandoned
-              ? `Ret. · ${m.abandonedBy === 'a' ? shortName(m.athleteName) : m.abandonedBy === 'o' ? shortName(m.opponentName) : '—'}`
+              ? `Ret. · ${m.abandonedBy === 'a' ? dualShortName(m.athleteName, m.opponentName)[0] : m.abandonedBy === 'o' ? dualShortName(m.athleteName, m.opponentName)[1] : '—'}`
               : 'Encerrado')),
         ),
-        el('div', { class: 'text-sm font-semibold truncate' }, `${shortName(m.athleteName)} vs ${shortName(m.opponentName)}`),
+        el('div', { class: 'text-sm font-semibold truncate' }, dualShortName(m.athleteName, m.opponentName).join(' × ')),
         m.tournamentName && m.tournamentName.length >= 4 && el('div', { class: 'text-[11px] text-cyan-200 truncate' }, m.tournamentName),
       ),
       // Match encerrado: botão visível de compartilhar no header (relatório).
@@ -5439,15 +5559,22 @@ async function openScoutTrackModal(profileId, matchId) {
         try {
           if (action === 'undo') m = await api.undoLivePoint(profileId, m.id);
           else if (action === 'share') return openScoutShareModal(profileId, m);
+          else if (action === 'game-manual') {
+            const winner = await pickGameWinner(m.athleteName, m.opponentName);
+            if (!winner) return;
+            m = await api.gameManualLiveMatch(profileId, m.id, winner);
+          }
           else if (action === 'abandon') {
-            const result = await pickAbandonSide(m.athleteName, m.opponentName);
+            const result = await pickFinalizeOrRet(m.athleteName, m.opponentName);
             if (!result) return;
-            await api.abandonLiveMatch(profileId, m.id, result.side, result.reason);
+            if (result.kind === 'sets') {
+              await api.finalizeLiveMatch(profileId, m.id, result.sets);
+            } else {
+              await api.abandonLiveMatch(profileId, m.id, result.side, 'ret');
+            }
             close();
             return;
           }
-          // 'game-manual' fica só pro público (scouter) por enquanto.
-          // Owner do TF ainda não tem o botão.
           render();
         } catch (err) { alert(err.message); }
       }));
@@ -5717,9 +5844,10 @@ function renderStatBtn(b, onPoint, onMarker) {
 function renderActions(m, profileId, onAction) {
   // profileId null = scouter público. Compartilhar fica só pro dono
   // (público já tem o link via dashboard do /scouting do coach).
-  // Game manual fica só pro público por enquanto.
   const isOwner = !!profileId;
-  const cols = isOwner ? 'grid-cols-3' : 'grid-cols-3';
+  // Owner: 4 colunas (undo, game-manual, share, encerrar)
+  // Público: 3 colunas (undo, game-manual, encerrar)
+  const cols = isOwner ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3';
   const wrap = el('div', { class: `px-3 mt-3 grid gap-2 ${cols}` });
   const undoBtn = el('button', {
     class: 'text-xs px-3 py-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold disabled:opacity-50',
@@ -5727,15 +5855,13 @@ function renderActions(m, profileId, onAction) {
   }, '↶ Desfazer último');
   if (!m.points || m.points.length === 0) undoBtn.disabled = true;
   wrap.appendChild(undoBtn);
-  if (!isOwner) {
-    // Game manual: scouter perdeu o scout do game e marca "game pra X"
-    // sem inventar pontos.
-    wrap.appendChild(el('button', {
-      class: 'text-xs px-3 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 text-amber-100 font-semibold',
-      title: 'Use quando perdeu o scout dos pontos do game',
-      onClick: () => onAction('game-manual'),
-    }, '⇥ Game manual'));
-  }
+  // Game manual: perdeu o scout do game e marca o vencedor sem
+  // inventar pontos. Disponível pra owner e scouter público.
+  wrap.appendChild(el('button', {
+    class: 'text-xs px-3 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 text-amber-100 font-semibold',
+    title: 'Use quando perdeu o scout dos pontos do game',
+    onClick: () => onAction('game-manual'),
+  }, '⇥ Game manual'));
   if (isOwner) {
     wrap.appendChild(el('button', {
       class: 'text-xs px-3 py-2.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 font-semibold',
