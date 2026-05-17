@@ -359,7 +359,10 @@ async function renderDashboard() {
         el('span', { class: 'text-white/80 ml-1.5 font-light italic text-base' }, 'Scouting'),
       ),
     ),
-    el('button', { class: 'text-xs text-white/60 hover:text-white', onClick: onLogout }, 'Sair'),
+    el('div', { class: 'flex items-center gap-3' },
+      el('a', { class: 'text-xs text-white/60 hover:text-white', href: '/scouting/manual', target: '_blank' }, 'Manual'),
+      el('button', { class: 'text-xs text-white/60 hover:text-white', onClick: onLogout }, 'Sair'),
+    ),
   );
 
   // ===== Bloco 1: Criar invite (search incremental) =====

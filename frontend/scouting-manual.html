@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tennis Flow Scouting — Manual</title>
+  <link rel="icon" href="/icon-192.svg" />
+  <style>
+    :root {
+      --navy: #0e3a4d;
+      --navy-dark: #0a2e3d;
+      --teal: #1f5b75;
+      --cyan: #22d3ee;
+      --cyan-deep: #00a3e0;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--slate-800);
+      background: var(--slate-50);
+      line-height: 1.55;
+    }
+    .page {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem 3rem;
+      background: white;
+    }
+    /* Capa */
+    .cover {
+      background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--teal) 100%);
+      color: white;
+      padding: 4rem 2rem 4rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before, .cover::after {
+      content: '🎾';
+      position: absolute;
+      font-size: 12rem;
+      opacity: 0.07;
+      pointer-events: none;
+    }
+    .cover::before { top: -2rem; left: -2rem; transform: rotate(-15deg); }
+    .cover::after { bottom: -3rem; right: -2rem; transform: rotate(20deg); }
+    .cover-logo {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+    .cover h1 {
+      font-size: 2.75rem;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+      font-weight: 800;
+    }
+    .cover h1 .accent { color: var(--cyan); }
+    .cover h1 .sub { display: block; font-size: 1.5rem; font-style: italic; font-weight: 300; opacity: 0.9; margin-top: 0.25rem; }
+    .cover .tagline {
+      font-size: 1.1rem;
+      opacity: 0.85;
+      margin: 1.5rem auto 0;
+      max-width: 560px;
+    }
+    .cover .pill {
+      display: inline-block;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      margin-top: 1.25rem;
+    }
+    /* Tipografia */
+    h2 {
+      font-size: 1.6rem;
+      color: var(--navy);
+      margin: 2.5rem 0 0.5rem;
+      letter-spacing: -0.01em;
+      page-break-after: avoid;
+    }
+    h2 .num {
+      display: inline-block;
+      width: 1.9rem; height: 1.9rem;
+      background: var(--cyan);
+      color: var(--navy);
+      border-radius: 50%;
+      text-align: center;
+      line-height: 1.9rem;
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin-right: 0.55rem;
+      vertical-align: middle;
+    }
+    h3 {
+      font-size: 1.1rem;
+      color: var(--navy);
+      margin: 1.5rem 0 0.5rem;
+      page-break-after: avoid;
+    }
+    p { margin: 0 0 0.85rem; }
+    .lead { font-size: 1.1rem; color: var(--slate-700); }
+    .muted { color: var(--slate-500); font-size: 0.9rem; }
+    strong { color: var(--navy); }
+    /* Fluxo de 3 passos */
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 0.5rem;
+      align-items: center;
+      margin: 1.5rem 0 2rem;
+      page-break-inside: avoid;
+    }
+    .flow-step {
+      background: white;
+      border: 2px solid var(--cyan);
+      border-radius: 16px;
+      padding: 1rem 0.75rem;
+      text-align: center;
+    }
+    .flow-step .step-icon {
+      font-size: 2.25rem; display: block; margin-bottom: 0.4rem;
+    }
+    .flow-step .step-title {
+      font-weight: 800; color: var(--navy); font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+    .flow-step .step-desc { font-size: 0.78rem; color: var(--slate-600); }
+    .flow-arrow { font-size: 1.5rem; color: var(--cyan); font-weight: bold; }
+    .flow-step.middle { background: var(--navy); color: white; border-color: var(--navy); }
+    .flow-step.middle .step-title { color: white; }
+    .flow-step.middle .step-desc { color: rgba(255,255,255,0.85); }
+    @media (max-width: 600px) {
+      .flow { grid-template-columns: 1fr; gap: 0.5rem; }
+      .flow-arrow { transform: rotate(90deg); justify-self: center; }
+    }
+    /* Steps numerados */
+    .steps {
+      counter-reset: step;
+      list-style: none; padding: 0; margin: 1.25rem 0;
+    }
+    .steps > li {
+      counter-increment: step;
+      position: relative;
+      padding: 0.85rem 1rem 0.85rem 3.25rem;
+      background: var(--slate-100);
+      border-radius: 10px;
+      margin-bottom: 0.6rem;
+      page-break-inside: avoid;
+    }
+    .steps > li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0.85rem; top: 0.75rem;
+      width: 1.75rem; height: 1.75rem;
+      background: var(--cyan);
+      color: var(--navy);
+      border-radius: 50%;
+      text-align: center;
+      line-height: 1.75rem;
+      font-weight: 800;
+    }
+    .steps > li strong { color: var(--navy); }
+    /* Cards grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.25rem 0; }
+    @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+    .card {
+      background: white;
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      page-break-inside: avoid;
+    }
+    .card .icon { font-size: 1.75rem; line-height: 1; margin-bottom: 0.5rem; display: block; }
+    .card .title { font-weight: 700; color: var(--navy); margin-bottom: 0.25rem; font-size: 0.95rem; }
+    .card .desc { font-size: 0.88rem; color: var(--slate-600); margin: 0; }
+    /* Badges fake (igual no app) */
+    .badge {
+      display: inline-block; padding: 0.15rem 0.6rem;
+      border-radius: 999px; font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 0.04em; vertical-align: middle;
+    }
+    .badge.aguardando { background: rgba(234,179,8,0.18); color: #b45309; border: 1px solid rgba(234,179,8,0.4); }
+    .badge.aovivo     { background: rgba(244,63,94,0.18); color: #be123c; border: 1px solid rgba(244,63,94,0.4); }
+    .badge.encerrado  { background: rgba(100,116,139,0.18); color: #475569; border: 1px solid rgba(100,116,139,0.4); }
+    .badge.ret        { background: rgba(245,158,11,0.18); color: #92400e; border: 1px solid rgba(245,158,11,0.4); }
+    /* Botões fake (visualmente parecidos com o app) */
+    .btn-fake {
+      display: inline-block; padding: 0.3rem 0.7rem;
+      border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+      color: white; vertical-align: middle;
+    }
+    .btn-fake.cyan { background: #0891b2; }
+    .btn-fake.emerald { background: #10b981; }
+    .btn-fake.purple { background: #9333ea; }
+    .btn-fake.rose { background: #e11d48; }
+    .btn-fake.slate { background: rgba(100,116,139,0.5); }
+    /* Quote / dica */
+    .quote {
+      border-left: 4px solid var(--cyan);
+      padding: 0.75rem 1.25rem;
+      background: var(--slate-100);
+      color: var(--slate-700);
+      margin: 1.5rem 0;
+      page-break-inside: avoid;
+      border-radius: 0 8px 8px 0;
+    }
+    .quote strong { color: var(--navy); }
+    /* Lista de stats */
+    .stat-list { list-style: none; padding: 0; margin: 1rem 0; }
+    .stat-list li {
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--slate-200);
+      page-break-inside: avoid;
+    }
+    .stat-list li:last-child { border-bottom: none; }
+    .stat-list .stat-name { font-weight: 700; color: var(--navy); }
+    .stat-list .stat-desc { font-size: 0.88rem; color: var(--slate-600); margin: 0.2rem 0 0; }
+    /* Footer */
+    .footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 2px solid var(--slate-200);
+      text-align: center;
+      color: var(--slate-500);
+      font-size: 0.85rem;
+    }
+    .footer .brand { font-weight: 800; color: var(--navy); font-size: 1rem; }
+    .footer .brand .f { color: var(--cyan-deep); }
+    .footer .brand .sub { font-style: italic; font-weight: 400; color: var(--slate-600); }
+    /* Print */
+    @media print {
+      body { background: white; }
+      .page, .cover { max-width: none; padding: 1.25rem 1.5rem; }
+      .cover { padding-top: 2rem; padding-bottom: 2.5rem; }
+      h2 { page-break-after: avoid; }
+      .card, .flow, .quote, .steps > li { page-break-inside: avoid; }
+      .section-break { page-break-before: always; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Capa -->
+  <div class="cover">
+    <span class="cover-logo">🎾</span>
+    <h1>Tennis<span class="accent">Flow</span><span class="sub">Scouting</span></h1>
+    <p class="tagline">Scout ao vivo. Estatística estruturada. Análise sob demanda.</p>
+    <div class="pill">Manual do coach</div>
+  </div>
+
+  <div class="page">
+    <p class="lead">
+      Este manual mostra como o coach usa o <strong>Tennis Flow Scouting</strong> para
+      coordenar a marcação de partidas de múltiplos atletas em um torneio,
+      delegar a marcação para outros atletas (scouters) e acompanhar os
+      resultados em tempo real.
+    </p>
+
+    <!-- Visão geral em 3 etapas -->
+    <h2><span class="num">1</span>Como funciona — em 3 etapas</h2>
+
+    <div class="flow">
+      <div class="flow-step">
+        <span class="step-icon">📝</span>
+        <div class="step-title">Coach cria a partida</div>
+        <div class="step-desc">Seleciona o atleta e gera um link</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step middle">
+        <span class="step-icon">📲</span>
+        <div class="step-title">Scouter marca</div>
+        <div class="step-desc">Recebe o link, marca pontos ao vivo</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <span class="step-icon">📊</span>
+        <div class="step-title">Coach acompanha</div>
+        <div class="step-desc">Vê placar, stats e relatório</div>
+      </div>
+    </div>
+
+    <p>
+      O <strong>coach</strong> tem login e gerencia tudo no dashboard.
+      O <strong>scouter</strong> é qualquer pessoa (outro atleta da equipe, um
+      assistente) que abre o link no celular e marca a partida — não precisa
+      de cadastro nem de senha.
+    </p>
+
+    <!-- 2. Login -->
+    <h2><span class="num">2</span>Login</h2>
+
+    <p>
+      Acesse <strong>tennis-flow.com.br/scouting</strong> no celular ou
+      computador. Use as credenciais que o Tennis Flow forneceu.
+    </p>
+
+    <div class="quote">
+      <strong>Dica:</strong> salve a senha no navegador na primeira vez —
+      próximos acessos são instantâneos. No celular, adicione à tela de
+      início para abrir como um aplicativo.
+    </div>
+
+    <!-- 3. Dashboard -->
+    <h2><span class="num">3</span>Dashboard</h2>
+
+    <p>
+      Após o login, o dashboard mostra duas áreas:
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <span class="icon">➕</span>
+        <div class="title">Nova partida</div>
+        <p class="desc">
+          Para criar uma nova partida: seleciona o atleta, opcionalmente o
+          adversário, e gera o link para o scouter.
+        </p>
+      </div>
+      <div class="card">
+        <span class="icon">📋</span>
+        <div class="title">Partidas</div>
+        <p class="desc">
+          Lista de todas as partidas criadas, com status atualizado
+          automaticamente (a cada 5 segundos).
+        </p>
+      </div>
+    </div>
+
+    <h3>Status das partidas</h3>
+    <ul class="stat-list">
+      <li>
+        <div><span class="badge aguardando">AGUARDANDO</span></div>
+        <p class="stat-desc">Link enviado, scouter ainda não abriu.</p>
+      </li>
+      <li>
+        <div><span class="badge aovivo">● AO VIVO</span></div>
+        <p class="stat-desc">Scouter está marcando pontos agora.</p>
+      </li>
+      <li>
+        <div><span class="badge encerrado">ENCERRADO</span></div>
+        <p class="stat-desc">Partida finalizada normalmente.</p>
+      </li>
+      <li>
+        <div><span class="badge ret">RET</span></div>
+        <p class="stat-desc">Partida encerrada por desistência (Retirement).</p>
+      </li>
+    </ul>
+
+    <!-- 4. Criar partida -->
+    <h2><span class="num">4</span>Criar uma nova partida</h2>
+
+    <ol class="steps">
+      <li>
+        <strong>Selecionar o atleta.</strong> Digite parte do nome no
+        campo Atleta. A lista filtra conforme você digita. Toque no nome
+        para selecionar.
+      </li>
+      <li>
+        <strong>Selecionar o adversário (opcional).</strong> O segundo
+        campo é opcional. Se preencher, a lista já vem filtrada pela
+        mesma categoria do atleta. Se deixar em branco, o scouter
+        completa antes de iniciar.
+      </li>
+      <li>
+        <strong>Nome fora da lista.</strong> Se o atleta não está
+        cadastrado, basta digitar o nome completo — ao apertar Enter ou
+        sair do campo, o nome é aceito como livre.
+      </li>
+      <li>
+        <strong>Gerar link pro scouter.</strong> Toque no botão. O
+        cartão da partida aparece na lista abaixo com status
+        <span class="badge aguardando">AGUARDANDO</span>.
+      </li>
+    </ol>
+
+    <!-- 5. Compartilhar link -->
+    <h2><span class="num">5</span>Mandar o link para o scouter</h2>
+
+    <p>
+      No cartão da partida, dois botões compartilham o link:
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <span class="icon">📋</span>
+        <div class="title"><span class="btn-fake cyan">Link scouter</span></div>
+        <p class="desc">
+          Copia o link para a área de transferência. Você pode colar em
+          qualquer mensageiro ou aplicativo.
+        </p>
+      </div>
+      <div class="card">
+        <span class="icon">💬</span>
+        <div class="title"><span class="btn-fake emerald">WhatsApp</span></div>
+        <p class="desc">
+          Abre o WhatsApp Web/App com o link e uma mensagem pronta.
+          Você escolhe o contato e envia.
+        </p>
+      </div>
+    </div>
+
+    <div class="quote">
+      <strong>Importante:</strong> o link só funciona uma vez. Quando o
+      scouter abre e clica em "Iniciar tracking", a partida fica
+      vinculada a ele. Para outra partida, gere um novo link.
+    </div>
+
+    <!-- 6. O que o scouter vê -->
+    <h2 class="section-break"><span class="num">6</span>O que o scouter vê</h2>
+
+    <p>
+      Ao abrir o link no celular, o scouter encontra uma tela de
+      configuração com:
+    </p>
+
+    <ul class="stat-list">
+      <li>
+        <span class="stat-name">Atleta pré-preenchido</span>
+        <p class="stat-desc">Nome que você selecionou — o scouter não pode mudar.</p>
+      </li>
+      <li>
+        <span class="stat-name">Adversário</span>
+        <p class="stat-desc">
+          Se você preencheu antes, já vem selecionado. Se não, o scouter
+          escolhe da lista (filtrada pela mesma categoria do atleta).
+        </p>
+      </li>
+      <li>
+        <span class="stat-name">Quem começa sacando</span>
+        <p class="stat-desc">Atleta ou adversário.</p>
+      </li>
+      <li>
+        <span class="stat-name">Formato</span>
+        <p class="stat-desc">
+          Melhor de 3, Melhor de 3 com super-TB no 3º set, 1 set + match TB,
+          ou Pro-set de 8 games.
+        </p>
+      </li>
+      <li>
+        <span class="stat-name">Vantagem</span>
+        <p class="stat-desc">Ad (regra normal) ou No Ad (no 40-40 o próximo ponto decide).</p>
+      </li>
+    </ul>
+
+    <p>
+      Após clicar em <strong>"▶ Iniciar tracking"</strong>, o scouter
+      começa a marcar pontos.
+    </p>
+
+    <!-- 7. Marcação -->
+    <h2><span class="num">7</span>Como o scouter marca os pontos</h2>
+
+    <p>
+      A tela é dividida em dois lados de cor:
+      <strong style="color:#0891b2">azul = atleta</strong>,
+      <strong style="color:#e11d48">vermelho = adversário</strong>.
+      Cada ponto é classificado pelo tipo de jogada:
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="title">Saque (do servidor da vez)</div>
+        <p class="desc">
+          Ace · Service Winner · 1st Serve Fault · Double Fault
+        </p>
+      </div>
+      <div class="card">
+        <div class="title">Devolução (de quem recebe)</div>
+        <p class="desc">
+          Return Winner · Return Error · Return in Play
+        </p>
+      </div>
+      <div class="card">
+        <div class="title">Bola em jogo</div>
+        <p class="desc">
+          Winner · Forced Error · Unforced Error
+        </p>
+      </div>
+      <div class="card">
+        <div class="title">Ações secundárias</div>
+        <p class="desc">
+          <span class="btn-fake slate">Desfazer último</span> ·
+          <span class="btn-fake slate">→ Game manual</span> ·
+          <span class="btn-fake rose">⏹ Encerrar</span>
+        </p>
+      </div>
+    </div>
+
+    <h3>Game manual</h3>
+    <p>
+      Se o scouter <strong>perdeu a marcação dos pontos de um game</strong>
+      (distração, atraso pra começar), ele usa <strong>"→ Game manual"</strong>
+      para marcar quem venceu o game sem precisar inventar pontos. O placar
+      é atualizado normalmente.
+    </p>
+
+    <!-- 8. Encerrar -->
+    <h2><span class="num">8</span>Encerrar uma partida</h2>
+
+    <p>A partida pode ser encerrada de três formas:</p>
+
+    <h3>Naturalmente (placar fecha)</h3>
+    <p>
+      Quando o atleta ou adversário fecha o resultado conforme o formato
+      escolhido (ex: 2 sets em melhor de 3). O sistema marca como
+      <span class="badge encerrado">ENCERRADO</span> automaticamente.
+    </p>
+
+    <h3>Retirement (alguém desistiu)</h3>
+    <p>
+      Se alguém parou de jogar durante a partida (lesão, problema físico),
+      o scouter clica em <span class="btn-fake rose">⏹ Encerrar</span> e
+      seleciona quem parou. A partida vai para
+      <span class="badge ret">RET</span> e o outro lado fica como vencedor.
+    </p>
+
+    <h3>Pelo coach (scouter sumiu)</h3>
+    <p>
+      Se o scouter parou de marcar mas a partida continuou, o coach pode
+      encerrar pelo dashboard. Toca em <span class="btn-fake rose">Encerrar</span>
+      no cartão da partida e escolhe entre:
+    </p>
+    <ul>
+      <li><strong>Marcar placar final</strong> — informa o placar dos sets manualmente.</li>
+      <li><strong>Retirement</strong> — indica quem parou.</li>
+    </ul>
+
+    <div class="quote">
+      <strong>W.O. (não compareceu).</strong> Se o atleta não jogou,
+      <strong>não use Encerrar</strong> — exclua a partida pelo botão
+      <span class="btn-fake slate">Excluir</span> no cartão. W.O. significa
+      que a partida não rolou; não tem placar para registrar.
+    </div>
+
+    <!-- 9. Acompanhar -->
+    <h2><span class="num">9</span>Acompanhar uma partida ao vivo</h2>
+
+    <p>
+      Enquanto o scouter marca, o coach vê o status atualizar
+      automaticamente no dashboard a cada 5 segundos (sem precisar dar
+      refresh). No cartão da partida AO VIVO, o botão
+      <span class="btn-fake purple">Acompanhar</span> abre uma tela em modo
+      somente leitura, mostrando:
+    </p>
+
+    <ul>
+      <li><strong>Placar em tempo real</strong> — sets, games, pontos.</li>
+      <li><strong>Stats acumuladas</strong> — Aces, Winners, Erros, etc.</li>
+      <li><strong>Momentum</strong> — gráfico mostrando o fluxo de pontos.</li>
+      <li><strong>Notas de performance</strong> — qualitativas, do scouter ou do coach.</li>
+    </ul>
+
+    <p>
+      O coach <strong>não marca pontos</strong> nessa tela — só o scouter
+      pode. Mas o coach pode adicionar notas (durante e depois do jogo).
+    </p>
+
+    <!-- 10. Stats -->
+    <h2><span class="num">10</span>O que as stats significam</h2>
+
+    <ul class="stat-list">
+      <li>
+        <span class="stat-name">Nota Técnica · 0-10</span>
+        <p class="stat-desc">
+          Indicador agregado calculado pelos winners, erros e eficiência
+          de saque. Quanto maior, melhor a performance técnica.
+        </p>
+      </li>
+      <li>
+        <span class="stat-name">1st Serve % / 1st Serve Pts Won</span>
+        <p class="stat-desc">
+          Percentual de primeiros saques que entraram e percentual de
+          pontos ganhos com o primeiro saque.
+        </p>
+      </li>
+      <li>
+        <span class="stat-name">2nd Serve Pts Won</span>
+        <p class="stat-desc">
+          Pontos ganhos quando o primeiro saque falhou.
+        </p>
+      </li>
+      <li>
+        <span class="stat-name">Break Points Won</span>
+        <p class="stat-desc">
+          Quebras de saque conquistadas dividido por chances criadas.
+          Ex: 3/8 = 3 quebras em 8 oportunidades.
+        </p>
+      </li>
+      <li>
+        <span class="stat-name">Winners / Unforced Errors</span>
+        <p class="stat-desc">
+          Pontos fechados em bola boa (winner) vs erros não-forçados
+          (decisões ruins, bolas fáceis perdidas).
+        </p>
+      </li>
+    </ul>
+
+    <!-- 11. Notas de performance -->
+    <h2><span class="num">11</span>Notas de performance</h2>
+
+    <p>
+      A qualquer momento durante o jogo, o scouter pode adicionar
+      observações que os números não capturam — uma percepção tática,
+      um sinal emocional, um padrão técnico. As notas ficam vinculadas
+      ao placar do momento.
+    </p>
+
+    <p>Cada nota tem uma categoria opcional:</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="title" style="color:#0891b2">Técnico</div>
+        <p class="desc">Saque, devolução, forehand, backhand, voleio, etc.</p>
+      </div>
+      <div class="card">
+        <div class="title" style="color:#9333ea">Tático</div>
+        <p class="desc">Posicionamento, escolha de bola, padrão de jogo.</p>
+      </div>
+      <div class="card">
+        <div class="title" style="color:#10b981">Físico</div>
+        <p class="desc">Cansaço, lesão, hidratação, ritmo.</p>
+      </div>
+      <div class="card">
+        <div class="title" style="color:#e11d48">Emocional</div>
+        <p class="desc">Confiança, frustração, foco, agressividade.</p>
+      </div>
+    </div>
+
+    <p>
+      <strong>Depois que a partida encerra</strong>, o coach pode
+      continuar adicionando notas pelo link
+      <span class="btn-fake purple">Ver relatório</span> — útil para a
+      análise pós-jogo.
+    </p>
+
+    <!-- 12. Relatório -->
+    <h2><span class="num">12</span>Relatório final</h2>
+
+    <p>
+      Quando a partida encerra, o cartão na lista mostra o placar dos
+      sets (ex: <code>7-6 · 6-7 · 6-3</code>) e o botão
+      <span class="btn-fake purple">Ver relatório</span>. O relatório
+      reúne tudo:
+    </p>
+
+    <ul>
+      <li>Placar final com sets, vencedor marcado;</li>
+      <li>Stats completas (acima);</li>
+      <li>Momentum (gráfico de fluxo de pontos);</li>
+      <li>Notas de performance acumuladas (ao vivo e pós-jogo).</li>
+    </ul>
+
+    <p>
+      O relatório tem um <strong>link permanente</strong>. Você pode
+      compartilhar com o atleta, pais ou outros coaches — eles abrem
+      em modo somente leitura.
+    </p>
+
+    <div class="quote">
+      <strong>Excluir uma partida.</strong> Se criou um link por engano
+      ou a partida não vai acontecer, use o botão
+      <span class="btn-fake slate">Excluir</span> no cartão. O link
+      vira inválido para o scouter.
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="brand">Tennis<span class="f">Flow</span> <span class="sub">Scouting</span></div>
+      <p style="margin: 0.5rem 0 0;">tennis-flow.com.br/scouting</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -363,6 +363,11 @@ app.use(express.static(join(__dirname, '..', 'frontend')));
 // ===== /scouting (produto separado dentro do mesmo domínio) =====
 // Rotas /api/scouting/* — auth/storage isolados do TF.
 app.use('/api/scouting', scoutingRouter);
+// Manual público do /scouting — antes do catch-all pra ser servido
+// como HTML estático (não a SPA).
+app.get('/scouting/manual', (req, res) => {
+  res.sendFile(join(__dirname, '..', 'frontend', 'scouting-manual.html'));
+});
 // SPA do scouting — todas as rotas /scouting* servem o mesmo HTML
 // (login, dashboard, start/:token), o cliente roteia por path.
 app.get(['/scouting', '/scouting/*'], (req, res) => {
