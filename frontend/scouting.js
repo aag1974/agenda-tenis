@@ -687,7 +687,7 @@ async function renderDashboard() {
     }
   }
 
-  const main = el('main', { class: 'max-w-2xl mx-auto px-4 py-4' },
+  const main = el('main', { class: 'max-w-2xl mx-auto px-4 pt-6 pb-8' },
     createCard,
     invitesContainer,
   );
