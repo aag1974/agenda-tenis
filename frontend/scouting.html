@@ -2,9 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#0a2e3d">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>TennisFlow Scouting</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎾</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -40,30 +39,19 @@
       body.scout-bg::after  { bottom: -2rem; right: -2rem; transform: rotate(20deg); }
     }
 
-    /* Header navy-dark com safe-area top. Sem sticky/fixed pra não
-       criar stacking context que conflita com o resto. Header rola
-       junto com a página (normal flow).
-       iOS Safari: env() retorna 0 antes do primeiro scroll, então
-       usa fixo 50px detectado via JS. */
+    /* Header navy-dark sticky no topo da página. Sem viewport-fit=cover,
+       o Safari iOS gerencia o status bar fora da viewport do site —
+       não precisa de safe-area. Header tem altura natural pequena. */
     .scout-header {
       background: var(--ti-navy-dark) !important;
-      padding-top: max(env(safe-area-inset-top), 12px) !important;
-      padding-left:  max(1rem, env(safe-area-inset-left));
-      padding-right: max(1rem, env(safe-area-inset-right));
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
-    html.is-ios .scout-header { padding-top: 50px !important; }
   </style>
 </head>
 <body class="scout-bg">
   <div id="root" class="min-h-screen"></div>
-  <script>
-    // Detecta iOS pra aplicar padding-top fixo no header
-    // (env(safe-area-inset-top) é 0 no Safari iOS antes do primeiro scroll).
-    if (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.userAgent.includes('Mac') && 'ontouchend' in document)) {
-      document.documentElement.classList.add('is-ios');
-    }
-  </script>
   <script type="module" src="/scouting.js"></script>
 </body>
 </html>
