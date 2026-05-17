@@ -307,7 +307,7 @@ function renderLogin() {
   const card = el('div', { class: 'w-full max-w-sm bg-slate-900/40 backdrop-blur-md border border-white/15 rounded-2xl shadow-2xl p-7 space-y-5' },
     el('div', { class: 'space-y-1' },
       el('h2', { class: 'text-xl font-semibold' }, 'Entrar'),
-      el('p', { class: 'text-xs text-white/60' }, 'Acesse pra criar links de scout.'),
+      el('p', { class: 'text-xs text-white/60' }, 'Acesse para criar links de scout.'),
     ),
     field('email', 'Email', 'email', 'voce@email.com', 'email'),
     field('password', 'Senha', 'password', '••••••••', 'current-password'),
