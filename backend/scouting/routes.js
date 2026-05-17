@@ -100,6 +100,12 @@ scoutingRouter.get('/invites', requireScoutingAuth, (req, res) => {
         abandonedBy: scored.abandonedBy,
         startedAt: scored.startedAt,
         setsHistory: scored.setsHistory,
+        // Dashboard do coach renderiza mini-placar com set/game atual.
+        currentSet: scored.currentSet,
+        currentGame: scored.currentGame,
+        // pointsCount (não a lista inteira) pra alimentar o polling sem
+        // inflar payload.
+        pointsCount: scored.points?.length ?? 0,
       },
     };
   });

@@ -5798,16 +5798,26 @@ function renderStatButtons(m, profileId, onPoint, onMarker) {
     const receiver = server === 'a' ? 'o' : 'a';
     const serverCls   = server   === 'a' ? 'anna' : 'adv';
     const receiverCls = receiver === 'a' ? 'anna' : 'adv';
-    btns = [
+    const serverBtns = [
       { stat: 'ace',             label: 'Ace',             winner: server,   cls: serverCls },
-      { stat: 'return_winner',   label: 'Return Winner',   winner: receiver, cls: receiverCls },
       { stat: 'service_winner',  label: 'Service Winner',  winner: server,   cls: serverCls },
-      { stat: 'return_error',    label: 'Return Error',    winner: server,   cls: receiverCls },
       { stat: 'serve_fault',     label: '1st Serve Fault', marker: true,     cls: serverCls,   disabled: !state.firstServeIn },
-      { stat: 'return_in_play',  label: 'Return in Play',  marker: true,     cls: receiverCls },
       { stat: 'double_fault',    label: 'Double Fault',    winner: receiver, cls: serverCls },
-      null, // alinha grid 2x4
     ];
+    const receiverBtns = [
+      { stat: 'return_winner',   label: 'Return Winner',   winner: receiver, cls: receiverCls },
+      { stat: 'return_error',    label: 'Return Error',    winner: server,   cls: receiverCls },
+      { stat: 'return_in_play',  label: 'Return in Play',  marker: true,     cls: receiverCls },
+      null, // 4ª linha sem par do lado do recebedor
+    ];
+    // Coluna esquerda sempre jogador A (anna/azul); direita sempre B (adv/vermelho).
+    const leftBtns  = server === 'a' ? serverBtns   : receiverBtns;
+    const rightBtns = server === 'a' ? receiverBtns : serverBtns;
+    btns = [];
+    for (let i = 0; i < 4; i++) {
+      btns.push(leftBtns[i]);
+      btns.push(rightBtns[i]);
+    }
   } else {
     // Rally — qualquer botão fecha o ponto
     btns = [

@@ -563,9 +563,74 @@ async function renderDashboard() {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 
-  function renderScore(m) {
-    if (!m || !m.setsHistory) return '';
-    return m.setsHistory.map(s => `${s.a}-${s.o}`).join(' · ');
+  function formatGameLabel(cg) {
+    if (!cg) return '0-0';
+    if (cg.mode === 'tiebreak' || cg.mode === 'super_tiebreak') return `${cg.a}-${cg.o}`;
+    const labels = ['0', '15', '30', '40'];
+    if (cg.a < 4 && cg.o < 4) return `${labels[cg.a]}-${labels[cg.o]}`;
+    if (cg.a >= 3 && cg.o >= 3) {
+      if (cg.a === cg.o) return '40-40';
+      if (cg.a === cg.o + 1) return 'AD-40';
+      if (cg.o === cg.a + 1) return '40-AD';
+    }
+    return `${cg.a}-${cg.o}`;
+  }
+
+  // Mini-placar embutido no card do dashboard.
+  // 2 linhas (atleta/adv), 1 coluna por set jogado, +1 do set atual quando AO VIVO,
+  // +1 coluna "Pts" do game atual quando AO VIVO. Reaproveita lógica do
+  // renderScorePanel em app.js, em versão compacta.
+  function renderMiniBoard(m, atletaNome, opponentLabel) {
+    const sets = m.setsHistory || [];
+    const cs = m.currentSet;
+    const cg = formatGameLabel(m.currentGame);
+    const setsCount = Math.max(1, m.finished ? sets.length : sets.length + 1);
+    const setCols = Array(setsCount).fill('24px').join(' ');
+    const gridTemplate = `1fr ${setCols}${m.finished ? '' : ' 40px'}`;
+    const [shortA, shortO] = dualShortName(atletaNome, opponentLabel || '');
+
+    const row = (side, name, color) => {
+      const isWinner = m.finished && m.winner === side;
+      const isLoser = m.finished && m.winner && m.winner !== side;
+      const rowStyle = `grid-template-columns: ${gridTemplate};` + (isLoser ? ' opacity: 0.55;' : '');
+      const r = el('div', { class: 'grid items-center', style: rowStyle });
+      r.appendChild(el('div', { class: `px-2 py-1 text-xs flex items-center gap-1.5 ${isWinner ? 'font-extrabold' : 'font-semibold'}` },
+        el('span', { class: 'inline-block w-2 h-2 rounded-full shrink-0', style: `background:${color}` }),
+        el('span', { class: 'truncate' }, name + (isWinner ? ' 🏆' : '')),
+      ));
+      for (let i = 0; i < setsCount; i++) {
+        const s = sets[i];
+        if (s) {
+          const setWinner = s.a > s.o ? 'a' : (s.o > s.a ? 'o' : null);
+          const wonThisSet = setWinner === side;
+          const cls = 'px-0.5 py-1 text-center text-sm ' + (wonThisSet ? 'font-extrabold text-yellow-300' : 'font-bold');
+          const isSuperTb = s.mode === 'super_tiebreak' && s.tiebreak;
+          let children;
+          if (isSuperTb) {
+            children = [String(s.tiebreak[side])];
+          } else if (s.tiebreak && !wonThisSet) {
+            children = [String(s[side]), el('sup', { class: 'text-[9px] font-normal opacity-80 ml-px' }, String(s.tiebreak[side]))];
+          } else {
+            children = [String(s[side])];
+          }
+          r.appendChild(el('div', { class: cls }, ...children));
+        } else if (!m.finished && cs) {
+          r.appendChild(el('div', { class: 'px-0.5 py-1 text-center text-sm font-bold text-cyan-300' }, String(cs[side] ?? 0)));
+        } else {
+          r.appendChild(el('div', { class: 'px-0.5 py-1' }));
+        }
+      }
+      if (!m.finished) {
+        const pts = cg.split('-')[side === 'a' ? 0 : 1] || '0';
+        r.appendChild(el('div', { class: 'px-1 py-1 text-center text-sm font-extrabold text-yellow-300' }, pts));
+      }
+      return r;
+    };
+
+    return el('div', { class: 'mt-2 mb-1 bg-white/5 rounded-md border border-white/10 overflow-hidden' },
+      row('a', shortA || 'Atleta', '#0891b2'),
+      row('o', shortO || opponentLabel || 'Adversário', '#e11d48'),
+    );
   }
 
   function renderInvitesList() {
@@ -592,26 +657,27 @@ async function renderDashboard() {
       const waText = opponentLabel
         ? `Scout: ${inv.atletaNome} vs ${opponentLabel} — ${fullUrl}`
         : `Scout do atleta ${inv.atletaNome}: ${fullUrl}`;
-      const displayTitle = opponentLabel
+      // Sem match ainda (AGUARDANDO): mostra título "Atleta × Adv"; com match,
+      // os nomes vivem na mini-tabela e o cabeçalho fica só com meta+status.
+      const fallbackTitle = opponentLabel
         ? (() => {
             const [a, b] = dualShortName(inv.atletaNome, opponentLabel);
             return `${a} × ${b}`;
           })()
         : shortName(inv.atletaNome);
+      const metaLine = [inv.atletaCategoria, fmtDate(inv.createdAt)].filter(Boolean).join(' · ');
       const row = el('div', { 'data-invite-row': true, class: 'border border-white/10 rounded-lg p-3 bg-white/5 transition-shadow' },
-        el('div', { class: 'flex items-start justify-between gap-2 mb-1' },
+        el('div', { class: 'flex items-start justify-between gap-2' },
           el('div', { class: 'min-w-0' },
-            el('div', { class: 'text-sm font-semibold truncate' }, displayTitle),
-            el('div', { class: 'text-[11px] text-white/60' },
-              [inv.atletaCategoria, fmtDate(inv.createdAt)].filter(Boolean).join(' · '),
-            ),
+            !m && el('div', { class: 'text-sm font-semibold truncate' }, fallbackTitle),
+            metaLine ? el('div', { class: 'text-[11px] text-white/60' }, metaLine) : null,
           ),
           el('span', { class: `text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 inline-flex items-center gap-1 ${status.cls}` },
             status.live ? el('span', { class: 'inline-block w-1.5 h-1.5 rounded-full bg-red-500' }) : null,
             status.label,
           ),
         ),
-        m && el('div', { class: 'text-xs text-white/70' }, renderScore(m)),
+        m && renderMiniBoard(m, inv.atletaNome, opponentLabel),
         el('div', { class: 'flex flex-wrap gap-2 mt-2' },
           // Copiar/WhatsApp do link do scouter ficam SEMPRE disponíveis
           // (até match encerrado o scouter pode precisar reabrir se perdeu).
@@ -705,6 +771,8 @@ async function renderDashboard() {
     return list.map(inv => {
       const m = inv.match;
       const sets = m?.setsHistory?.map(s => `${s.a}-${s.o}`).join(',') || '';
+      const cs = m?.currentSet ? `${m.currentSet.a}-${m.currentSet.o}` : '-';
+      const cg = m?.currentGame ? `${m.currentGame.a}-${m.currentGame.o}` : '-';
       return [
         inv.token,
         inv.matchId || '-',
@@ -712,7 +780,9 @@ async function renderDashboard() {
         m?.abandoned ? '1' : '0',
         m?.abandonReason || '-',
         sets,
-        m?.points?.length ?? 0,
+        cs,
+        cg,
+        m?.pointsCount ?? 0,
       ].join('|');
     }).join('\n');
   }
