@@ -198,17 +198,21 @@
     .badge.aovivo     { background: rgba(244,63,94,0.18); color: #be123c; border: 1px solid rgba(244,63,94,0.4); }
     .badge.encerrado  { background: rgba(100,116,139,0.18); color: #475569; border: 1px solid rgba(100,116,139,0.4); }
     .badge.ret        { background: rgba(245,158,11,0.18); color: #92400e; border: 1px solid rgba(245,158,11,0.4); }
-    /* Botões fake (visualmente parecidos com o app) */
+    /* Botões fake — visualmente parecidos com os do app real,
+       adaptados para leitura sobre fundo branco do manual. */
     .btn-fake {
-      display: inline-block; padding: 0.3rem 0.7rem;
-      border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+      display: inline-block; padding: 0.3rem 0.75rem;
+      border-radius: 8px; font-size: 0.78rem; font-weight: 700;
       color: white; vertical-align: middle;
+      border: 1px solid transparent;
     }
-    .btn-fake.cyan { background: #0891b2; }
+    .btn-fake.cyan    { background: #0891b2; }
     .btn-fake.emerald { background: #10b981; }
-    .btn-fake.purple { background: #9333ea; }
-    .btn-fake.rose { background: #e11d48; }
-    .btn-fake.slate { background: rgba(100,116,139,0.5); }
+    .btn-fake.purple  { background: #9333ea; }
+    .btn-fake.rose    { background: #fecdd3; color: #9f1239; border-color: #fb7185; }
+    .btn-fake.amber   { background: #fef3c7; color: #92400e; border-color: #f59e0b; }
+    .btn-fake.amber-soft { background: #fffbeb; color: #92400e; border-color: #fbbf24; }
+    .btn-fake.slate   { background: #e2e8f0; color: #334155; border-color: #cbd5e1; }
     /* Quote / dica */
     .quote {
       border-left: 4px solid var(--cyan);
@@ -326,8 +330,8 @@
         <span class="icon">➕</span>
         <div class="title">Nova partida</div>
         <p class="desc">
-          Para criar uma nova partida: seleciona o atleta, opcionalmente o
-          adversário, e gera o link para o scouter.
+          Para criar uma nova partida, selecione o atleta, opcionalmente o
+          adversário, e gere o link para o scouter.
         </p>
       </div>
       <div class="card">
@@ -376,13 +380,13 @@
         completa antes de iniciar.
       </li>
       <li>
-        <strong>Nome fora da lista.</strong> Se o atleta não está
+        <strong>Nome fora da lista.</strong> Se o atleta não estiver
         cadastrado, basta digitar o nome completo — ao apertar Enter ou
         sair do campo, o nome é aceito como livre.
       </li>
       <li>
-        <strong>Gerar link pro scouter.</strong> Toque no botão. O
-        cartão da partida aparece na lista abaixo com status
+        <strong>Gerar link para o scouter.</strong> Toque no botão. O
+        cartão da partida aparece na lista abaixo com o status
         <span class="badge aguardando">AGUARDANDO</span>.
       </li>
     </ol>
@@ -416,7 +420,7 @@
     <div class="quote">
       <strong>Importante:</strong> o link só funciona uma vez. Quando o
       scouter abre e clica em "Iniciar tracking", a partida fica
-      vinculada a ele. Para outra partida, gere um novo link.
+      vinculada a ele. Para criar outra partida, gere um novo link.
     </div>
 
     <!-- 6. O que o scouter vê -->
@@ -492,9 +496,9 @@
       </div>
       <div class="card">
         <div class="title">Ações secundárias</div>
-        <p class="desc">
-          <span class="btn-fake slate">Desfazer último</span> ·
-          <span class="btn-fake slate">→ Game manual</span> ·
+        <p class="desc" style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem;">
+          <span class="btn-fake amber">↶ Desfazer último</span>
+          <span class="btn-fake amber-soft">→ Game manual</span>
           <span class="btn-fake rose">⏹ Encerrar</span>
         </p>
       </div>
@@ -503,7 +507,7 @@
     <h3>Game manual</h3>
     <p>
       Se o scouter <strong>perdeu a marcação dos pontos de um game</strong>
-      (distração, atraso pra começar), ele usa <strong>"→ Game manual"</strong>
+      (distração, atraso para começar), ele usa <strong>"→ Game manual"</strong>
       para marcar quem venceu o game sem precisar inventar pontos. O placar
       é atualizado normalmente.
     </p>
@@ -530,7 +534,7 @@
 
     <h3>Pelo coach (scouter sumiu)</h3>
     <p>
-      Se o scouter parou de marcar mas a partida continuou, o coach pode
+      Se o scouter parou de marcar, mas a partida continuou, o coach pode
       encerrar pelo dashboard. Toca em <span class="btn-fake rose">Encerrar</span>
       no cartão da partida e escolhe entre:
     </p>
@@ -543,7 +547,7 @@
       <strong>W.O. (não compareceu).</strong> Se o atleta não jogou,
       <strong>não use Encerrar</strong> — exclua a partida pelo botão
       <span class="btn-fake slate">Excluir</span> no cartão. W.O. significa
-      que a partida não rolou; não tem placar para registrar.
+      que a partida não aconteceu; não há placar para registrar.
     </div>
 
     <!-- 9. Acompanhar -->
@@ -551,8 +555,8 @@
 
     <p>
       Enquanto o scouter marca, o coach vê o status atualizar
-      automaticamente no dashboard a cada 5 segundos (sem precisar dar
-      refresh). No cartão da partida AO VIVO, o botão
+      automaticamente no dashboard a cada 5 segundos (sem precisar
+      atualizar a página). No cartão da partida AO VIVO, o botão
       <span class="btn-fake purple">Acompanhar</span> abre uma tela em modo
       somente leitura, mostrando:
     </p>
@@ -566,7 +570,7 @@
 
     <p>
       O coach <strong>não marca pontos</strong> nessa tela — só o scouter
-      pode. Mas o coach pode adicionar notas (durante e depois do jogo).
+      pode, mas o coach pode adicionar notas (durante e depois do jogo).
     </p>
 
     <!-- 10. Stats -->
@@ -596,14 +600,14 @@
       <li>
         <span class="stat-name">Break Points Won</span>
         <p class="stat-desc">
-          Quebras de saque conquistadas dividido por chances criadas.
+          Quebras de saque conquistadas divididas pelas chances criadas.
           Ex: 3/8 = 3 quebras em 8 oportunidades.
         </p>
       </li>
       <li>
         <span class="stat-name">Winners / Unforced Errors</span>
         <p class="stat-desc">
-          Pontos fechados em bola boa (winner) vs erros não-forçados
+          Pontos fechados em bola boa (winner) versus erros não forçados
           (decisões ruins, bolas fáceis perdidas).
         </p>
       </li>
@@ -658,7 +662,7 @@
     </p>
 
     <ul>
-      <li>Placar final com sets, vencedor marcado;</li>
+      <li>Placar final com os sets e o vencedor marcado;</li>
       <li>Stats completas (acima);</li>
       <li>Momentum (gráfico de fluxo de pontos);</li>
       <li>Notas de performance acumuladas (ao vivo e pós-jogo).</li>
