@@ -5452,6 +5452,27 @@ function promptDialog(message, opts = {}) {
 
 // Modal de confirmação estilizado — substitui o confirm() nativo.
 // Uso: const ok = await confirmDialog('Excluir?', { danger: true });
+// Diálogo de erro com botão único — substitui alert() nativo.
+function errorDialog(message, { title = 'Erro' } = {}) {
+  return new Promise((resolve) => {
+    const root = document.createElement('div');
+    root.style.cssText = 'position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); padding:1rem;';
+    const card = el('div', { class: 'bg-white text-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden' });
+    card.appendChild(el('div', { class: 'px-5 pt-4 pb-1 text-base font-semibold text-rose-700' }, title));
+    card.appendChild(el('div', { class: 'px-5 py-3 text-sm text-slate-700 whitespace-pre-wrap' }, message));
+    const okBtn = el('button', { class: 'px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold' }, 'OK');
+    card.appendChild(el('div', { class: 'flex justify-end px-5 pb-4' }, okBtn));
+    root.appendChild(card);
+    const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Enter') close(); };
+    const close = () => { document.removeEventListener('keydown', onKey); root.remove(); resolve(); };
+    okBtn.onclick = close;
+    root.onclick = (e) => { if (e.target === root) close(); };
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(root);
+    setTimeout(() => okBtn.focus(), 50);
+  });
+}
+
 function confirmDialog(message, opts = {}) {
   return new Promise((resolve) => {
     const root = document.createElement('div');
@@ -5849,12 +5870,29 @@ function renderStatBtn(b, onPoint, onMarker) {
     class: 'rounded-xl py-3 px-2 text-white font-bold text-sm shadow active:scale-95 transition disabled:opacity-40',
     style: `background:${bg};`,
   }, b.label);
-  if (b.disabled) btn.disabled = true;
+  // Marca quem JÁ era disabled (ex: 1st Serve Fault em 2nd serve) pra não
+  // reabilitar por engano quando o lock pós-clique cair.
+  if (b.disabled) { btn.disabled = true; btn.dataset.lockedOff = '1'; }
   btn.onmouseover = () => { if (!btn.disabled) btn.style.background = bgHover; };
   btn.onmouseout = () => { btn.style.background = bg; };
-  btn.onclick = () => {
-    if (b.marker) onMarker?.(b.stat);
-    else onPoint(b.winner, b.stat);
+  btn.onclick = async () => {
+    if (btn.disabled) return;
+    // Bloqueia TODOS os botões da grid enquanto a request está em voo.
+    // Evita race condition de double-click ou clique em botão diferente
+    // antes da resposta do anterior (causava "Erro ao registrar marker").
+    const grid = btn.closest('.grid');
+    const siblings = grid ? Array.from(grid.querySelectorAll('button')) : [btn];
+    siblings.forEach(x => x.disabled = true);
+    try {
+      if (b.marker) await onMarker?.(b.stat);
+      else await onPoint?.(b.winner, b.stat);
+    } finally {
+      // Em sucesso o render() já trocou o DOM; o reset abaixo vira no-op.
+      // Em erro, reabilita só os que não estavam originalmente disabled.
+      if (grid?.isConnected) {
+        siblings.forEach(x => { if (!x.dataset.lockedOff) x.disabled = false; });
+      }
+    }
   };
   return btn;
 }
@@ -6574,11 +6612,11 @@ async function openPublicLiveMatch(kind, token) {
         leftCol.appendChild(renderStatButtons(m, null,
           async (winner, stat) => {
             try { m = await api.publicAddPoint(token, winner, stat); render(); }
-            catch (err) { alert(err.message); }
+            catch (err) { await errorDialog(err.message); }
           },
           async (stat) => {
             try { m = await api.publicAddMarker(token, stat); render(); }
-            catch (err) { alert(err.message); }
+            catch (err) { await errorDialog(err.message); }
           },
         ));
         leftCol.appendChild(renderActions(m, null, async (action) => {
@@ -6597,7 +6635,7 @@ async function openPublicLiveMatch(kind, token) {
               window.location.reload();
             }
           } catch (err) {
-            alert(err.message);
+            await errorDialog(err.message);
           }
         }));
         rightCol.appendChild(renderStatsPanel(m));
