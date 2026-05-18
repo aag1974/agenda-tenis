@@ -795,6 +795,60 @@ reusa componentes de placar/notas do TF.
 - **Email de confirmação** com link único — não fazer agora (precisa SMTP/Resend).
 - **SSO com TF** — fica pra depois, se a base de usuários crescer.
 
+### Modo offline pro scouter (resiliência de rede)
+
+**Problema:** hoje cada ponto marcado faz POST imediato pra `/api/scout/:token/points`. Se o coach perde sinal durante a partida (estádio com cobertura ruim, embaixo de arquibancada, quadra isolada), o ponto **se perde** — não fica em fila local pra sincronizar depois. Próximo ponto que ele tentar marcar também falha até reconectar.
+
+**Validar antes de implementar:** já aconteceu na prática (Anna Luiza, outros coaches)? Se for risco hipotético, fica baixa prioridade. Se já houve perda de dados, sobe.
+
+**Arquitetura proposta:**
+
+```
+[scouting.js]
+   ↓ marca ponto
+[IndexedDB local]  ←─ escreve aqui PRIMEIRO (UI atualiza instantânea)
+   ├─ estado da partida (placar, último ponto, jogadores, formato)
+   └─ fila de ações pendentes
+   ↓
+[sync loop]  →  POST /api/scout/:token/...
+   ↑ retry exponencial em background; gatilho via timer + evento `online`
+```
+
+**3 camadas:**
+1. **Estado da partida em IDB** — UI lê instantâneo, sobrevive refresh offline.
+2. **Fila de ações pendentes** — todas as 8 ações (point/note/game/finalize/abandon/markers/delete-last-point) entram aqui antes de ir pro servidor.
+3. **Sync loop** — esvazia a fila; remove item quando servidor confirma 2xx. Retry exponencial com cap (1s→2s→4s→8s→16s→30s→30s…).
+
+**UX (princípio: previsibilidade traz confiança — `feedback_previsibilidade.md`):**
+
+Indicador no header do tracking:
+- 🟢 **Sincronizado** — fila vazia
+- 🟡 **3 pontos pendentes** — marcou offline, sincroniza quando voltar sinal
+- 🔴 **Erro de sincronização** — toque pra detalhes (modal estilizado, não nativo)
+
+Coach nunca espera o servidor pra marcar próximo ponto. UI sempre instantânea. No finalize com fila não-vazia: modal "Aguardando sincronização de X ações antes de fechar a partida — mantenha esta tela aberta." Só fecha quando fila zerar.
+
+**Idempotência (crítico):** cada ação gera `clientActionId` UUID. Backend ignora reenvio com mesmo ID. Sem isso, retry duplica pontos.
+
+**Não-objetivos (escopo deliberado):**
+- Multi-device na mesma partida — segue um scouter por token.
+- Edição offline de partidas antigas — só a partida ATIVA fica local.
+- Conflict resolution complexo — servidor ganha em divergência; cliente refaz fila.
+- Background Sync API — suporte ruim no iOS Safari. Fazer sync no foreground (timer + evento `online`) funciona em todo navegador.
+
+**Riscos:**
+1. **Token expirar offline** — se coach ficar horas sem sinal, scout token pode expirar antes do sync. Mitigação: estender TTL ou avisar antes de expirar.
+2. **Storage quota** — IDB tem limite por origem. Pra 1 partida é irrisório.
+3. **Estado divergente** — se cliente abrir em 2 abas, fila pode brigar. Mitigação: botão "Sincronizar do servidor" no modal de erro pra resetar local.
+
+**Esforço:**
+- Backend: ~2h (endpoint `GET` pra estado atual da partida; `clientActionId` em todas as 8 escritas)
+- Frontend: ~6-10h (lib IDB + queue, integração em `scouting.js`, indicador visual, modal de erro)
+- Testes: ~2h
+- **Total**: ~1-2 dias
+
+**Quando fazer:** após validar uso real (Itajaí + próximos torneios). Se ninguém reclamou de perda de pontos, fica em low priority.
+
 ## Scraper multi-categoria (Juvenil M / Profissional / Beach / Senior / Tennis Kids)
 
 **Status hoje (2026-05-16):** o scraper foi construído pra Juvenil Feminino (Anna).
