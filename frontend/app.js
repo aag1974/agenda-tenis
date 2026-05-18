@@ -3756,7 +3756,7 @@ function toggleGearMenu() {
   const athleteFirstName = (profile?.athleteName || profile?.tiEmail || 'Atleta').split(/\s+/)[0];
   const athleteActions = profile ? [
     { label: 'Performance do Atleta', onClick: () => openAthleteCard() },
-    { label: '🎾 Scout ao Vivo', onClick: () => openScoutListModal() },
+    { label: 'Scouting', onClick: () => openScoutListModal() },
     { label: 'Credenciais TI', onClick: () => openProfileForm(profile) },
   ] : [];
   // Mobile: "Convidar membro" no menu (não tem o "+" do member stack que
